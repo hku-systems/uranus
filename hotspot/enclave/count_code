@@ -1,0 +1,13 @@
+#!/bin/bash
+# count all cpp and hpp code in this directory
+
+code_file=$(find . -type f \( -name "*.cpp" -or -name "*.hpp" \))
+for f in $code_file
+do
+cat $f >> file_all
+count=$(cat $f |wc -l)
+echo "$f":"$count" 
+done
+echo "done"
+cat "file_all" |wc -l
+rm "file_all"
