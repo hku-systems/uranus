@@ -318,7 +318,7 @@ protected:
   Array(const Array<T>&);
   void operator=(const Array<T>&);
 
-  void* operator new(size_t size, ClassLoaderData* loader_data, int length, bool read_only, TRAPS) throw() {
+  void* operator new (unsigned int size, ClassLoaderData* loader_data, int length, bool read_only, TRAPS) throw() {
     size_t word_size = Array::size(length);
     return malloc(word_size * sizeof(HeapWord));
   }

@@ -1,0 +1,24 @@
+enclave {
+
+    trusted {
+        public int call_me(int fd);
+    }
+
+    untrusted {
+		int sysinfo ([user_check]struct sysinfo *__info);
+
+        /* Return number of configured processors.  */
+        int get_nprocs_conf (void);
+
+        /* Return number of available processors.  */
+        int get_nprocs (void);
+
+
+        /* Return number of physical pages of memory in the system.  */
+        long int get_phys_pages (void);
+
+        /* Return number of available physical pages of memory in the system.  */
+        long int get_avphys_pages (void);
+    };
+
+};

@@ -85,10 +85,6 @@ int SGXAPI sgx_is_outside_enclave(const void *addr, size_t size);
 */
 sgx_status_t SGXAPI sgx_read_rand(unsigned char *rand, size_t length_in_bytes);
 
-sgx_status_t sgx_ocall(const unsigned int index,
-                       void* ms);
-
-
 #ifdef __cplusplus
 }
 #endif

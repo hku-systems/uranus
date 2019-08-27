@@ -214,7 +214,7 @@ BufferBlob* BufferBlob::create(const char* name, CodeBuffer* cb) {
 }
 
 
-void* BufferBlob::operator new(size_t s, unsigned size, bool is_critical) throw() {
+void* BufferBlob::operator new (std::size_t s, unsigned size, bool is_critical) throw() {
   void* p = malloc(size);
   return p;
 }
@@ -307,12 +307,12 @@ RuntimeStub* RuntimeStub::new_runtime_stub(const char* stub_name,
 }
 
 
-void* RuntimeStub::operator new(size_t s, unsigned size) throw() {
+void* RuntimeStub::operator new (std::size_t s, unsigned size) throw() {
   return malloc(size * sizeof(HeapWord));
 }
 
 // operator new shared by all singletons:
-void* SingletonBlob::operator new(size_t s, unsigned size) throw() {
+void* SingletonBlob::operator new (std::size_t s, unsigned size) throw() {
     return malloc(size * sizeof(HeapWord));
 }
 

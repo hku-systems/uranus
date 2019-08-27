@@ -1,0 +1,18 @@
+enclave {
+
+    trusted {
+        include "struct/sgx_dlfcn_struct.h"
+    };
+
+    untrusted {
+        include "dlfcn.h"
+        void *ocall_dlopen ([in, string]const char *__file, int __mode);
+        int ocall_dlclose ([user_check]void *__handle);
+        void *ocall_dlsym ([user_check]void * __handle, [user_check]const char * __name);
+        int ocall_dladdr ([user_check]const void *__address, [user_check]void *__info);
+        int ocall_dladdr1 ([user_check]const void *__address, [user_check]void *__info,
+        		    [user_check]void **__extra_info, int __flags);
+        int ocall_dlinfo ([user_check]void * __handle, int __request, [user_check]void * __arg);
+    };
+
+};

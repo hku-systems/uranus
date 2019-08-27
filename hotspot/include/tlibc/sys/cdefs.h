@@ -38,8 +38,6 @@
 #ifndef _SYS_CDEFS_H_
 #define _SYS_CDEFS_H_
 
-#define _TLIBC_WARN_DEPRECATED_FUNCTIONS_
-
 /* Declaration field in C/C++ headers */
 #if defined(__cplusplus)
 # define __BEGIN_DECLS extern "C" {

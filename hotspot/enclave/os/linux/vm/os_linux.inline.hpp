@@ -32,7 +32,7 @@
 // System includes
 
 #include "sgx_thread.h"
-#include <unistd.h>
+#include <sgx_unistd_util.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netdb.h>
@@ -112,7 +112,7 @@ inline char* os::native_path(char *path) {
 }
 
 inline int os::ftruncate(int fd, jlong length) {
-  return ::ftruncate(fd, length);
+  return ::ftruncate64(fd, length);
 }
 
 inline struct dirent* os::readdir(DIR* dirp, dirent *dbuf)

@@ -5,23 +5,26 @@ set(CMAKE_CXX_STANDARD 98)
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
-#set(CMAKE_C_FLAGS "-O2 ${DEBUG_FLAG} -nostdinc")
-#set(CMAKE_CPP_FLAGS "-O2 ${DEBUG_FLAG} -nostdinc++")
-# set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles")
+set(CMAKE_C_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc")
+set(CMAKE_CPP_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc -nostdinc++ -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
+set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic")
 
-#include_directories(${TOP_DIR}/include/tlibc)
-#include_directories(${TOP_DIR}/include/stdc++)
-#include_directories(${TOP_DIR}/include/tlibcxx)
-include_directories(${TOP_DIR}/include)
+include_directories(${TOP_DIR}/include/tlibc)
+include_directories(${TOP_DIR}/include/stdc++)
+include_directories(${TOP_DIR}/include/stlport)
+include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
+include_directories(${TOP_DIR}/enclave/panoply/include)
 include_directories(${TOP_DIR}/enclave/share/vm/precompiled/)
 include_directories(${TOP_DIR}/enclave/share/vm/)
 include_directories(${TOP_DIR}/enclave/cpu/x86/vm/)
 include_directories(${TOP_DIR}/enclave/os/linux/vm/)
 include_directories(${TOP_DIR}/enclave/os/posix/vm/)
 include_directories(${TOP_DIR}/enclave/os_cpu/linux_x86/vm/)
-#include_directories(${TOP_DIR}/enclave/share/PanoplyEnclave/syscall_include)
-#include_directories(${TOP_DIR}/enclave/share/PanoplyEnclave/include)
-#include_directories(${TOP_DIR}/include)
+# include_directories(${TOP_DIR}/enclave/panoply/include)
+include_directories(${TOP_DIR}/include)
+#include_directories(${TOP_DIR}/include/tlibc)
+#include_directories(${TOP_DIR}/include/stlc++)
+include_directories(${TOP_DIR}/enclave/panoply)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
@@ -29,21 +32,33 @@ add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSIO
         -DTARGET_OS_ARCH_linux_x86 -DTARGET_OS_ARCH_MODEL_linux_x86_64
         -DTARGET_COMPILER_gcc -D_REENTRANT -DVM_LITTLE_ENDIAN -D_LP64=1
         -DJRE_RELEASE_VERSION="1.8.0-internal-jianyu_2018_04_23_00_03-b00"
-        -DENCLAVE_UNIX -D__OpenBSD__)
+        -DENCLAVE_UNIX)
 
-find_library(SGX_TRTS_SIM sgx_trts_sim ${TOP_DIR}/lib)
+find_library(SGX_TRTS_SIM sgx_trts ${TOP_DIR}/lib)
+find_library(SGX_TRTS_TLIBC sgx_tstdc ${TOP_DIR}/lib)
+find_library(SGX_TRTS_TCXX sgx_tcxx ${TOP_DIR}/lib)
+find_library(SGX_TRTS_TSTDCXX sgx_tstdcxx ${TOP_DIR}/lib)
+find_library(SGX_TCRYPTO sgx_tcrypto ${TOP_DIR}/lib)
 
 file(GLOB_RECURSE src_app enclave/share/*.c*
         enclave/cpu/x86/*.c*
         enclave/os_cpu/*.c*
-        enclave/os/linux/*.c*)
+        enclave/os/linux/*.c*
+        enclave/panoply/*.c*)
 
-add_library(enclave SHARED ${src_app})
+file(GLOB src_assembly
+        "${TOP_DIR}/enclave/os_cpu/linux_x86/vm/*.s")
 
-# set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
+
+add_library(enclave SHARED ${src_app} ${src_assembly})
+
+set_property(SOURCE ${TOP_DIR}/enclave/os_cpu/linux_x86/vm/linux_x86_64.s PROPERTY LANGUAGE C)
+
+set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 
 set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 
-target_link_libraries(enclave ${SGX_TRTS_SIM})
+target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TCXX}" "${SGX_TRTS_TLIBC}" ${SGX_TCRYPTO} ${SGX_TRTS_TSTDCXX} -Wl,--hash-style=both
+        -Wl,--end-group)
 
 install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)

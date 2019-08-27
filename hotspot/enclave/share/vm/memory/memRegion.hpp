@@ -93,8 +93,8 @@ public:
   size_t word_size() const { return _word_size; }
 
   bool is_empty() const { return word_size() == 0; }
-  void* operator new(size_t size) throw();
-  void* operator new [](size_t size) throw();
+  void* operator new (std::size_t size) throw();
+  void* operator new [](std::size_t size) throw();
   void  operator delete(void* p);
   void  operator delete [](void* p);
 };
@@ -110,13 +110,13 @@ public:
 
 class MemRegionClosureRO: public MemRegionClosure {
 public:
-  void* operator new(size_t size, ResourceObj::allocation_type type, MEMFLAGS flags) throw() {
+  void* operator new (std::size_t size, ResourceObj::allocation_type type, MEMFLAGS flags) throw() {
         return ResourceObj::operator new(size, type, flags);
   }
-  void* operator new(size_t size, Arena *arena) throw() {
+  void* operator new (std::size_t size, Arena *arena) throw() {
         return ResourceObj::operator new(size, arena);
   }
-  void* operator new(size_t size) throw() {
+  void* operator new (std::size_t size) throw() {
         return ResourceObj::operator new(size);
   }
 

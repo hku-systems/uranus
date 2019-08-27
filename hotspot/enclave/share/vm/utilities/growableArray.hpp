@@ -66,7 +66,7 @@
 
 // To call default constructor the placement operator new() is used.
 // It should be empty (it only returns the passed void* pointer).
-// The definition of placement operator new(size_t, void*) in the <new>.
+// The definition of placement operator new (std::size_t, void*) in the <new>.
 
 
 // Need the correct linkage to call qsort without warnings

@@ -92,14 +92,13 @@
 #define MY_EXTERN extern
 #endif
 
-#define SGX_ACCESS_VERSION(libname, num)
-//#define SGX_ACCESS_VERSION(libname, num)                    \
-//    MY_EXTERN char sgx_##libname##_version[];          \
-//    MY_EXTERN char * __attribute__((destructor)) libname##_access_version_dummy##num()      \
-//    {                                                                                       \
-//        sgx_##libname##_version[0] = 's';                                                   \
-//        return sgx_##libname##_version;                                                     \
-//    }
-//
+#define SGX_ACCESS_VERSION(libname, num)                    \
+    MY_EXTERN char sgx_##libname##_version[];          \
+    MY_EXTERN char * __attribute__((destructor)) libname##_access_version_dummy##num()      \
+    {                                                                                       \
+        sgx_##libname##_version[0] = 's';                                                   \
+        return sgx_##libname##_version;                                                     \
+    } 
+
 
 #endif

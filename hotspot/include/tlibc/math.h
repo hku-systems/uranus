@@ -419,9 +419,16 @@ int         _TLIBC_CDECL_ isnanl(long double);
  * http://clang.llvm.org/docs/UsersManual.html#gcc-extensions-not-implemented-yet
  */
 #if !defined(__clang__)
-typedef float _Decimal32 __attribute__((mode(SD)));
-typedef float _Decimal64 __attribute__((mode(DD)));
-typedef float _Decimal128 __attribute__((mode(TD)));
+
+#if defined(__x86_x64__)
+#define ATTR_MODE(mode) __attribute__((mode(mode)));
+#elif defined(__arm__)
+#define ATTR_MODE(mode)
+#endif
+
+typedef float _Decimal32 ATTR_MODE(SD);
+typedef float _Decimal64 ATTR_MODE(DD);
+typedef float _Decimal128 ATTR_MODE(TD);
 #endif
 #endif
 

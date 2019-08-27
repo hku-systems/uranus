@@ -214,7 +214,7 @@ class BufferBlob: public CodeBlob {
   BufferBlob(const char* name, int size);
   BufferBlob(const char* name, int size, CodeBuffer* cb);
 
-  void* operator new(size_t s, unsigned size, bool is_critical = false) throw();
+  void* operator new (unsigned int s, unsigned size, bool is_critical = false) throw();
 
  public:
   // Creation
@@ -287,7 +287,7 @@ class RuntimeStub: public CodeBlob {
     bool        caller_must_gc_arguments
   );
 
-  void* operator new(size_t s, unsigned size) throw();
+  void* operator new (unsigned int s, unsigned size) throw();
 
  public:
   // Creation
@@ -325,7 +325,7 @@ class SingletonBlob: public CodeBlob {
   friend class VMStructs;
 
  protected:
-  void* operator new(size_t s, unsigned size) throw();
+  void* operator new (unsigned int s, unsigned size) throw();
 
  public:
    SingletonBlob(

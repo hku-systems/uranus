@@ -102,12 +102,12 @@ MemRegion MemRegion::minus(const MemRegion mr2) const {
   return MemRegion();
 }
 
-void* MemRegion::operator new(size_t size) throw() {
+void* MemRegion::operator new (std::size_t size) throw() {
   return (address)AllocateHeap(size, mtGC, CURRENT_PC,
     AllocFailStrategy::RETURN_NULL);
 }
 
-void* MemRegion::operator new [](size_t size) throw() {
+void* MemRegion::operator new [](std::size_t size) throw() {
   return (address)AllocateHeap(size, mtGC, CURRENT_PC,
     AllocFailStrategy::RETURN_NULL);
 }

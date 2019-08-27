@@ -176,7 +176,7 @@ HandleMark::~HandleMark() {
   _thread->set_last_handle_mark(previous_handle_mark());
 }
 
-void* HandleMark::operator new(size_t size) throw() {
+void* HandleMark::operator new (std::size_t size) throw() {
   return AllocateHeap(size, mtThread);
 }
 

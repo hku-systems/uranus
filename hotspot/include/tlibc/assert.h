@@ -49,7 +49,7 @@
 #ifdef NDEBUG
 # define assert(e) ((void)0)
 #else
-# define assert(e, str) ((e) ? (void)0 : __assert(__FILE__, __LINE__, __func__, #e))
+# define assert(e) ((e) ? (void)0 : __assert(__FILE__, __LINE__, __func__, #e))
 #endif
 
 #ifndef _ASSERT_H_DECLS
