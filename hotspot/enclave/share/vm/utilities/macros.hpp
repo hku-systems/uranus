@@ -37,9 +37,9 @@
 // -DINCLUDE_<something>=0 | 1 can be specified on the command line to include
 // or exclude functionality.
 
-#ifndef INCLUDE_JVMTI
-#define INCLUDE_JVMTI 1
-#endif  // INCLUDE_JVMTI
+// #ifndef INCLUDE_JVMTI
+// #define INCLUDE_JVMTI 1
+// #endif  // INCLUDE_JVMTI
 
 #if INCLUDE_JVMTI
 #define JVMTI_ONLY(x) x

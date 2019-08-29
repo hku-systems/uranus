@@ -41,7 +41,7 @@
 #define __INO_T_TYPE		__SYSCALL_ULONG_TYPE
 #define __INO64_T_TYPE		__UQUAD_TYPE
 #define __MODE_T_TYPE		__U32_TYPE
-#ifdef __x86_64__
+#if defined (__x86_64__) || defined(__aarch64__)
 # define __NLINK_T_TYPE		__SYSCALL_ULONG_TYPE
 # define __FSWORD_T_TYPE	__SYSCALL_SLONG_TYPE
 #else

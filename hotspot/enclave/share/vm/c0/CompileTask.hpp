@@ -6,7 +6,7 @@
 #define HOTSPOT_COMPILETASK_HPP
 
 #include <asm/macroAssembler.hpp>
-#include <interp_masm_x86.hpp>
+#include "interpreter/interpMasm.hpp"
 #include "bytecodeStream.hpp"
 #include "c0_CodeStubs.hpp"
 

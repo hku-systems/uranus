@@ -82,7 +82,7 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     Abstract_VM_Version::initialize();
     Bytecodes::initialize();
     icache_init();
-    VM_Version::_cpuid_info_global = (VM_Version::CpuidInfo*)cpuid;
+    VM_Version::set_features(cpuid);
     VM_Version_init();
 
     JavaClasses::compute_hard_coded_offsets();

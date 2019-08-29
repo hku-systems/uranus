@@ -473,8 +473,8 @@ class frame VALUE_OBJ_CLASS_SPEC {
 #ifdef TARGET_ARCH_zero
 # include "frame_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "frame_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "frame_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "frame_ppc.hpp"

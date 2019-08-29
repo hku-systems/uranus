@@ -368,7 +368,7 @@ struct group_filter
 #include <endian.h>
 
 /* Get machine dependent optimized versions of byte swapping functions.  */
-#include <sgx/bits/byteswap.h>
+#include <byteswap.h>
 
 #ifdef __OPTIMIZE__
 /* We can optimize calls to the conversion functions.  Either nothing has

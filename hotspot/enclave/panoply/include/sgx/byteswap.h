@@ -21,7 +21,13 @@
 #include <sgx/features.h>
 
 /* Get the machine specific, optimized definitions.  */
+#if defined(__x86_64__)
 #include <sgx/bits/byteswap.h>
+#elif defined(__aarch64__)
+#include <sgx/bits/byteswap-aarch64.h>
+#else
+#error "wrong arch"
+#endif
 
 
 /* The following definitions must all be macros since otherwise some

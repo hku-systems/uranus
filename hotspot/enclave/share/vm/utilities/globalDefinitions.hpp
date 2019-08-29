@@ -452,8 +452,8 @@ enum RTMState {
 #ifdef TARGET_ARCH_zero
 # include "globalDefinitions_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "globalDefinitions_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "globalDefinitions_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "globalDefinitions_ppc.hpp"
@@ -481,6 +481,29 @@ const bool support_IRIW_for_not_multiple_copy_atomic_cpu = false;
 
 // The byte alignment to be used by Arena::Amalloc.  See bugid 4169348.
 // Note: this value must be a power of 2
+
+// abs methods which cannot overflow and so are well-defined across
+// the entire domain of integer types.
+static inline unsigned int uabs(unsigned int n) {
+  union {
+    unsigned int result;
+    int value;
+  };
+  result = n;
+  if (value < 0) result = 0-result;
+  return result;
+}
+static inline julong uabs(julong n) {
+  union {
+    julong result;
+    jlong value;
+  };
+  result = n;
+  if (value < 0) result = 0-result;
+  return result;
+}
+static inline julong uabs(jlong n) { return uabs((julong)n); }
+static inline unsigned int uabs(int n) { return uabs((unsigned int)n); }
 
 #define ARENA_AMALLOC_ALIGNMENT (2*BytesPerWord)
 

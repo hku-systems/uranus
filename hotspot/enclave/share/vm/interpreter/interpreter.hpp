@@ -145,8 +145,8 @@ class Interpreter: public TemplateInterpreter {
 #ifdef TARGET_ARCH_zero
 # include "interpreter_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "interpreter_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "interpreter_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "interpreter_ppc.hpp"

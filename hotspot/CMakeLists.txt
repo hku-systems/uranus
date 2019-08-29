@@ -3,33 +3,41 @@ cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_CXX_STANDARD 98)
 
+
+set(BUILD_ARCH "aarch64")
+set(BUILD_64 "")
+
+# set(BUILD_ARCH "x86")
+# set(BUILD_64 "_x64")
+
+
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
 set(CMAKE_C_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc")
 set(CMAKE_CPP_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc -nostdinc++ -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic")
 
+include_directories(${TOP_DIR}/include)
 include_directories(${TOP_DIR}/include/tlibc)
 include_directories(${TOP_DIR}/include/stdc++)
 include_directories(${TOP_DIR}/include/stlport)
-include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
+include_directories(${TOP_DIR}/enclave/panoply)
 include_directories(${TOP_DIR}/enclave/panoply/include)
+include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
 include_directories(${TOP_DIR}/enclave/share/vm/precompiled/)
 include_directories(${TOP_DIR}/enclave/share/vm/)
-include_directories(${TOP_DIR}/enclave/cpu/x86/vm/)
+include_directories(${TOP_DIR}/enclave/cpu/${BUILD_ARCH}/vm/)
 include_directories(${TOP_DIR}/enclave/os/linux/vm/)
 include_directories(${TOP_DIR}/enclave/os/posix/vm/)
-include_directories(${TOP_DIR}/enclave/os_cpu/linux_x86/vm/)
+include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
 # include_directories(${TOP_DIR}/enclave/panoply/include)
-include_directories(${TOP_DIR}/include)
 #include_directories(${TOP_DIR}/include/tlibc)
 #include_directories(${TOP_DIR}/include/stlc++)
-include_directories(${TOP_DIR}/enclave/panoply)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
-        -DHOTSPOT_VM_DISTRO="OpenJDK"  -DTARGET_OS_FAMILY_linux -DTARGET_ARCH_x86 -DTARGET_ARCH_MODEL_x86_64
-        -DTARGET_OS_ARCH_linux_x86 -DTARGET_OS_ARCH_MODEL_linux_x86_64
+        -DHOTSPOT_VM_DISTRO="OpenJDK"  -DTARGET_OS_FAMILY_linux -DTARGET_ARCH_${BUILD_ARCH} -DTARGET_ARCH_MODEL_${BUILD_ARCH}${BUILD_64}
+        -DTARGET_OS_ARCH_linux_${BUILD_ARCH} -DTARGET_OS_ARCH_MODEL_linux_${BUILD_ARCH}${BUILD_64}
         -DTARGET_COMPILER_gcc -D_REENTRANT -DVM_LITTLE_ENDIAN -D_LP64=1
         -DJRE_RELEASE_VERSION="1.8.0-internal-jianyu_2018_04_23_00_03-b00"
         -DENCLAVE_UNIX)
@@ -40,19 +48,33 @@ find_library(SGX_TRTS_TCXX sgx_tcxx ${TOP_DIR}/lib)
 find_library(SGX_TRTS_TSTDCXX sgx_tstdcxx ${TOP_DIR}/lib)
 find_library(SGX_TCRYPTO sgx_tcrypto ${TOP_DIR}/lib)
 
-file(GLOB_RECURSE src_app enclave/share/*.c*
-        enclave/cpu/x86/*.c*
-        enclave/os_cpu/*.c*
+file(GLOB_RECURSE src_app 
+        enclave/share/vm/asm/*.c*
+        # enclave/share/vm/c0/*.c*
+        enclave/share/vm/classfile/*.c*
+        enclave/share/vm/code/*.c*
+        #enclave/share/vm/enclave/*.c*
+        # enclave/share/vm/mpx/*.c*
+        enclave/share/vm/interpreter/*.c*
+        enclave/share/vm/memory/*.c*
+        enclave/share/vm/oops/*.c*
+        enclave/share/vm/prims/*.c*
+        enclave/share/vm/runtime/*.c*
+        # enclave/share/vm/udis/*.c*
+        enclave/share/vm/utilities/*.c*
+        enclave/cpu/${BUILD_ARCH}/*.c*
+        enclave/os_cpu/linux_${BUILD_ARCH}/*.c*
         enclave/os/linux/*.c*
-        enclave/panoply/*.c*)
+        enclave/panoply/*.c*
+        )
 
 file(GLOB src_assembly
-        "${TOP_DIR}/enclave/os_cpu/linux_x86/vm/*.s")
+        "${TOP_DIR}/enclave/os_cpu/linux_{BUILD_ARCH}/vm/*.s")
 
 
 add_library(enclave SHARED ${src_app} ${src_assembly})
 
-set_property(SOURCE ${TOP_DIR}/enclave/os_cpu/linux_x86/vm/linux_x86_64.s PROPERTY LANGUAGE C)
+set_property(SOURCE ${TOP_DIR}/enclave/os_cpu/linux_{BUILD_ARCH}/vm/*.s PROPERTY LANGUAGE C)
 
 set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 

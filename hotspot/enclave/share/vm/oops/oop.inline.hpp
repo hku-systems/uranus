@@ -47,8 +47,8 @@
 #ifdef TARGET_ARCH_zero
 # include "bytes_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "bytes_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "bytes_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "bytes_ppc.hpp"
@@ -732,14 +732,11 @@ inline int oopDesc::oop_iterate_no_header(OopClosure* blk, MemRegion mr) {
   D_WARN_Unimplement;
 }
 
-#if INCLUDE_ALL_GCS
 #define OOP_ITERATE_BACKWARDS_DEFN(OopClosureType, nv_suffix)              \
                                                                            \
 inline int oopDesc::oop_iterate_backwards(OopClosureType* blk) {           \
   SpecializationStats::record_call();                                      \
   return klass()->oop_oop_iterate_backwards##nv_suffix(this, blk);     \
 }
-
-#endif // INCLUDE_ALL_GCS
 
 #endif // SHARE_VM_OOPS_OOP_INLINE_HPP

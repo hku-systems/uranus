@@ -93,6 +93,7 @@
 # include "runtime/orderAccess.inline.hpp"
 # include "runtime/os.hpp"
 # include "runtime/registerMap.hpp"
+# include "runtime/universal.hpp"
 # include "runtime/signature.hpp"
 # include "runtime/stubCodeGenerator.hpp"
 # include "runtime/synchronizer.hpp"

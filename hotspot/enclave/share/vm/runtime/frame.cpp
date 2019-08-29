@@ -45,8 +45,8 @@
 #ifdef TARGET_ARCH_zero
 # include "nativeInst_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "nativeInst_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "nativeInst_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "nativeInst_ppc.hpp"

@@ -46,9 +46,9 @@
 # include "nativeInst_zero.hpp"
 # include "vmreg_zero.inline.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "nativeInst_arm.hpp"
-# include "vmreg_arm.inline.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "nativeInst_aarch64.hpp"
+// # include "vmreg_aarch64.inline.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "nativeInst_ppc.hpp"

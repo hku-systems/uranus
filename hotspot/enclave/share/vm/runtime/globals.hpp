@@ -44,8 +44,8 @@
 #ifdef TARGET_ARCH_zero
 # include "globals_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "globals_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "globals_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "globals_ppc.hpp"
@@ -67,6 +67,9 @@
 #endif
 #ifdef TARGET_OS_ARCH_linux_x86
 # include "globals_linux_x86.hpp"
+#endif
+#ifdef TARGET_OS_ARCH_linux_aarch64
+# include "globals_linux_aarch64.hpp"
 #endif
 #ifdef TARGET_OS_ARCH_linux_sparc
 # include "globals_linux_sparc.hpp"

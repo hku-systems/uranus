@@ -293,6 +293,9 @@ class JavaThread: public Thread {
 #ifdef TARGET_OS_ARCH_linux_x86
 # include "thread_linux_x86.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_linux_aarch64
+# include "thread_linux_aarch64.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_linux_sparc
 # include "thread_linux_sparc.hpp"
 #endif

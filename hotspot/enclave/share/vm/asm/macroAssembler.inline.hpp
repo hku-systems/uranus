@@ -36,8 +36,8 @@
 #ifdef TARGET_ARCH_zero
 # include "assembler_zero.inline.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "macroAssembler_arm.inline.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "macroAssembler_aarch64.inline.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "macroAssembler_ppc.inline.hpp"

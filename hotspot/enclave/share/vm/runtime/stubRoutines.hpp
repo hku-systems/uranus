@@ -39,8 +39,8 @@
 #ifdef TARGET_ARCH_zero
 # include "nativeInst_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "nativeInst_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "nativeInst_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "nativeInst_ppc.hpp"
@@ -104,6 +104,8 @@ class StubRoutines: AllStatic {
 # include "stubRoutines_x86_32.hpp"
 #elif defined TARGET_ARCH_MODEL_x86_64
 # include "stubRoutines_x86_64.hpp"
+#elif defined TARGET_ARCH_MODEL_aarch64
+# include "stubRoutines_aarch64.hpp"
 #elif defined TARGET_ARCH_MODEL_sparc
 # include "stubRoutines_sparc.hpp"
 #elif defined TARGET_ARCH_MODEL_zero

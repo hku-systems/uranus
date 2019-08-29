@@ -25,7 +25,7 @@ extern bool get_job(long unsigned int job_id, pthread_job_t *pt_job);
 // include bits/wordsize.h
 // #include /bits/pthreadtypes.h
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__) 
 # if __WORDSIZE == 64
 #  define __SIZEOF_PTHREAD_ATTR_T 56
 #  define __SIZEOF_PTHREAD_MUTEX_T 40

@@ -77,8 +77,8 @@ class AbstractICache : AllStatic {
 #ifdef TARGET_ARCH_zero
 # include "icache_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "icache_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "icache_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "icache_ppc.hpp"

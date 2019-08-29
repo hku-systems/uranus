@@ -158,8 +158,8 @@ public:
 #ifdef TARGET_ARCH_zero
 # include "interpreterRT_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "interpreterRT_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "interpreterRT_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "interpreterRT_ppc.hpp"

@@ -169,7 +169,7 @@ __STD_TYPE __FSFILCNT64_T_TYPE __fsfilcnt64_t;
 /* Type of miscellaneous file system fields.  */
 __STD_TYPE __FSWORD_T_TYPE __fsword_t;
 
-//__STD_TYPE __SSIZE_T_TYPE __ssize_t; /* Type of a byte count, or error.  */
+__STD_TYPE long __ssize_t; /* Type of a byte count, or error.  */
 
 /* Signed long type used in system calls.  */
 __STD_TYPE __SYSCALL_SLONG_TYPE __syscall_slong_t;

@@ -383,6 +383,8 @@ public:
 
   static CpuidInfo* _cpuid_info_global;
 
+  static void set_features(void* feature)     { VM_Version::_cpuid_info_global = (VM_Version::CpuidInfo*)feature; }
+
   // Extractors and predicates
   static uint32_t extended_cpu_family() {
     uint32_t result = _cpuid_info.std_cpuid1_eax.bits.family;

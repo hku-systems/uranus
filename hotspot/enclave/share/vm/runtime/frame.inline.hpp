@@ -81,8 +81,8 @@ inline oop* frame::interpreter_frame_temp_oop_addr() const {
 #ifdef TARGET_ARCH_zero
 # include "frame_zero.inline.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "frame_arm.inline.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "frame_aarch64.inline.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "frame_ppc.inline.hpp"

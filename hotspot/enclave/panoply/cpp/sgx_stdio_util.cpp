@@ -277,8 +277,8 @@ static inline int sgx_wrapper_vfprintf(SGX_WRAPPER_FILE FILESTREAM, const char* 
 	return ret;
 }
 
-int vfprintf(FILE *fp, const char* format, void *val) {
-    return sgx_wrapper_vfprintf(0, format, val);
+int vfprintf(FILE *fp, const char* format, ...) {
+    return sgx_wrapper_vfprintf(0, format, NULL);
 }
 
 int vprintf(const char* format, void* val)

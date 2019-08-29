@@ -288,7 +288,6 @@ int ObjArrayKlass::oop_adjust_pointers(oop obj) {
   D_WARN_Unimplement;
 }
 
-#if INCLUDE_ALL_GCS
 void ObjArrayKlass::oop_push_contents(PSPromotionManager* pm, oop obj) {
   D_WARN_Unimplement;
 }
@@ -322,7 +321,6 @@ void ObjArrayKlass::oop_copy_contents(ObjArrayKlass* klass, oop obj, std::queue<
 int ObjArrayKlass::oop_update_pointers(ParCompactionManager* cm, oop obj) {
   D_WARN_Unimplement;
 }
-#endif // INCLUDE_ALL_GCS
 
 // JVM support
 

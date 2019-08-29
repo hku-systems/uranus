@@ -298,8 +298,8 @@ class Bytecodes: AllStatic {
 #ifdef TARGET_ARCH_zero
 # include "bytecodes_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "bytecodes_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "bytecodes_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "bytecodes_ppc.hpp"

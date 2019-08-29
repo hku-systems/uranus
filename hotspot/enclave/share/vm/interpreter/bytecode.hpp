@@ -38,8 +38,8 @@
 #ifdef TARGET_ARCH_zero
 # include "bytes_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "bytes_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "bytes_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "bytes_ppc.hpp"

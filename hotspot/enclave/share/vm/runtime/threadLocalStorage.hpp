@@ -50,6 +50,9 @@ class ThreadLocalStorage : AllStatic {
 #ifdef TARGET_OS_ARCH_linux_x86
 # include "threadLS_linux_x86.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_linux_aarch64
+# include "threadLS_linux_aarch64.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_linux_sparc
 # include "threadLS_linux_sparc.hpp"
 #endif
@@ -88,15 +91,10 @@ class ThreadLocalStorage : AllStatic {
 
  public:
 
-  #define THREAD_LOCK_IF_MP(mp) "cmp $0, " #mp "; je 1f; lock; 1: "
+  // static inline atomic_set_value(uintptr_t exchange, volatile uintptr_t *dest, uintptr_t compare);
 
   static inline sgx_thread_t atomic_thread_set (sgx_thread_t exchange_value, volatile sgx_thread_t* dest, sgx_thread_t compare_value) {
-  bool mp = os::is_MP();
-  __asm__ __volatile__ (THREAD_LOCK_IF_MP(%4) "cmpxchgq %1,(%3)"
-                        : "=a" (exchange_value)
-                        : "r" (exchange_value), "a" (compare_value), "r" (dest), "r" (mp)
-                        : "cc", "memory");
-    return exchange_value;
+    return atomic_set_value(exchange_value, dest, compare_value);
   }
 
   // Accessor

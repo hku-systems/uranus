@@ -297,7 +297,6 @@ class oopDesc {
   // reference field in "this".
   void follow_contents(void);
 
-#if INCLUDE_ALL_GCS
   // Parallel Scavenge
   void push_contents(PSPromotionManager* pm);
 
@@ -305,7 +304,6 @@ class oopDesc {
   void update_contents(ParCompactionManager* cm);
 
   void follow_contents(ParCompactionManager* cm);
-#endif // INCLUDE_ALL_GCS
 
   bool is_scavengable() const;
 
@@ -315,13 +313,11 @@ class oopDesc {
   void forward_to(oop p);
   bool cas_forward_to(oop p, markOop compare);
 
-#if INCLUDE_ALL_GCS
   // Like "forward_to", but inserts the forwarding pointer atomically.
   // Exactly one thread succeeds in inserting the forwarding pointer, and
   // this call returns "NULL" for that thread; any other thread has the
   // value of the forwarding pointer returned and does not modify "this".
   oop forward_to_atomic(oop p);
-#endif // INCLUDE_ALL_GCS
 
   oop forwardee() const;
 
@@ -345,12 +341,10 @@ class oopDesc {
   int oop_iterate(OopClosureType* blk);                                  \
   int oop_iterate(OopClosureType* blk, MemRegion mr);  // Only in mr.
 
-#if INCLUDE_ALL_GCS
 
 #define OOP_ITERATE_BACKWARDS_DECL(OopClosureType, nv_suffix)            \
   int oop_iterate_backwards(OopClosureType* blk);
 
-#endif
 
   int oop_iterate_no_header(OopClosure* bk);
   int oop_iterate_no_header(OopClosure* bk, MemRegion mr);

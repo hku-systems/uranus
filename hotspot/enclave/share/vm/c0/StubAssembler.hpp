@@ -6,7 +6,7 @@
 #define HOTSPOT_STUBASSEMBLER_HPP
 
 #include <precompiled.hpp>
-#include <interp_masm_x86.hpp>
+#include "interpreter/interpMasm.hpp"
 #include "c0_Runtime.hpp"
 #include "C0_MacroAssembler.hpp"
 

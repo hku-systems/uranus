@@ -53,6 +53,15 @@ public:
      return (Thread*) os::thread_local_storage_at(thread_index());
    }
 
+  #define THREAD_LOCK_IF_MP(mp) "cmp $0, " #mp "; je 1f; lock; 1: "
+  static inline atomic_set_value(uintptr_t exchange, uintptr_t *dest, uintptr_t compare) {
+    bool mp = os::is_MP();
+    __asm__ __volatile__ (THREAD_LOCK_IF_MP(%4) "cmpxchgq %1,(%3)"
+                          : "=a" (exchange_value)
+                          : "r" (exchange_value), "a" (compare_value), "r" (dest), "r" (mp)
+                          : "cc", "memory");
+  }
+
 #endif // AMD64 || MINIMIZE_RAM_USAGE
 
 #endif // OS_CPU_LINUX_X86_VM_THREADLS_LINUX_X86_HPP

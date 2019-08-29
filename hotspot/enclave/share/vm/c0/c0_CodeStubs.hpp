@@ -6,7 +6,7 @@
 #define HOTSPOT_C0_CODESTUBS_H
 
 
-#include <interp_masm_x86.hpp>
+#include "interpreter/interpMasm.hpp"
 #include "C0_MacroAssembler.hpp"
 
 /*

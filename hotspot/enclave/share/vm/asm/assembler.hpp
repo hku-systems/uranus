@@ -43,9 +43,9 @@
 # include "register_zero.hpp"
 # include "vm_version_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "register_arm.hpp"
-# include "vm_version_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "register_aarch64.hpp"
+# include "vm_version_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "register_ppc.hpp"
@@ -440,8 +440,8 @@ class AbstractAssembler : public ResourceObj  {
 #ifdef TARGET_ARCH_zero
 # include "assembler_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_arm
-# include "assembler_arm.hpp"
+#ifdef TARGET_ARCH_aarch64
+# include "assembler_aarch64.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "assembler_ppc.hpp"
