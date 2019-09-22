@@ -51,6 +51,7 @@ void EnclaveABI::init() {
 
     address EnclaveABI::generate_interpreter_entry() {
         StubCodeMark mark(this, "ENCLAVE_ABI", "interpreter_stub");
+#ifdef __x86_64__
 #   define __ _masm->
             address ret = __ pc();
             interpreter_ret = ret;
@@ -121,9 +122,11 @@ void EnclaveABI::init() {
             __ ret(0);
             get_exception = CAST_TO_FN_PTR(get_exception_stub_t , get_exception_addr);
         return start;
+#endif
     };
 
     address EnclaveABI::generate_heap_alloc() {
+#ifdef __x86_64__
             address new_heap_object = __ pc();
 
             const Register RtopAddr = rdi;
@@ -170,9 +173,11 @@ void EnclaveABI::init() {
             __ ret(0);
         #   undef __
             return new_heap_object;
+#endif
     }
 
     address EnclaveABI::generate_ocall_entry() {
+#ifdef __x86_64__
 #   define __ _masm->
         address entry = __ pc();
         // first we get the number of parameters
@@ -204,4 +209,5 @@ void EnclaveABI::init() {
         __ ret(0);
         return entry;
 #   undef __
+#endif
     }

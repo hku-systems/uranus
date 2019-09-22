@@ -34,6 +34,10 @@
 #ifndef _SYS__TYPES_H_
 #define _SYS__TYPES_H_
 
+#if defined(__aarch64__) || defined(__x86_64__)
+#define ARCH_64
+#endif
+
 #include <sys/cdefs.h>
 /* 7.18.1.1 Exact-width integer types */
 typedef signed char         __int8_t;
@@ -42,7 +46,7 @@ typedef short               __int16_t;
 typedef unsigned short      __uint16_t;
 typedef int                 __int32_t;
 typedef unsigned int        __uint32_t;
-#ifdef __x86_64__
+#ifdef ARCH_64
 typedef long                __int64_t;
 typedef unsigned long       __uint64_t;
 #else

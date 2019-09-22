@@ -62,6 +62,13 @@ void frame::patch_pc(Thread* thread, address pc) {
   D_WARN_Unimplement;
 }
 
+bool frame::is_enclave_frame() const {
+    if ((intptr_t)_fp == (intptr_t)(-1) || (intptr_t)_unextended_sp == (intptr_t)-1) {
+        printf(D_WARN("Check Frame")" is enclave frame\n");
+    }
+    return (intptr_t)_fp == (intptr_t)(-1);
+}
+
 bool frame::is_interpreted_frame() const  {
   return Interpreter::contains(pc());
 }

@@ -94,7 +94,7 @@ class ThreadLocalStorage : AllStatic {
   // static inline atomic_set_value(uintptr_t exchange, volatile uintptr_t *dest, uintptr_t compare);
 
   static inline sgx_thread_t atomic_thread_set (sgx_thread_t exchange_value, volatile sgx_thread_t* dest, sgx_thread_t compare_value) {
-    return atomic_set_value(exchange_value, dest, compare_value);
+    return atomic_set_value(exchange_value, (uintptr_t*)dest, compare_value);
   }
 
   // Accessor

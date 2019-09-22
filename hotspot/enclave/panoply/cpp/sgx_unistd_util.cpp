@@ -221,12 +221,12 @@ gid_t getegid(void)
 	return retval;
 }
 
-int getpagesize(void)
-{
-	int retval;
-	ocall_getpagesize(&retval);
-	return retval;
-}
+// int getpagesize(void)
+// {
+// 	int retval;
+// 	ocall_getpagesize(&retval);
+// 	return retval;
+// }
 
 char *getcwd(char *buf, size_t size)
 {

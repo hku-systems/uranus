@@ -26,6 +26,8 @@
 #include "runtime/threadLocalStorage.hpp"
 #include "runtime/thread.inline.hpp"
 
+sgx_thread_t   ThreadLocalStorage::_thread_raw_index[SGX_TCS_NUM];
+
 void ThreadLocalStorage::generate_code_for_get_thread() {
     // nothing we can do here for user-level thread
 }

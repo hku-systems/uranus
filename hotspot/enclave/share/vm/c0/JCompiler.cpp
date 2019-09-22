@@ -4,11 +4,13 @@
 
 #include "precompiled.hpp"
 #include "JCompiler.hpp"
+
+#include <enclave/sc/EnclaveNative.h>
+
+#ifdef HAVE_COMPILER
 #include "NormalCompileTask.h"
 #include "NativeCompileTask.hpp"
 #include "OCallCompileTask.hpp"
-#include <enclave/sc/EnclaveNative.h>
-
 JCompiler* JCompiler::compiler = NULL;
 
 void JCompiler::compile_method(Method *method) {
@@ -65,3 +67,20 @@ bool JCompiler::is_compile(Method *method) {
     address method_entry = *method->enclave_native_function_addr();
     return sgx_is_within_enclave(method_entry, 1);
 }
+
+#else
+JCompiler* JCompiler::compiler = NULL;
+
+void JCompiler::compile_method(Method *method) {
+ 
+}
+
+bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {
+
+}
+
+bool JCompiler::is_compile(Method *method) {
+
+}
+
+#endif

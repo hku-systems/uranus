@@ -39,10 +39,11 @@ void Relocation::pd_set_data_value(address x, intptr_t o, bool verify_only) {
 address Relocation::pd_call_destination(address orig_addr) {
   assert(is_call(), "should be a call here");
   if (NativeCall::is_call_at(addr())) {
-    address trampoline = nativeCall_at(addr())->get_trampoline();
-    if (trampoline) {
-      return nativeCallTrampolineStub_at(trampoline)->destination();
-    }
+    D_WARN_Unimplement;
+    // address trampoline = nativeCall_at(addr())->get_trampoline();
+    // if (trampoline) {
+      // return nativeCallTrampolineStub_at(trampoline)->destination();
+    // }
   }
   if (orig_addr != NULL) {
     address new_addr = MacroAssembler::pd_call_destination(orig_addr);
@@ -60,11 +61,12 @@ address Relocation::pd_call_destination(address orig_addr) {
 void Relocation::pd_set_call_destination(address x) {
   assert(is_call(), "should be a call here");
   if (NativeCall::is_call_at(addr())) {
-    address trampoline = nativeCall_at(addr())->get_trampoline();
-    if (trampoline) {
-      nativeCall_at(addr())->set_destination_mt_safe(x, /* assert_lock */false);
-      return;
-    }
+    D_WARN_Unimplement;
+    // address trampoline = nativeCall_at(addr())->get_trampoline();
+    // if (trampoline) {
+      // nativeCall_at(addr())->set_destination_mt_safe(x, /* assert_lock */false);
+      // return;
+    // }
   }
   MacroAssembler::pd_patch_instruction(addr(), x);
   assert(pd_call_destination(addr()) == x, "fail in reloc");

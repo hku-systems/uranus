@@ -8,14 +8,18 @@ set(BUILD_ARCH "aarch64")
 set(BUILD_64 "")
 
 # set(BUILD_ARCH "x86")
+# set(BUILD_64 "_64")
+
+# set(BUILD_ARCH "x86")
 # set(BUILD_64 "_x64")
 
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc")
-set(CMAKE_CPP_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc -nostdinc++ -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
-set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic")
+set(CMAKE_C_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
+set(CMAKE_CPP_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
+set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${TOP_DIR}/include)
 include_directories(${TOP_DIR}/include/tlibc)
@@ -50,10 +54,10 @@ find_library(SGX_TCRYPTO sgx_tcrypto ${TOP_DIR}/lib)
 
 file(GLOB_RECURSE src_app 
         enclave/share/vm/asm/*.c*
-        # enclave/share/vm/c0/*.c*
+        enclave/share/vm/c0/JCompiler.cpp
         enclave/share/vm/classfile/*.c*
         enclave/share/vm/code/*.c*
-        #enclave/share/vm/enclave/*.c*
+        enclave/share/vm/enclave/*.c*
         # enclave/share/vm/mpx/*.c*
         enclave/share/vm/interpreter/*.c*
         enclave/share/vm/memory/*.c*
@@ -69,18 +73,16 @@ file(GLOB_RECURSE src_app
         )
 
 file(GLOB src_assembly
-        "${TOP_DIR}/enclave/os_cpu/linux_{BUILD_ARCH}/vm/*.s")
+        "enclave/os_cpu/linux_${BUILD_ARCH}/vm/*.s")
 
+set_property(SOURCE enclave/os_cpu/linux_${BUILD_ARCH}/vm/linux_${BUILD_ARCH}${BUILD_64}.s PROPERTY LANGUAGE C)
 
 add_library(enclave SHARED ${src_app} ${src_assembly})
-
-set_property(SOURCE ${TOP_DIR}/enclave/os_cpu/linux_{BUILD_ARCH}/vm/*.s PROPERTY LANGUAGE C)
 
 set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 
 set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 
-target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TCXX}" "${SGX_TRTS_TLIBC}" ${SGX_TCRYPTO} ${SGX_TRTS_TSTDCXX} -Wl,--hash-style=both
-        -Wl,--end-group)
+target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
 
 install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)

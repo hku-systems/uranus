@@ -426,9 +426,9 @@ int         _TLIBC_CDECL_ isnanl(long double);
 #define ATTR_MODE(mode)
 #endif
 
-typedef float _Decimal32 ATTR_MODE(SD);
-typedef float _Decimal64 ATTR_MODE(DD);
-typedef float _Decimal128 ATTR_MODE(TD);
+typedef float _Decimal32;
+typedef float _Decimal64;
+typedef float _Decimal128;
 #endif
 #endif
 

@@ -99,8 +99,9 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     klass_map = new std::map<std::string, Klass*>();
 
     compiler = JCompiler::create_compiler();
+    #ifdef HAVE_COMPILER
     Runtime0::initialize();
-
+    #endif
     // init mpx and set bound
     ENABLE_MPX();
 
@@ -176,19 +177,19 @@ void* EnclaveRuntime::compile_method(Method *method) {
 }
 
 int EnclaveRuntime::signal_handler(sgx_exception_info_t *info) {
-    switch (info->exception_vector) {
-        case SGX_EXCEPTION_VECTOR_DE:
-            info->cpu_context.rip = (u_int64_t)Interpreter::throw_ArithmeticException_entry();
-            return -1;
-        case SGX_EXCEPTION_VECTOR_SEV:
-            if (info->cpu_context.r10 == 0xfe3f912) {
-                info->cpu_context.rip = (u_int64_t)Interpreter::throw_StackOverflowError_entry();
-            } else {
-                info->cpu_context.rip = (u_int64_t) Interpreter::throw_NullPointerException_entry();
-            }
-            return -1;
-        default:
-            break;
-    }
+    // switch (info->exception_vector) {
+    //     case SGX_EXCEPTION_VECTOR_DE:
+    //         info->cpu_context.rip = (u_int64_t)Interpreter::throw_ArithmeticException_entry();
+    //         return -1;
+    //     case SGX_EXCEPTION_VECTOR_SEV:
+    //         if (info->cpu_context.r10 == 0xfe3f912) {
+    //             info->cpu_context.rip = (u_int64_t)Interpreter::throw_StackOverflowError_entry();
+    //         } else {
+    //             info->cpu_context.rip = (u_int64_t) Interpreter::throw_NullPointerException_entry();
+    //         }
+    //         return -1;
+    //     default:
+    //         break;
+    // }
     return 0;
 }
