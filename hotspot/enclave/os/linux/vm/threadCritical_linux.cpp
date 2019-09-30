@@ -46,24 +46,24 @@ void ThreadCritical::release() {
 }
 
 ThreadCritical::ThreadCritical() {
-  pthread_t self = pthread_self();
-  if (self != tc_owner) {
-    int ret = sgx_spin_lock(&tc_spin_lock);
-    guarantee(ret == 0, "fatal error with pthread_mutex_lock()");
-    assert(tc_count == 0, "Lock acquired with illegal reentry count.");
-    tc_owner = self;
-  }
-  tc_count++;
+  // pthread_t self = pthread_self();
+  // if (self != tc_owner) {
+  //   int ret = sgx_spin_lock(&tc_spin_lock);
+  //   guarantee(ret == 0, "fatal error with pthread_mutex_lock()");
+  //   assert(tc_count == 0, "Lock acquired with illegal reentry count.");
+  //   tc_owner = self;
+  // }
+  // tc_count++;
 }
 
 ThreadCritical::~ThreadCritical() {
-  assert(tc_owner == pthread_self(), "must have correct owner");
-  assert(tc_count > 0, "must have correct count");
+  // assert(tc_owner == pthread_self(), "must have correct owner");
+  // assert(tc_count > 0, "must have correct count");
 
-  tc_count--;
-  if (tc_count == 0) {
-    tc_owner = 0;
-    int ret = sgx_spin_unlock(&tc_spin_lock);
-    guarantee(ret == 0, "fatal error with pthread_mutex_unlock()");
-  }
+  // tc_count--;
+  // if (tc_count == 0) {
+  //   tc_owner = 0;
+  //   int ret = sgx_spin_unlock(&tc_spin_lock);
+  //   guarantee(ret == 0, "fatal error with pthread_mutex_unlock()");
+  // }
 }

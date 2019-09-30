@@ -35,7 +35,7 @@
 #include "elfheader/elfstructs.h"
 
 #ifndef __ELF_NATIVE_CLASS
-#  if defined(_M_X64) || defined(__x86_64) || defined(__amd64)
+#  if defined(_M_X64) || defined(__x86_64) || defined(__amd64) || defined(__aarch64__)
 #    include <limits.h>     /* for UINT_MAX */
 #    define __ELF_NATIVE_CLASS 64
 #  else

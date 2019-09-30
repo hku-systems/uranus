@@ -77,7 +77,7 @@
 #  define xbp rbp
 #  define xsp rsp
 
-#elif defined(__arm__)
+#elif defined(__aarch64__)
 
 #else
 #  error unknown platform!

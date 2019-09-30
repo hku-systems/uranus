@@ -41,7 +41,7 @@
 #define PRId8           "d"     /* int8_t */
 #define PRId16          "d"     /* int16_t */
 #define PRId32          "d"     /* int32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRId64          "ld"    /* int64_t */
 #else
 #define PRId64          "lld"   /* int64_t */
@@ -50,14 +50,14 @@
 #define PRIdLEAST8      "d"     /* int_least8_t */
 #define PRIdLEAST16     "d"     /* int_least16_t */
 #define PRIdLEAST32     "d"     /* int_least32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIdLEAST64     "ld"    /* int_least64_t */
 #else
 #define PRIdLEAST64     "lld"   /* int_least64_t */
 #endif
 
 #define PRIdFAST8       "d"     /* int_fast8_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIdFAST16      "ld"    /* int_fast16_t */
 #define PRIdFAST32      "ld"    /* int_fast32_t */
 #define PRIdFAST64      "ld"    /* int_fast64_t */
@@ -67,7 +67,7 @@
 #define PRIdFAST64      "lld"   /* int_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIdMAX         "ld"    /* intmax_t */
 #else
 #if defined(__i386__) 
@@ -86,7 +86,7 @@
 #define PRIi8           "i"     /* int8_t */
 #define PRIi16          "i"     /* int16_t */
 #define PRIi32          "i"     /* int32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIi64          "li"    /* int64_t */
 #else
 #define PRIi64          "lli"   /* int64_t */
@@ -95,14 +95,14 @@
 #define PRIiLEAST8      "i"     /* int_least8_t */
 #define PRIiLEAST16     "i"     /* int_least16_t */
 #define PRIiLEAST32     "i"     /* int_least32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIiLEAST64     "li"    /* int_least64_t */
 #else
 #define PRIiLEAST64     "lli"   /* int_least64_t */
 #endif
 
 #define PRIiFAST8       "i"     /* int_fast8_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIiFAST16      "li"    /* int_fast16_t */
 #define PRIiFAST32      "li"    /* int_fast32_t */
 #define PRIiFAST64      "li"    /* int_fast64_t */
@@ -112,7 +112,7 @@
 #define PRIiFAST64      "lli"   /* int_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIiMAX         "li"    /* intmax_t */
 #else
 #if defined(__i386__) 
@@ -132,7 +132,7 @@
 #define PRIo8           "o"     /* int8_t */
 #define PRIo16          "o"     /* int16_t */
 #define PRIo32          "o"     /* int32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIo64          "lo"    /* int64_t */
 #else
 #define PRIo64          "llo"   /* int64_t */
@@ -141,14 +141,14 @@
 #define PRIoLEAST8      "o"     /* int_least8_t */
 #define PRIoLEAST16     "o"     /* int_least16_t */
 #define PRIoLEAST32     "o"     /* int_least32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIoLEAST64     "lo"    /* int_least64_t */
 #else
 #define PRIoLEAST64     "llo"   /* int_least64_t */
 #endif
 
 #define PRIoFAST8       "o"     /* int_fast8_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIoFAST16      "lo"    /* int_fast16_t */
 #define PRIoFAST32      "lo"    /* int_fast32_t */
 #define PRIoFAST64      "lo"    /* int_fast64_t */
@@ -158,7 +158,7 @@
 #define PRIoFAST64      "llo"   /* int_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIoMAX         "lo"    /* intmax_t */
 #else
 #if defined(__i386__) 
@@ -178,7 +178,7 @@
 #define PRIu16          "u"     /* uint16_t */
 #define PRIu32          "u"     /* uint32_t */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIu64          "lu"    /* uint64_t */
 #else
 #define PRIu64          "llu"   /* uint64_t */
@@ -188,7 +188,7 @@
 #define PRIuLEAST16     "u"     /* uint_least16_t */
 #define PRIuLEAST32     "u"     /* uint_least32_t */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIuLEAST64     "lu"    /* uint_least64_t */
 #else
 #define PRIuLEAST64     "llu"   /* uint_least64_t */
@@ -196,7 +196,7 @@
 
 #define PRIuFAST8       "u"     /* uint_fast8_t */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIuFAST16      "lu"    /* uint_fast16_t */
 #define PRIuFAST32      "lu"    /* uint_fast32_t */
 #define PRIuFAST64      "lu"    /* uint_fast64_t */
@@ -206,7 +206,7 @@
 #define PRIuFAST64      "llu"   /* uint_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIuMAX         "lu"    /* uintmax_t */
 #else
 #if defined(__i386__) 
@@ -225,7 +225,7 @@
 #define PRIx8           "x"     /* uint8_t */
 #define PRIx16          "x"     /* uint16_t */
 #define PRIx32          "x"     /* uint32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIx64          "lx"    /* uint64_t */
 #else
 #define PRIx64          "llx"   /* uint64_t */
@@ -234,14 +234,14 @@
 #define PRIxLEAST8      "x"     /* uint_least8_t */
 #define PRIxLEAST16     "x"     /* uint_least16_t */
 #define PRIxLEAST32     "x"     /* uint_least32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIxLEAST64     "lx"    /* uint_least64_t */
 #else
 #define PRIxLEAST64     "llx"   /* uint_least64_t */
 #endif
 
 #define PRIxFAST8       "x"     /* uint_fast8_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIxFAST16      "lx"    /* uint_fast16_t */
 #define PRIxFAST32      "lx"    /* uint_fast32_t */
 #define PRIxFAST64      "lx"    /* uint_fast64_t */
@@ -251,7 +251,7 @@
 #define PRIxFAST64      "llx"   /* uint_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIxMAX         "lx"    /* uintmax_t */
 #else
 #if defined(__i386__) 
@@ -271,7 +271,7 @@
 #define PRIX16          "X"     /* uint16_t */
 #define PRIX32          "X"     /* uint32_t */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIX64          "lX"    /* uint64_t */
 #else
 #define PRIX64          "llX"   /* uint64_t */
@@ -280,14 +280,14 @@
 #define PRIXLEAST8      "X"     /* uint_least8_t */
 #define PRIXLEAST16     "X"     /* uint_least16_t */
 #define PRIXLEAST32     "X"     /* uint_least32_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIXLEAST64     "lX"    /* uint_least64_t */
 #else
 #define PRIXLEAST64     "llX"   /* uint_least64_t */
 #endif
 
 #define PRIXFAST8       "X"     /* uint_fast8_t */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIXFAST16      "lX"    /* uint_fast16_t */
 #define PRIXFAST32      "lX"    /* uint_fast32_t */
 #define PRIXFAST64      "lX"    /* uint_fast64_t */
@@ -297,7 +297,7 @@
 #define PRIXFAST64      "llX"   /* uint_fast64_t */
 #endif
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define PRIXMAX         "lX"    /* uintmax_t */
 #else
 #if defined(__i386__) 

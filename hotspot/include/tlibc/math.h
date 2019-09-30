@@ -39,7 +39,7 @@ typedef __double_t      double_t;
     ((sizeof (x) == sizeof (float)) ? \
         __fpclassifyf(x) \
     : (sizeof (x) == sizeof (double)) ? \
-        __fpclassify(x) \
+        __fpclassifyd(x) \
     :   __fpclassifyl(x))
 #define isfinite(x) \
     ((sizeof (x) == sizeof (float)) ? \
@@ -422,13 +422,13 @@ int         _TLIBC_CDECL_ isnanl(long double);
 
 #if defined(__x86_x64__)
 #define ATTR_MODE(mode) __attribute__((mode(mode)));
-#elif defined(__arm__)
+#else
 #define ATTR_MODE(mode)
 #endif
 
-typedef float _Decimal32;
-typedef float _Decimal64;
-typedef float _Decimal128;
+typedef float _Decimal32 ATTR_MODE(SD);
+typedef float _Decimal64 ATTR_MODE(DD);
+typedef float _Decimal128 ATTR_MODE(TD);
 #endif
 #endif
 

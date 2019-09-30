@@ -34,7 +34,8 @@ public:
    }
 
   static inline uintptr_t atomic_set_value(uintptr_t exchange, volatile uintptr_t *dest, uintptr_t compare) {
-    D_WARN_Unimplement;
+    *dest = exchange;
+    return compare;
   }
 
 #endif // OS_CPU_LINUX_AARCH64_VM_THREADLS_LINUX_AARCH64_HPP

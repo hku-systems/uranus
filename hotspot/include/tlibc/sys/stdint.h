@@ -110,7 +110,7 @@ typedef __uintmax_t     uintmax_t;
 #define INT8_MIN        (-0x7f - 1)
 #define INT16_MIN       (-0x7fff - 1)
 #define INT32_MIN       (-0x7fffffff - 1)
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define INT64_MIN       (-0x7fffffffffffffffL - 1)
 #else
 #define INT64_MIN       (-0x7fffffffffffffffLL - 1)
@@ -119,7 +119,7 @@ typedef __uintmax_t     uintmax_t;
 #define INT8_MAX        0x7f
 #define INT16_MAX       0x7fff
 #define INT32_MAX       0x7fffffff
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define INT64_MAX       0x7fffffffffffffffL
 #else
 #define INT64_MAX       0x7fffffffffffffffLL
@@ -128,7 +128,7 @@ typedef __uintmax_t     uintmax_t;
 #define UINT8_MAX       0xff
 #define UINT16_MAX      0xffff
 #define UINT32_MAX      0xffffffffU
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define UINT64_MAX      0xffffffffffffffffUL
 #else
 #define UINT64_MAX      0xffffffffffffffffULL
@@ -157,7 +157,7 @@ typedef __uintmax_t     uintmax_t;
 #define INT_FAST64_MIN      INT64_MIN
 
 #define INT_FAST8_MAX       INT8_MAX
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define INT_FAST16_MAX      INT64_MAX
 #define INT_FAST32_MAX      INT64_MAX
 #else
@@ -167,7 +167,7 @@ typedef __uintmax_t     uintmax_t;
 #define INT_FAST64_MAX      INT64_MAX
 
 #define UINT_FAST8_MAX      UINT8_MAX
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define UINT_FAST16_MAX     UINT64_MAX
 #define UINT_FAST32_MAX     UINT64_MAX
 #else
@@ -177,7 +177,7 @@ typedef __uintmax_t     uintmax_t;
 #define UINT_FAST64_MAX     UINT64_MAX
 
 /* 7.18.2.4 Limits of integer types capable of holding object pointers */
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 #define INTPTR_MIN      INT64_MIN
 #define INTPTR_MAX      INT64_MAX
 #define UINTPTR_MAX     UINT64_MAX

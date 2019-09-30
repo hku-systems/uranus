@@ -34,10 +34,6 @@
 #ifndef _SYS__TYPES_H_
 #define _SYS__TYPES_H_
 
-#if defined(__aarch64__) || defined(__x86_64__)
-#define ARCH_64
-#endif
-
 #include <sys/cdefs.h>
 /* 7.18.1.1 Exact-width integer types */
 typedef signed char         __int8_t;
@@ -46,7 +42,7 @@ typedef short               __int16_t;
 typedef unsigned short      __uint16_t;
 typedef int                 __int32_t;
 typedef unsigned int        __uint32_t;
-#ifdef ARCH_64
+#if defined(__x86_64__) || defined (__aarch64__)
 typedef long                __int64_t;
 typedef unsigned long       __uint64_t;
 #else
@@ -67,7 +63,7 @@ typedef __uint64_t          __uint_least64_t;
 /* 7.18.1.3 Fastest minimum-width integer types */
 typedef __int8_t            __int_fast8_t;
 typedef __uint8_t           __uint_fast8_t;
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 /* Linux x86_64, from stdint.h */
 typedef long int            __int_fast16_t;
 typedef unsigned long int   __uint_fast16_t;

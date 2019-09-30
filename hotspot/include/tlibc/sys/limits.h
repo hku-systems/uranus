@@ -54,7 +54,7 @@
 #define INT_MAX     0x7fffffff                  /* max value for an int */
 #define INT_MIN     (-0x7fffffff-1)             /* min value for an int */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 # define ULONG_MAX  0xffffffffffffffffUL        /* max value for unsigned long */
 # define LONG_MAX   0x7fffffffffffffffL         /* max value for a signed long */
 # define LONG_MIN   (-0x7fffffffffffffffL-1)    /* min value for a signed long */
@@ -68,7 +68,7 @@
 #define LLONG_MAX   0x7fffffffffffffffLL        /* max value for a signed long long */
 #define LLONG_MIN   (-0x7fffffffffffffffLL-1)   /* min value for a signed long long */
 
-#ifdef __x86_64__
+#if defined(__x86_64__) || defined(__aarch64__)
 # define LONG_BIT   64
 #else
 # define LONG_BIT   32

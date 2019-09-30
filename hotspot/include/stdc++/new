@@ -49,10 +49,9 @@ namespace std
 	 * handler and a bad allocation exception is thrown if an allocation fails.
 	 */
 	new_handler set_new_handler(new_handler handler) throw();
-	typedef unsigned long size_t;
-};
 
-#define NEW_TYPE std::ssize_t
+	typedef ::size_t size_t;
+};
 
 void* SGXAPI operator new (std::size_t) throw (std::bad_alloc);
 void* SGXAPI operator new[] (std::size_t) throw (std::bad_alloc);

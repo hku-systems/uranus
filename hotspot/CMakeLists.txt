@@ -16,9 +16,9 @@ set(BUILD_64 "")
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
+set(CMAKE_C_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
-set(CMAKE_CPP_FLAGS "-O2 -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
+set(CMAKE_CPP_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -m64 -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -std=gnu++98 -Wno-write-strings -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${TOP_DIR}/include)
