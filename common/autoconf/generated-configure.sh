@@ -47592,7 +47592,7 @@ $as_echo "$as_me: Using FREETYPE_CFLAGS=$FREETYPE_CFLAGS and FREETYPE_LIBS=$FREE
   fi
 
 
-          as_fn_error $? "Can not continue without freetype. $HELP_MSG" "$LINENO" 5
+          # as_fn_error $? "Can not continue without freetype. $HELP_MSG" "$LINENO" 5
 
 
 fi

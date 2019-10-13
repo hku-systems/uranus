@@ -61,6 +61,7 @@ VPATH += $(Src_Dirs_V:%=%:)
 Src_Dirs_I += $(GENERATED)
 # The order is important for the precompiled headers to work.
 INCLUDES += $(PRECOMPILED_HEADER_DIR:%=-I%) $(Src_Dirs_I:%=-I%)
+INCLUDES += -I$(HS_COMMON_SRC)/../include/ -I$(HS_COMMON_SRC)/../enclave/panoply/include/
 
 # SYMFLAG is used by {jsig,saproc}.make
 ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
