@@ -96,6 +96,8 @@ class TemplateInterpreter: public AbstractInterpreter {
 
  protected:
 
+  static address    _ecall_entry;
+  static address    _ocall_entry;
   static address    _throw_ArrayIndexOutOfBoundsException_entry;
   static address    _throw_ArrayStoreException_entry;
   static address    _throw_ArithmeticException_entry;
@@ -137,7 +139,8 @@ class TemplateInterpreter: public AbstractInterpreter {
   static bool       contains(address pc)                        { return _code != NULL && _code->contains(pc); }
 
  public:
-
+  static address    ocall_entry()                               { return _ocall_entry; }
+  static address    ecall_entry()                               { return _ecall_entry; }
   static address    remove_activation_early_entry(TosState state) { return _earlyret_entry.entry(state); }
 #ifdef HOTSWAP
   static address    remove_activation_preserving_args_entry()   { return _remove_activation_preserving_args_entry; }

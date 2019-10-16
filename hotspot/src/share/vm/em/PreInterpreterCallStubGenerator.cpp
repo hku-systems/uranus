@@ -28,6 +28,21 @@ address PreInterpreterCallStubGenerator::generate_interpreter_entry() {
     // get the ret address, rax is not necessary to preserve
     // get enough space for ret address and ret value from the enclave
 
+#ifdef TARGET_ARCH_aarch64
+    // copy registers and rsp
+    __ pusha();
+    __ mov(c_rarg0, sp);
+    __ mov(c_rarg1, rthread);
+    __ mov(c_rarg2, rmethod);
+
+    address jjp = (address)CompilerEnclave::call_interpreter_zero_locals;
+    __ bl(jjp);
+
+    // restore and return
+    __ mov(sp, r13);
+#else
+
+#endif
     #   undef __
     return start;
 

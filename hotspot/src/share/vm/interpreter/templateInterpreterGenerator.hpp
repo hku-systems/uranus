@@ -51,6 +51,8 @@ class TemplateInterpreterGenerator: public AbstractInterpreterGenerator {
   address generate_klass_exception_handler(const char* name) {
     return generate_exception_handler_common(name, NULL, true);
   }
+  address generate_ecall_entry(const char* name);
+  address generate_ocall_entry(const char* name);
   address generate_exception_handler_common(const char* name, const char* message, bool pass_oop);
   address generate_ClassCastException_handler();
   address generate_ArrayIndexOutOfBounds_handler(const char* name);

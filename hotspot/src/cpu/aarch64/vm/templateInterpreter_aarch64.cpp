@@ -47,6 +47,7 @@
 #include "runtime/vframeArray.hpp"
 #include "utilities/debug.hpp"
 #include <sys/types.h>
+#include <em/CompilerEnclave.h>
 
 #ifndef PRODUCT
 #include "oops/method.hpp"
@@ -127,6 +128,29 @@ address TemplateInterpreterGenerator::generate_ClassCastException_handler() {
                               throw_ClassCastException),
              c_rarg1);
   return entry;
+}
+
+address TemplateInterpreterGenerator::generate_ecall_entry(const char *name) {
+    address start = __ pc();
+    // get the ret address, rax is not necessary to preserve
+    // get enough space for ret address and ret value from the enclave
+    __ pusha();
+    __ mov(c_rarg0, sp);
+    __ mov(c_rarg1, rthread);
+    __ mov(c_rarg2, rmethod);
+
+    address ecall_stub = (address)CompilerEnclave::call_interpreter_zero_locals;
+    __ bl(ecall_stub);
+
+    // restore and return
+    __ mov(sp, r13);
+    return start;
+}
+
+address TemplateInterpreterGenerator::generate_ocall_entry(const char *name) {
+    address start = __ pc();
+
+    return start;
 }
 
 address TemplateInterpreterGenerator::generate_exception_handler_common(

@@ -371,6 +371,9 @@ void TemplateInterpreterGenerator::generate_all() {
     Interpreter::_throw_StackOverflowError_entry             = generate_StackOverflowError_handler();
   }
 
+  Interpreter::_ecall_entry                                  = generate_ecall_entry("java/ecall;");
+  Interpreter::_ocall_entry                                  = generate_ocall_entry("java/ocall;");
+
 
 
 #define method_entry(kind)                                                                    \

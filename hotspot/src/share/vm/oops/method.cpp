@@ -61,6 +61,17 @@ PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
 
 // Implementation of Method
 
+#define HOOK_INTERFACE_NAME "IntelSGX;"
+#define UNHOOK_INTERFACE_NAME "IntelSGXOcall;"
+#define FUNCTION_INTERFACE_NAME "IntelSGXFunc;"
+
+enum sgx_call_flag {
+    normal_call_flag = 0x00,
+    sgx_ecall_flag = 0x01,
+    sgx_ocall_flag = 0x02,
+    sgx_func_flag = 0x05
+} sgx_call_flag_t;
+
 Method* Method::allocate(ClassLoaderData* loader_data,
                          int byte_code_size,
                          AccessFlags access_flags,
@@ -800,9 +811,44 @@ bool Method::is_always_compilable() const {
   return false;
 }
 
+int resolve_flags(const Method* m, int index) {
+    Symbol* klassName = m->constants()->symbol_at(index);
+    if (klassName != NULL) {
+        const char *name = klassName->as_C_string();
+        int len = strlen(name);
+        if (len >= strlen(HOOK_INTERFACE_NAME) && strcmp(name + len - strlen(HOOK_INTERFACE_NAME), HOOK_INTERFACE_NAME) == 0) {
+            return sgx_ecall_flag;
+        } else if (len >= strlen(UNHOOK_INTERFACE_NAME) && strcmp(name + len - strlen(UNHOOK_INTERFACE_NAME), UNHOOK_INTERFACE_NAME) == 0) {
+            return sgx_ocall_flag;
+        } else if (len >= strlen(FUNCTION_INTERFACE_NAME) && strcmp(name + len - strlen(FUNCTION_INTERFACE_NAME), FUNCTION_INTERFACE_NAME) == 0) {
+            return sgx_func_flag;
+        }
+    }
+    return normal_call_flag;
+}
+
+int is_sgx_interface(const Method* m) {
+    AnnotationArray* ar = m->annotations();
+    int flags = normal_call_flag;
+    if (ar != NULL) {
+        int num = ar->at(0) * 256 + ar->at(1);
+        int typeIndex = 0;
+        if (num <= 2) {
+            for (int i = 1;i <= num;i++)
+                typeIndex = ar->at(i * 2) * 256 + ar->at(i * 2 + 1);
+            flags |= resolve_flags(m, typeIndex);
+        }
+    }
+    return flags;
+}
+
+
 bool Method::is_not_compilable(int comp_level) const {
   if (number_of_breakpoints() > 0)
     return true;
+  if (is_sgx_interface(this) || strncmp(name()->as_C_string(), "sgx_hook", 8) == 0) {
+    return true;
+  }
   if (is_always_compilable())
     return false;
   if (comp_level == CompLevel_any)
@@ -918,6 +964,15 @@ void Method::link_method(methodHandle h_method, TRAPS) {
   assert(entry != NULL, "interpreter entry must be non-null");
   // Sets both _i2i_entry and _from_interpreted_entry
   set_interpreter_entry(entry);
+
+    int sgx_flags = is_sgx_interface(this);
+    if ((sgx_flags & sgx_ecall_flag) == sgx_ecall_flag || strncmp(name()->as_C_string(), "sgx_hook", 8) == 0) {
+        _i2i_entry = Interpreter::ecall_entry();
+        _from_interpreted_entry = _i2i_entry;
+        printf("set ecall for %s\n", this->name()->as_C_string());
+    } else if ((sgx_flags & sgx_ocall_flag) == sgx_ocall_flag || strncmp(name()->as_C_string(), "sgx_unhook", 10) == 0) {
+
+    }
 
   // Don't overwrite already registered native entries.
   if (is_native() && !has_native_function()) {

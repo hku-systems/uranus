@@ -22,6 +22,7 @@
  *
  */
 
+#include <em/CompilerEnclave.h>
 #include "precompiled.hpp"
 #include "classfile/symbolTable.hpp"
 #include "code/icBuffer.hpp"
@@ -144,6 +145,8 @@ jint init_globals() {
   if (PrintFlagsFinal) {
     CommandLineFlags::printFlags(tty, false);
   }
+
+  CompilerEnclave::init();
 
   return JNI_OK;
 }
