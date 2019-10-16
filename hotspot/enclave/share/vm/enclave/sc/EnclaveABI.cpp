@@ -51,78 +51,31 @@ void EnclaveABI::init() {
 
     address EnclaveABI::generate_interpreter_entry() {
         StubCodeMark mark(this, "ENCLAVE_ABI", "interpreter_stub");
-#ifdef __x86_64__
-#   define __ _masm->
-            address ret = __ pc();
-            interpreter_ret = ret;
-            // regular exit path
-            __ movptr(r11, 0);
-            __ movptr(rsp, rbp);
-            __ pop(rbp);
-            __ ret(0);
-            exception_ret = __ pc();
-            __ movptr(r11, 1);
-            __ movptr(rsp, rbp);
-            __ pop(rbp);
-            __ ret(0);
-            address start = __ pc();
-            // restore the sp and bp first, then restore the rbx and r14
-            // __ movptr(rbp, Address(c_rarg0, 0));
-            __ push(rbp);
-            __ mov(rbp, rsp);
-            __ movptr(rax, (intptr_t)ret);
-            __ movptr(r12, c_rarg1);
-            __ movptr(Address(r12, 0), rsp);
+        address ret, start;
+        #define __ _masm->
+        ret = __ pc();
+        interpreter_ret = ret;
 
-            __ movptr(rsp, c_rarg0);
+        // regular exit path
+        __ leave();
+        __ ret(lr);
 
-            __ pop(r15);
-            Address non_enclave_thread(c_rarg2, Thread::normal_thread_offset());
-            __ movptr(non_enclave_thread, r15);
-            __ mov(r15, c_rarg2);
-            __ pop(r14);
-            __ pop(r13);
-            __ pop(r11);
-            __ pop(r10);
-            __ pop(rsi);
-            __ pop(rdi);
-            __ pop(rdx);
-            __ pop(rcx);
-            __ pop(rbx);
+        start = __ pc();
+        __ enter();
 
-            // clear r13, so the sender sp is 0, used for gc
-            __ movptr(r13, rsp);
+        __ mov(sp, c_rarg0);
+        __ popa();
 
-            // get the ret address, it may cause SEV if a pop/push is used
-//      __ movptr(rax, Address(rsp, 0));
-            // we have add three stack element, so we need to pack it
-            // why 5 instead of 4 ???
-            __ lea(r14, Address(rsp, 12, Address::times_8, wordSize));
-            __ movptr(Address(rsp, 0), 0);
-            __ movptr(Address(rsp, 4), 0);
-            __ movptr(rsp, Address(r12, 0));
+        __ mov(sp, rfp);
+        __ mov(r0, ret);
+        __ push(r0);
+        __ str(r11, Address(rmethod, Method::kind_offset()));
+        __ movptr(r12, (intptr_t)AbstractInterpreter::getEntryTable());
+        __ str(r12, Address(r12, r11));
+        __ br(r12);
 
-            // push the ret address
-        //     __ push(rax);
-
-            __ movptr(r11, Address(rbx, Method::kind_offset()));
-            // __ movptr(r12, (intptr_t)AbstractInterpreter::getEntryTable());
-            __ movptr(r12, Address(rbx, Method::enclave_native_function_offset()));
-            // tell that this is a ecall to the interpreter
-        //     __ movl(r11, 1);
-        //     __ jmp(r12);
-             __ call(r12);
-             // regular exit path
-             __ movptr(r11, 0);
-             __ movptr(rsp, rbp);
-             __ pop(rbp);
-             __ ret(0);
-            address get_exception_addr = __ pc();
-            __ mov(rax, r11);
-            __ ret(0);
-            get_exception = CAST_TO_FN_PTR(get_exception_stub_t , get_exception_addr);
         return start;
-#endif
+        #undef __
     };
 
     address EnclaveABI::generate_heap_alloc() {
