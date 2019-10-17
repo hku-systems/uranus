@@ -304,6 +304,10 @@ ifeq ($(JVM_VARIANT_ZEROSHARK), true)
   LFLAGS_VM += $(LLVM_LDFLAGS)
 endif
 
+LIBS_VM += -L$(HS_COMMON_SRC)/../lib/ -lsgx_urts
+securecompiler_u.o: securecompiler_u.c
+	$(CC) ${INCLUDES} -fPIC -I$(HS_COMMON_SRC)/../enclave/panoply/include/ -c $< $(COMPILE_DONE)
+
 LINK_VM = $(LINK_LIB.CC)
 
 # rule for building precompiled header

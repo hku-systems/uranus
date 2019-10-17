@@ -18,6 +18,9 @@ sgx_enclave_id_t EnclaveManager::global_id = 0;
 #define SGX_PSW_UAE_SO "libsgx_uae_service_sim.so"
 #define SGX_PSW_URT_SO "libsgx_urts_sim.so"
 #endif
+
+int __ENCLAVE_HEAP__ = 0x10000000;
+
 int EnclaveManager::psw_installed_check() {
     if (init) {
         return 1;

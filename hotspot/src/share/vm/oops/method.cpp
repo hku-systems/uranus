@@ -815,7 +815,7 @@ int resolve_flags(const Method* m, int index) {
     Symbol* klassName = m->constants()->symbol_at(index);
     if (klassName != NULL) {
         const char *name = klassName->as_C_string();
-        int len = strlen(name);
+        unsigned int len = strlen(name);
         if (len >= strlen(HOOK_INTERFACE_NAME) && strcmp(name + len - strlen(HOOK_INTERFACE_NAME), HOOK_INTERFACE_NAME) == 0) {
             return sgx_ecall_flag;
         } else if (len >= strlen(UNHOOK_INTERFACE_NAME) && strcmp(name + len - strlen(UNHOOK_INTERFACE_NAME), UNHOOK_INTERFACE_NAME) == 0) {

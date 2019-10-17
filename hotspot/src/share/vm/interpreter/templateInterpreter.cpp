@@ -170,6 +170,8 @@ bool DispatchTable::operator == (DispatchTable& y) {
 address    TemplateInterpreter::_remove_activation_entry                    = NULL;
 address    TemplateInterpreter::_remove_activation_preserving_args_entry    = NULL;
 
+address    TemplateInterpreter::_ecall_entry                                = NULL;
+address    TemplateInterpreter::_ocall_entry                                = NULL;
 
 address    TemplateInterpreter::_throw_ArrayIndexOutOfBoundsException_entry = NULL;
 address    TemplateInterpreter::_throw_ArrayStoreException_entry            = NULL;
