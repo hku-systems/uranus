@@ -1,0 +1,13 @@
+diff --git a/common/autoconf/generated-configure.sh b/common/autoconf/generated-configure.sh
+index 380db5d..1e89699 100644
+--- a/common/autoconf/generated-configure.sh
++++ b/common/autoconf/generated-configure.sh
+@@ -43422,7 +43422,7 @@ fi
+     fi
+   fi
+ 
+-    as_fn_error $? "Could not find X11 libraries. $HELP_MSG" "$LINENO" 5
++    # as_fn_error $? "Could not find X11 libraries. $HELP_MSG" "$LINENO" 5
+   fi
+ 
+ 

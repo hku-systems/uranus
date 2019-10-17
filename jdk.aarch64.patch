@@ -1,0 +1,41 @@
+diff --git a/jdk/make/CompileNativeLibraries.gmk b/jdk/make/CompileNativeLibraries.gmk
+index c23b958..421496a 100644
+--- a/jdk/make/CompileNativeLibraries.gmk
++++ b/jdk/make/CompileNativeLibraries.gmk
+@@ -42,8 +42,9 @@ $(eval $(call FillCacheFind, $(JDK_TOPDIR)/src))
+ include Tools.gmk
+ 
+ # Include the javah generated headers.
+-CFLAGS_JDKLIB += -I$(JDK_OUTPUTDIR)/gensrc_headers
++CFLAGS_JDKLIB += -I/home/jianyu/rootfs/usr/include/ -I$(JDK_OUTPUTDIR)/gensrc_headers
+ CXXFLAGS_JDKLIB += -I$(JDK_OUTPUTDIR)/gensrc_headers
++LDFLAGS_JDKLIB += --sysroot=/home/jianyu/rootfs/ -L/home/jianyu/rootfs/usr/lib/ -L/home/jianyu/rootfs/usr/lib/aarch64-linux-gnu/
+ 
+ # Put the libraries here. Different locations for different target apis.
+ ifeq ($(OPENJDK_TARGET_OS_API), posix)
+diff --git a/jdk/make/gensrc/GensrcMisc.gmk b/jdk/make/gensrc/GensrcMisc.gmk
+index 84a3c27..ede5e39 100644
+--- a/jdk/make/gensrc/GensrcMisc.gmk
++++ b/jdk/make/gensrc/GensrcMisc.gmk
+@@ -75,8 +75,8 @@ $(eval $(call SetupNativeCompilation,BUILD_GENSRC_SOR_EXE, \
+     SRC := $(GENSRC_SOR_SRC), \
+     INCLUDE_FILES := $(GENSRC_SOR_SRC_FILE), \
+     LANG := C, \
+-    CC := $(BUILD_CC), \
+-    LDEXE := $(BUILD_CC), \
++    CC := $(CC), \
++    LDEXE := $(CC), \
+     OBJECT_DIR := $(GENSRC_SOR_BIN), \
+     OUTPUT_DIR := $(GENSRC_SOR_BIN), \
+     PROGRAM := genSocketOptionRegistry))
+@@ -112,8 +112,8 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
+       SRC := $(GENSRC_UC_SRC), \
+       INCLUDE_FILES := $(GENSRC_UC_SRC_FILE), \
+       LANG := C, \
+-      CC := $(BUILD_CC), \
+-      LDEXE := $(BUILD_CC), \
++      CC := $(CC), \
++      LDEXE := $(CC), \
+       CFLAGS := $(filter -D%, $(CFLAGS_JDKEXE)), \
+       OBJECT_DIR := $(GENSRC_UC_BIN), \
+       OUTPUT_DIR := $(GENSRC_UC_BIN), \
