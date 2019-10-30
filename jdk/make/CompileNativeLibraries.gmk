@@ -42,8 +42,9 @@ $(eval $(call FillCacheFind, $(JDK_TOPDIR)/src))
 include Tools.gmk
 
 # Include the javah generated headers.
-CFLAGS_JDKLIB += -I$(JDK_OUTPUTDIR)/gensrc_headers
+CFLAGS_JDKLIB += -I/home/jianyu/rootfs/usr/include/ -I$(JDK_OUTPUTDIR)/gensrc_headers
 CXXFLAGS_JDKLIB += -I$(JDK_OUTPUTDIR)/gensrc_headers
+LDFLAGS_JDKLIB += --sysroot=/home/jianyu/rootfs/ -L/home/jianyu/rootfs/usr/lib/ -L/home/jianyu/rootfs/usr/lib/aarch64-linux-gnu/
 
 # Put the libraries here. Different locations for different target apis.
 ifeq ($(OPENJDK_TARGET_OS_API), posix)

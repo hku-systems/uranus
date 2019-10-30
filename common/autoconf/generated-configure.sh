@@ -43422,7 +43422,7 @@ fi
     fi
   fi
 
-    as_fn_error $? "Could not find X11 libraries. $HELP_MSG" "$LINENO" 5
+    # as_fn_error $? "Could not find X11 libraries. $HELP_MSG" "$LINENO" 5
   fi
 
 

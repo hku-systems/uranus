@@ -140,7 +140,8 @@ address TemplateInterpreterGenerator::generate_ecall_entry(const char *name) {
     __ mov(c_rarg2, rmethod);
 
     address ecall_stub = (address)CompilerEnclave::call_interpreter_zero_locals;
-    __ bl(ecall_stub);
+    __ mov(r0, ecall_stub);
+    __ bl(r0);
 
     // restore and return
     __ mov(sp, r13);
