@@ -111,7 +111,7 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
 void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) {
 
     // check if gc is running
-    EnclaveGC::spin_on_gc(false);
+    // EnclaveGC::spin_on_gc(false);
 
     // if (!init)
     // c1_initialize(NULL);

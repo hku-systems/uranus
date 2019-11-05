@@ -23,7 +23,7 @@ void JavaThread::oops_do(OopClosure* f, CLDClosure* cld_f, CodeBlobClosure* cf) 
 }
 
 void JavaThread::initialize() {
-    _thread_obj = (oop)EnclaveMemory::static_vm_new_obj(this, EnclaveMemory::wk_classes[SystemDictionary::Thread_klass_knum]);
+    // _thread_obj = (oop)EFnclaveMemory::static_vm_new_obj(this, EnclaveMemory::wk_classes[SystemDictionary::Thread_klass_knum]);
 }
 
 Thread::Thread() {

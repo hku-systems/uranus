@@ -306,6 +306,7 @@ endif
 
 LIBS_VM += -L$(HS_COMMON_SRC)/../lib/ -lsgx_urts
 securecompiler_u.o: securecompiler_u.c
+	echo $(CFLAGS)
 	$(CC) ${INCLUDES} -fPIC -I$(HS_COMMON_SRC)/../enclave/panoply/include/ -c $< $(COMPILE_DONE)
 
 LINK_VM = $(LINK_LIB.CC)

@@ -42,7 +42,7 @@ int CompilerEnclave::in_enclave(void *addr) {
 }
 
 CompilerEnclave::CompilerEnclave(){
-    id = EnclaveManager::new_enclave(enclave_so_path);
+    id = EnclaveManager::new_enclave("/usr/lib/libenclave.so");
 //    printf("enclave path: %s\n", enclave_so_path);
 }
 

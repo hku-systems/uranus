@@ -48,10 +48,10 @@ sgx_enclave_id_t EnclaveManager::new_enclave(std::string enclave_path) {
     sgx_status_t ret = SGX_SUCCESS;
     sgx_launch_token_t token = {0};
     int updated = 0;
-    if (!(psw_installed_check())) {
-        printf(" PSW Not installed\n");
-        return 0;
-    }
+    // if (!(psw_installed_check())) {
+        // printf(" PSW Not installed\n");
+        // return 0;
+    // }
     sgx_enclave_id_t current = global_id;
     global_id += 1;
     ret = sgx_create_enclave(enclave_path.c_str(), SGX_DEBUG_FLAG, &token, &updated, &current, NULL);
