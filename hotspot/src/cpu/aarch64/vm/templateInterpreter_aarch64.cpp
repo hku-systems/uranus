@@ -132,19 +132,28 @@ address TemplateInterpreterGenerator::generate_ClassCastException_handler() {
 
 address TemplateInterpreterGenerator::generate_ecall_entry(const char *name) {
     address start = __ pc();
-    // get the ret address, rax is not necessary to preserve
-    // get enough space for ret address and ret value from the enclave
+    __ sub(sp, sp, 0x20 *  wordSize);
     __ pusha();
     __ mov(c_rarg0, sp);
     __ mov(c_rarg1, rthread);
     __ mov(c_rarg2, rmethod);
+    __ mov(c_rarg3, rfp);
 
     address ecall_stub = (address)CompilerEnclave::call_interpreter_zero_locals;
-    __ mov(r0, ecall_stub);
-    __ br(r0);
+    __ mov(r9, ecall_stub);
+    __ br(r9);
 
-    // restore and return
-    __ mov(sp, r13);
+    // address ret = __ pc();
+    // __ ldr(esp,
+    //     Address(rfp, frame::interpreter_frame_sender_sp_offset * wordSize));
+    // // remove frame anchor
+    // __ leave();
+    // // If we're returning to interpreted code we will shortly be
+    // // adjusting SP to allow some space for ESP.  If we're returning to
+    // // compiled code the saved sender SP was saved in sender_sp, so this
+    // // restores it.
+    // __ andr(sp, esp, -16);
+
     return start;
 }
 

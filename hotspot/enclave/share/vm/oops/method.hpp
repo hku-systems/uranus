@@ -99,7 +99,6 @@ int is_sgx_interface(const Method* m);
 class Method : public Metadata {
  friend class VMStructs;
  private:
-  int               _method_kind;
   ConstMethod*      _constMethod;                // Method read-only data.
   MethodData*       _method_data;
   MethodCounters*   _method_counters;
@@ -177,7 +176,6 @@ class Method : public Metadata {
       return (address)OrderAccess::load_ptr_acquire(&_from_interpreted_entry);
   }
 
-  int method_kind() const               { return _method_kind;  }
   // access flag
   AccessFlags access_flags() const               { return _access_flags;  }
   void set_access_flags(AccessFlags flags)       { _access_flags = flags; }
@@ -633,7 +631,6 @@ class Method : public Metadata {
 #endif
 
   // interpreter support
-  static ByteSize kind_offset()                  { return byte_offset_of(Method, _method_kind       ); }
   static ByteSize const_offset()                 { return byte_offset_of(Method, _constMethod       ); }
   static ByteSize access_flags_offset()          { return byte_offset_of(Method, _access_flags      ); }
   static ByteSize from_compiled_offset()         { return byte_offset_of(Method, _from_compiled_entry); }

@@ -64,15 +64,38 @@ void EnclaveABI::init() {
         __ enter();
 
         __ mov(sp, c_rarg0);
-        __ popa();
+
+        int words_pushed = 0;
+
+        // Scan bitset to accumulate register pairs
+        unsigned char regs[32];
+        int count = 0;
+        for (int reg = 0; reg <= 30; reg++) {
+            if (reg == rfp->encoding()
+                || reg == lr->encoding()
+                || reg == rthread->encoding()
+                || reg == esp->encoding()) {
+                regs[count++] = reg % 2;
+            } else
+                regs[count++] = reg;
+        }
+        regs[count++] = zr->encoding_nocheck();
+        count &= ~1;
+
+        for (int i = 2; i < count; i += 2) {
+            __ ldp(as_Register(regs[i]), as_Register(regs[i+1]),
+                Address(sp, i * wordSize));
+            words_pushed += 2;
+        }
+
+        __ ldp(as_Register(regs[0]), as_Register(regs[1]),
+            Address(__ post(sp, count * wordSize)));
+        words_pushed += 2;
 
         __ mov(sp, rfp);
-        __ mov(r0, ret);
-        __ push(r0);
-        __ str(r11, Address(rmethod, Method::kind_offset()));
-        __ movptr(r12, (intptr_t)AbstractInterpreter::getEntryTable());
-        __ str(r12, Address(r12, r11));
-        __ br(r12);
+        __ mov(r30, ret);
+        __ mov(rscratch1, (address)Interpreter::entry_for_kind(Interpreter::zerolocals));
+        __ br(rscratch1);
 
         return start;
         #undef __

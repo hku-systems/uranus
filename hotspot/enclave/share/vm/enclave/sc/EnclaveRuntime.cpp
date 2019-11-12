@@ -87,8 +87,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
 
     JavaClasses::compute_hard_coded_offsets();
 
-    EnclaveABI::init();
     Interpreter::initialize();
+    EnclaveABI::init();
 
     vmSymbols::initialize(&javaThread);
 
