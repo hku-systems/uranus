@@ -72,7 +72,7 @@ void* CompilerEnclave::call_interpreter_zero_locals(void *rsp_buf, void *ret_add
       // u_char* r = (u_char*)&TemplateInterpreter::_throw_forward_entry;
       return r;
     }
-    return (u_char*)ret_addr;
+    return (u_char*)r;
 }
 
 void CompilerEnclave::compiler_gc(FastList<StarTask> *list) {
