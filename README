@@ -1,3 +1,45 @@
+# openjdk for arm under development
+
+1. Login to qemu arm linux
+
+sudo chroot temp /bin/su - hchan
+
+sudo chroot temp
+
+
+2. Build linux-sgx(sdk):
+
+Remove linux-sgx/sdk/cpprt/linux/libunwind/Makefile
+
+最後根據 docker file
+
+
+3. Build qemu
+
+http://wiki.t-firefly.com/en/ROC-RK3399-PC/linux_build_ubuntu_rootfs.html
+
+apt install sudo
+
+visudo
+
+加下面一行到最底
+hchan ALL=(ALL) NOPASSWD: ALL
+
+
+Then 
+
+http://logan.tw/posts/2018/02/18/build-qemu-user-static-from-source-code/
+
+Finally
+
+https://www.qemu.org/download/#source
+
+sudo cp ~/qemu-user-static/bin/qemu-aarch64-static temp/usr/bin/
+
+最後根據 docker file
+
+
+
 README:
   This file should be located at the top of the OpenJDK Mercurial root
   repository. A full OpenJDK repository set (forest) should also include
