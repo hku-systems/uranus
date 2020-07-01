@@ -29,6 +29,7 @@ void JCompiler::compile_method(Method *method) {
         return;
     }
     int size = 0;
+    /*
     if (method->method_kind() == AbstractInterpreter::sgx_ocall_entry) {
         task = new OCallCompileTask(method);
     } else if (!method->is_native()) {
@@ -45,6 +46,8 @@ void JCompiler::compile_method(Method *method) {
     } else {
         task = new NativeCompileTask(method);
     }
+    */
+   task = new NormalCompileTask(method);
 
     if (method->is_abstract()) {
         printf("compiling abstract method %s\n", method->name()->as_C_string());
