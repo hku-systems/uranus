@@ -5,7 +5,16 @@
 #include "precompiled.hpp"
 #include "JCompiler.hpp"
 
+#include "NormalCompileTask.h"
+#include "NativeCompileTask.hpp"
+#include "OCallCompileTask.hpp"
+
+
 #include <enclave/sc/EnclaveNative.h>
+
+//Change to JIT
+
+#define HAVE_COMPILER
 
 #ifdef HAVE_COMPILER
 #include "NormalCompileTask.h"
