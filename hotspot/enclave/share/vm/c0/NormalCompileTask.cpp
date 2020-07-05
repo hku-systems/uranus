@@ -551,862 +551,1087 @@ int NormalCompileTask::compile(int size) {
 //    }
 }
 
-void NormalCompileTask::nop() {}
-void NormalCompileTask::aconst_null() { __ xorl(rax, rax); }
+void NormalCompileTask::nop() {
+    transition(vtos, vtos);
+}
+void NormalCompileTask::aconst_null() { 
+    transition(vtos, atos);
+  __ mov(r0, 0); 
+}
 void NormalCompileTask::iconst(int value) {
-    if (value == 0) {
-        __ xorl(rax, rax);
-    }
-    else {
-        __ movl(rax, value);
-    }
+    transition(vtos, itos);
+    __ mov(r0, value);
 }
 void NormalCompileTask::lconst(int value) {
-    if (value == 0) {
-        __ xorl(rax, rax);
-    }
-    else {
-        __ movl(rax, value);
-    }
+    __ mov(r0, value);
 }
 void NormalCompileTask::fconst(int value) {
-    static float one = 1.0f, two = 2.0f;
-    switch (value) {
-        case 0:
-            __ xorps(xmm0, xmm0);
-            break;
-        case 1:
-            __ movflt(xmm0, ExternalAddress((address) &one));
-            break;
-        case 2:
-            __ movflt(xmm0, ExternalAddress((address) &two));
-            break;
-        default:
-            ShouldNotReachHere();
-            break;
-    }
+  transition(vtos, ftos);
+  switch (value) {
+  case 0:
+    __ fmovs(v0, zr);
+    break;
+  case 1:
+    __ fmovs(v0, 1.0);
+    break;
+  case 2:
+    __ fmovs(v0, 2.0);
+    break;
+  default:
+    ShouldNotReachHere();
+    break;
+  }
 }
 void NormalCompileTask::dconst(int value) {
-    static double one = 1.0;
-    switch (value) {
-        case 0:
-            __ xorpd(xmm0, xmm0);
-            break;
-        case 1:
-            __ movdbl(xmm0, ExternalAddress((address) &one));
-            break;
-        default:
-            ShouldNotReachHere();
-            break;
-    }
+  transition(vtos, dtos);
+  switch (value) {
+  case 0:
+    __ fmovd(v0, zr);
+    break;
+  case 1:
+    __ fmovd(v0, 1.0);
+    break;
+  case 2:
+    __ fmovd(v0, 2.0);
+    break;
+  default:
+    ShouldNotReachHere();
+    break;
+  }
 }
 void NormalCompileTask::bipush() {
-    __ movl(rax, bs->get_index_signed_1());
+    transition(vtos, itos);
+    __ load_signed_byte32(r0, at_bcp(1));
 }
 void NormalCompileTask::sipush() {
-    uint16_t uvalue = bs->get_index_u2();
-    int16_t* signed_value_pointer = (int16_t*)&uvalue;
-    __ movl(rax, *signed_value_pointer);
+  transition(vtos, itos);
+  __ load_unsigned_short(r0, at_bcp(1));
+  __ revw(r0, r0);
+  __ asrw(r0, r0, 16);
 }
 void NormalCompileTask::ldc(bool wide) {
+  transition(vtos, vtos);
+  Label call_ldc, notFloat, notClass, Done;
 
-    int idx = 0;
-    int cache_idx = -1;
-    if (wide) {
-        idx = bs->get_index_u2();
-    } else {
-        idx = bs->get_index_u1();
-    }
+  if (wide) {
+    __ get_unsigned_2_byte_index_at_bcp(r1, 1);
+  } else {
+    __ load_unsigned_byte(r1, at_bcp(1));
+  }
+  __ get_cpool_and_tags(r2, r0);
 
-    if (tos != vtos) {
-        __ push(tos);
-    }
+  const int base_offset = ConstantPool::header_size() * wordSize;
+  const int tags_offset = Array<u1>::base_offset_in_bytes();
 
-    if (Bytecodes::uses_cp_cache(bs->raw_code())) {
-        cache_idx = idx;
-        idx = method->constants()->object_to_cp_index(idx);
-    }
+  // get type
+  __ add(r3, r1, tags_offset);
+  __ lea(r3, Address(r0, r3));
+  __ ldarb(r3, r3);
 
-    constantTag tag = method->constants()->tag_at(idx);
-    if (tag.is_unresolved_klass() || tag.is_unresolved_klass_in_error() || tag.is_klass()) {
-        // call ldc
-        oop resolve_constant = NULL;
-        Klass* resolve_klass = NULL;
-        if (Bytecodes::uses_cp_cache(bs->raw_code())) {
-            resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
-        }
-        if (resolve_constant == NULL) {
-            if (will_run) {
-                Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
-                resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
-                resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-                __ movptr(rax, (intptr_t)resolve_klass);
-            } else {
-                PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ movptr(rax, NULL_WORD);
-                patchingStub->install();
-                append_stub(patchingStub);
-            }
-            __ movptr(rax, Address(rax, Klass::java_mirror_offset()));
-        } else {
-            resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-            __ movptr(rax, (intptr_t)resolve_klass);
-            __ movptr(rax, Address(rax, Klass::java_mirror_offset()));
-        }
-        tos = atos;
-    } else if (tag.is_string()) {
-        // call ldc
-        oop resolve_constant = NULL;
-        oop enclave_constant = NULL;
-        if (Bytecodes::uses_cp_cache(bs->raw_code())) {
-            resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
-        }
-        if (resolve_constant == NULL) {
-            if (will_run) {
-                Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
-                resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
-                enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-                __ movptr(rax, (intptr_t)enclave_constant);
-            } else {
-                PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ movptr(rax, NULL_WORD);
-                patchingStub->install();
-                append_stub(patchingStub);
-            }
-        } else {
-            enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-            __ movptr(rax, (intptr_t)enclave_constant);
-        }
-        tos = atos;
-    } else {
-        if (tag.is_float()) {
-            // ftos
-            __ movflt(xmm0, ExternalAddress((address)method->constants()->float_at_addr(idx)) );
-//            __ push_f();
-            tos = ftos;
-        } else {
-            // itos JVM_CONSTANT_Integer only
-            __ movl(rax, method->constants()->int_at(idx));
-//            __ push_i(rax);
-            tos = itos;
-        }
-    }
+  // unresolved class - get the resolved class
+  __ cmp(r3, JVM_CONSTANT_UnresolvedClass);
+  __ br(Assembler::EQ, call_ldc);
 
+  // unresolved class in error state - call into runtime to throw the error
+  // from the first resolution attempt
+  __ cmp(r3, JVM_CONSTANT_UnresolvedClassInError);
+  __ br(Assembler::EQ, call_ldc);
+
+  // resolved class - need to call vm to get java mirror of the class
+  __ cmp(r3, JVM_CONSTANT_Class);
+  __ br(Assembler::NE, notClass);
+
+  __ bind(call_ldc);
+  __ mov(c_rarg1, wide);
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
+  __ push_ptr(r0);
+  __ verify_oop(r0);
+  __ b(Done);
+
+  __ bind(notClass);
+  __ cmp(r3, JVM_CONSTANT_Float);
+  __ br(Assembler::NE, notFloat);
+  // ftos
+  __ adds(r1, r2, r1, Assembler::LSL, 3);
+  __ ldrs(v0, Address(r1, base_offset));
+  __ push_f();
+  __ b(Done);
+
+  __ bind(notFloat);
+#ifdef ASSERT
+  {
+    Label L;
+    __ cmp(r3, JVM_CONSTANT_Integer);
+    __ br(Assembler::EQ, L);
+    // String and Object are rewritten to fast_aldc
+    __ stop("unexpected tag type in ldc");
+    __ bind(L);
+  }
+#endif
+  // itos JVM_CONSTANT_Integer only
+  __ adds(r1, r2, r1, Assembler::LSL, 3);
+  __ ldrw(r0, Address(r1, base_offset));
+  __ push_i(r0);
+  __ bind(Done);    
 }
-void NormalCompileTask::ldc2_w() {
-    if (tos != vtos) {
-        __ push(tos);
-    }
 
-    int idx = bs->get_index_u2();
-    constantTag tag = method->constants()->tag_at(idx);
-    if (tag.is_double()) {
-        __ movptr(rcx, (intptr_t)method->constants()->double_at_addr(idx));
-        __ movdbl(xmm0, Address(rcx, 0));
-        tos = dtos;
-    } else if (tag.is_long()) {
-        __ movptr(rax, (intptr_t)method->constants()->long_at_addr(idx));
-        __ movq(rax, Address(rax, 0));
-        tos = ltos;
-    } else {
-        ShouldNotReachHere();
-    }
+void NormalCompileTask::ldc2_w() {
+  transition(vtos, vtos);
+  Label Long, Done;
+  __ get_unsigned_2_byte_index_at_bcp(r0, 1);
+
+  __ get_cpool_and_tags(r1, r2);
+  const int base_offset = ConstantPool::header_size() * wordSize;
+  const int tags_offset = Array<u1>::base_offset_in_bytes();
+
+  // get type
+  __ lea(r2, Address(r2, r0, Address::lsl(0)));
+  __ load_unsigned_byte(r2, Address(r2, tags_offset));
+  __ cmpw(r2, (int)JVM_CONSTANT_Double);
+  __ br(Assembler::NE, Long);
+  // dtos
+  __ lea (r2, Address(r1, r0, Address::lsl(3)));
+  __ ldrd(v0, Address(r2, base_offset));
+  __ push_d();
+  __ b(Done);
+
+  __ bind(Long);
+  // ltos
+  __ lea(r0, Address(r1, r0, Address::lsl(3)));
+  __ ldr(r0, Address(r0, base_offset));
+  __ push_l();
+
+  __ bind(Done);
 }
 void NormalCompileTask::iload() {
-    __ movl(rax, iaddress(bs->get_index_u1()));
+  transition(vtos, itos);
+  if (RewriteFrequentPairs) {
+    Label rewrite, done;
+    Register bc = r4;
+
+    // get next bytecode
+    __ load_unsigned_byte(r1, at_bcp(Bytecodes::length_for(Bytecodes::_iload)));
+
+    // if _iload, wait to rewrite to iload2.  We only want to rewrite the
+    // last two iloads in a pair.  Comparing against fast_iload means that
+    // the next bytecode is neither an iload or a caload, and therefore
+    // an iload pair.
+    __ cmpw(r1, Bytecodes::_iload);
+    __ br(Assembler::EQ, done);
+
+    // if _fast_iload rewrite to _fast_iload2
+    __ cmpw(r1, Bytecodes::_fast_iload);
+    __ movw(bc, Bytecodes::_fast_iload2);
+    __ br(Assembler::EQ, rewrite);
+
+    // if _caload rewrite to _fast_icaload
+    __ cmpw(r1, Bytecodes::_caload);
+    __ movw(bc, Bytecodes::_fast_icaload);
+    __ br(Assembler::EQ, rewrite);
+
+    // else rewrite to _fast_iload
+    __ movw(bc, Bytecodes::_fast_iload);
+
+    // rewrite
+    // bc: new bytecode
+    __ bind(rewrite);
+    patch_bytecode(Bytecodes::_iload, bc, r1, false);
+    __ bind(done);
+
+  }
+
+  // do iload, get the local value into tos
+  locals_index(r1);
+  __ ldr(r0, iaddress(r1));
+
 }
 void NormalCompileTask::iload(int n) {
-    __ movl(rax, iaddress(n));
+    transition(vtos, itos);
+    __ ldr(r0, iaddress(n));
 }
 void NormalCompileTask::lload() {
-    __ movq(rax, laddress(bs->get_index_u1()));
+  transition(vtos, ltos);
+  __ ldrb(r1, at_bcp(1));
+  __ sub(r1, rlocals, r1, ext::uxtw, LogBytesPerWord);
+  __ ldr(r0, Address(r1, Interpreter::local_offset_in_bytes(1)));
 }
 void NormalCompileTask::lload(int n) {
-    __ movq(rax, laddress(n));
+  transition(vtos, ltos);
+  __ ldr(r0, laddress(n));
 }
 void NormalCompileTask::fload() {
-    __ movflt(xmm0, faddress(bs->get_index_u1()));
+  transition(vtos, ftos);
+  locals_index(r1);
+  // n.b. we use ldrd here because this is a 64 bit slot
+  // this is comparable to the iload case
+  __ ldrd(v0, faddress(r1));
 }
 void NormalCompileTask::fload(int n) {
-    __ movflt(xmm0, faddress(n));
+  transition(vtos, ftos);
+  __ ldrs(v0, faddress(n));
 }
 void NormalCompileTask::dload() {
-    __ movdbl(xmm0, daddress(bs->get_index_u1()));
+  transition(vtos, dtos);
+  __ ldrb(r1, at_bcp(1));
+  __ sub(r1, rlocals, r1, ext::uxtw, LogBytesPerWord);
+  __ ldrd(v0, Address(r1, Interpreter::local_offset_in_bytes(1)));
 }
 void NormalCompileTask::dload(int n) {
-    __ movdbl(xmm0, daddress(n));
+  transition(vtos, dtos);
+  __ ldrd(v0, daddress(n));
 }
 void NormalCompileTask::aload() {
-    __ movptr(rax, aaddress(bs->get_index_u1()));
+  transition(vtos, atos);
+  locals_index(r1);
+  __ ldr(r0, iaddress(r1));
 }
 void NormalCompileTask::aload(int n) {
-    __ movptr(rax, aaddress(n));
+  transition(vtos, atos);
+  __ ldr(r0, iaddress(n));
 }
 void NormalCompileTask::aload_0() {
+  // According to bytecode histograms, the pairs:
+  //
+  // _aload_0, _fast_igetfield
+  // _aload_0, _fast_agetfield
+  // _aload_0, _fast_fgetfield
+  //
+  // occur frequently. If RewriteFrequentPairs is set, the (slow)
+  // _aload_0 bytecode checks if the next bytecode is either
+  // _fast_igetfield, _fast_agetfield or _fast_fgetfield and then
+  // rewrites the current bytecode into a pair bytecode; otherwise it
+  // rewrites the current bytecode into _fast_aload_0 that doesn't do
+  // the pair check anymore.
+  //
+  // Note: If the next bytecode is _getfield, the rewrite must be
+  //       delayed, otherwise we may miss an opportunity for a pair.
+  //
+  // Also rewrite frequent pairs
+  //   aload_0, aload_1
+  //   aload_0, iload_1
+  // These bytecodes with a small amount of code are most profitable
+  // to rewrite
+  if (RewriteFrequentPairs) {
+    Label rewrite, done;
+    const Register bc = r4;
+
+    // get next bytecode
+    __ load_unsigned_byte(r1, at_bcp(Bytecodes::length_for(Bytecodes::_aload_0)));
+
+    // do actual aload_0
     aload(0);
+
+    // if _getfield then wait with rewrite
+    __ cmpw(r1, Bytecodes::Bytecodes::_getfield);
+    __ br(Assembler::EQ, done);
+
+    // if _igetfield then reqrite to _fast_iaccess_0
+    assert(Bytecodes::java_code(Bytecodes::_fast_iaccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
+    __ cmpw(r1, Bytecodes::_fast_igetfield);
+    __ movw(bc, Bytecodes::_fast_iaccess_0);
+    __ br(Assembler::EQ, rewrite);
+
+    // if _agetfield then reqrite to _fast_aaccess_0
+    assert(Bytecodes::java_code(Bytecodes::_fast_aaccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
+    __ cmpw(r1, Bytecodes::_fast_agetfield);
+    __ movw(bc, Bytecodes::_fast_aaccess_0);
+    __ br(Assembler::EQ, rewrite);
+
+    // if _fgetfield then reqrite to _fast_faccess_0
+    assert(Bytecodes::java_code(Bytecodes::_fast_faccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
+    __ cmpw(r1, Bytecodes::_fast_fgetfield);
+    __ movw(bc, Bytecodes::_fast_faccess_0);
+    __ br(Assembler::EQ, rewrite);
+
+    // else rewrite to _fast_aload0
+    assert(Bytecodes::java_code(Bytecodes::_fast_aload_0) == Bytecodes::_aload_0, "fix bytecode definition");
+    __ movw(bc, Bytecodes::Bytecodes::_fast_aload_0);
+
+    // rewrite
+    // bc: new bytecode
+    __ bind(rewrite);
+    patch_bytecode(Bytecodes::_aload_0, bc, r1, false);
+
+    __ bind(done);
+  } else {
+    aload(0);
+  }
 }
 void NormalCompileTask::iaload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ movl(rax, Address(rdx, rax,
-                         Address::times_4,
-                         arrayOopDesc::base_offset_in_bytes(T_INT)));
+  transition(itos, itos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1, Address(r0, r1, Address::uxtw(2)));
+  __ ldrw(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_INT)));
 }
 void NormalCompileTask::laload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ movq(rax, Address(rdx, rbx,
-                         Address::times_8,
-                         arrayOopDesc::base_offset_in_bytes(T_LONG)));
+  transition(itos, ltos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1, Address(r0, r1, Address::uxtw(3)));
+  __ ldr(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_LONG)));
 }
 void NormalCompileTask::faload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ movflt(xmm0, Address(rdx, rax,
-                            Address::times_4,
-                            arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
+  transition(itos, ftos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1,  Address(r0, r1, Address::uxtw(2)));
+  __ ldrs(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
 void NormalCompileTask::daload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ movdbl(xmm0, Address(rdx, rax,
-                            Address::times_8,
-                            arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
+  transition(itos, dtos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1,  Address(r0, r1, Address::uxtw(3)));
+  __ ldrd(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
+
 }
 void NormalCompileTask::aaload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ load_heap_oop(rax, Address(rdx, rax,
-                                  UseCompressedOops ? Address::times_4 : Address::times_8,
-                                  arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
+  transition(itos, atos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  int s = (UseCompressedOops ? 2 : 3);
+  __ lea(r1, Address(r0, r1, Address::uxtw(s)));
+  __ load_heap_oop(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
 }
 void NormalCompileTask::baload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ load_signed_byte(rax,
-                        Address(rdx, rax,
-                                Address::times_1,
-                                arrayOopDesc::base_offset_in_bytes(T_BYTE)));
+  transition(itos, itos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1,  Address(r0, r1, Address::uxtw(0)));
+  __ load_signed_byte(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
 void NormalCompileTask::caload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ load_unsigned_short(rax,
-                           Address(rdx, rax,
-                                   Address::times_2,
-                                   arrayOopDesc::base_offset_in_bytes(T_CHAR)));
+  transition(itos, itos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
+  __ load_unsigned_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
 void NormalCompileTask::saload() {
-    __ pop_ptr(rdx);
-    // eax: index
-    // rdx: array
-    index_check(rdx, rax); // kills rbx
-    __ load_signed_short(rax,
-                         Address(rdx, rax,
-                                 Address::times_2,
-                                 arrayOopDesc::base_offset_in_bytes(T_SHORT)));
+  transition(itos, itos);
+  __ mov(r1, r0);
+  __ pop_ptr(r0);
+  // r0: array
+  // r1: index
+  index_check(r0, r1); // leaves index in r1, kills rscratch1
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
+  __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
 void NormalCompileTask::istore(){
-    __ movl(iaddress(bs->get_index_u1()), rax);
+  transition(itos, vtos);
+  locals_index(r1);
+  // FIXME: We're being very pernickerty here storing a jint in a
+  // local with strw, which costs an extra instruction over what we'd
+  // be able to do with a simple str.  We should just store the whole
+  // word.
+  __ lea(rscratch1, iaddress(r1));
+  __ strw(r0, Address(rscratch1));
 }
 void NormalCompileTask::istore(int n){
-    __ movl(iaddress(n), rax);
+  transition(itos, vtos);
+  __ str(r0, iaddress(n));
 }
 void NormalCompileTask::lstore(){
-    __ movq(laddress(bs->get_index_u1()), rax);
+  transition(ltos, vtos);
+  locals_index(r1);
+  __ str(r0, laddress(r1, rscratch1, _masm));
 }
 void NormalCompileTask::lstore(int n){
-    __ movq(laddress(n), rax);
+  transition(ltos, vtos);
+  __ str(r0, laddress(n));
 }
 void NormalCompileTask::fstore(){
-    __ movflt(faddress(bs->get_index_u1()), xmm0);
+  transition(ftos, vtos);
+  locals_index(r1);
+  __ lea(rscratch1, iaddress(r1));
+  __ strs(v0, Address(rscratch1));
 }
 void NormalCompileTask::fstore(int n){
-    __ movflt(faddress(n), xmm0);
+  transition(ftos, vtos);
+  __ strs(v0, faddress(n));
 }
 void NormalCompileTask::dstore(){
-    __ movdbl(daddress(bs->get_index_u1()), xmm0);
+  transition(dtos, vtos);
+  locals_index(r1);
+  __ strd(v0, daddress(r1, rscratch1, _masm));
 }
 void NormalCompileTask::dstore(int n){
-    __ movdbl(daddress(n), xmm0);
+  transition(dtos, vtos);
+  __ strd(v0, daddress(n));
 }
 void NormalCompileTask::astore(){
-    __ current_entry->set_bit(bs->get_index_u1(), C0MapOopEntry::oop_bit_number);
-    __ movptr(aaddress(bs->get_index_u1()), rax);
+  transition(vtos, vtos);
+  __ pop_ptr(r0);
+  locals_index(r1);
+  __ str(r0, aaddress(r1));
 }
 void NormalCompileTask::astore(int n){
-    __ current_entry->set_bit(n, C0MapOopEntry::oop_bit_number);
-    __ movptr(aaddress(n), rax);
+  transition(vtos, vtos);
+  __ pop_ptr(r0);
+  __ str(r0, iaddress(n));
 }
 void NormalCompileTask::iastore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // eax: value
-    // ebx: index
-    // rdx: array
-    index_check(rdx, rbx); // prefer index in ebx
-    __ movl(Address(rdx, rbx,
-                    Address::times_4,
-                    arrayOopDesc::base_offset_in_bytes(T_INT)),
-            rax);
+  transition(itos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // r0: value
+  // r1: index
+  // r3: array
+  index_check(r3, r1); // prefer index in r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
+  __ strw(r0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_INT)));
 }
 void NormalCompileTask::lastore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // rax: value
-    // ebx: index
-    // rdx: array
-    index_check(rdx, rbx); // prefer index in ebx
-    __ movq(Address(rdx, rbx,
-                    Address::times_8,
-                    arrayOopDesc::base_offset_in_bytes(T_LONG)),
-            rax);
+  transition(ltos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // r0: value
+  // r1: index
+  // r3: array
+  index_check(r3, r1); // prefer index in r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
+  __ str(r0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_LONG)));
 }
 void NormalCompileTask::fastore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // xmm0: value
-    // ebx:  index
-    // rdx:  array
-    index_check(rdx, rbx); // prefer index in ebx
-    __ movflt(Address(rdx, rbx,
-                      Address::times_4,
-                      arrayOopDesc::base_offset_in_bytes(T_FLOAT)),
-              xmm0);
+  transition(ftos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // v0: value
+  // r1:  index
+  // r3:  array
+  index_check(r3, r1); // prefer index in r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
+  __ strs(v0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
 void NormalCompileTask::dastore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // xmm0: value
-    // ebx:  index
-    // rdx:  array
-    index_check(rdx, rbx); // prefer index in ebx
-    __ movdbl(Address(rdx, rbx,
-                      Address::times_8,
-                      arrayOopDesc::base_offset_in_bytes(T_DOUBLE)),
-              xmm0);
+  transition(dtos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // v0: value
+  // r1:  index
+  // r3:  array
+  index_check(r3, r1); // prefer index in r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
+  __ strd(v0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 }
 void NormalCompileTask::aastore() {
-    if (tos != vtos) {
-        __ push(tos);
-        tos = vtos;
-    }
-    Label is_null, ok_is_subtype, done;
+  Label is_null, ok_is_subtype, done;
+  transition(vtos, vtos);
+  // stack: ..., array, index, value
+  __ ldr(r0, at_tos());    // value
+  __ ldr(r2, at_tos_p1()); // index
+  __ ldr(r3, at_tos_p2()); // array
 
-    // stack: ..., array, index, value
-    // tos in rax
-    __ movptr(rax, at_tos());    // value
-    __ movl(rcx, at_tos_p1()); // index
-    __ movptr(rdx, at_tos_p2()); // array
+  Address element_address(r4, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
-    Address element_address(rdx, rcx,
-                            UseCompressedOops? Address::times_4 : Address::times_8,
-                            arrayOopDesc::base_offset_in_bytes(T_OBJECT));
+  index_check(r3, r2);     // kills r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(r4, Address(r3, r2, Address::uxtw(UseCompressedOops? 2 : 3)));
 
-    index_check(rdx, rcx);     // kills rbx
-    // do array store check - check for NULL value first
-    __ testptr(rax, rax);
-    __ jcc(Assembler::zero, is_null);
+  // do array store check - check for NULL value first
+  __ cbz(r0, is_null);
 
-    // Move subklass into rbx
-    __ load_klass(rbx, rax);
-    // Move superklass into rax
-    __ load_klass(rax, rdx);
-    __ movptr(rax, Address(rax,
-                           ObjArrayKlass::element_klass_offset()));
-    // Compress array + index*oopSize + 12 into a single register.  Frees rcx.
-    __ lea(rdx, element_address);
+  // Move subklass into r1
+  __ load_klass(r1, r0);
+  // Move superklass into r0
+  __ load_klass(r0, r3);
+  __ ldr(r0, Address(r0,
+		     ObjArrayKlass::element_klass_offset()));
+  // Compress array + index*oopSize + 12 into a single register.  Frees r2.
 
-    // Generate subtype check.  Blows rcx, rdi
-    // Superklass in rax.  Subklass in rbx.
-    __ gen_subtype_check(rbx, ok_is_subtype);
+  // Generate subtype check.  Blows r2, r5
+  // Superklass in r0.  Subklass in r1.
+  __ gen_subtype_check(r1, ok_is_subtype);
 
-    // Come here on failure
-    // object is at TOS
-    __ jump(ExternalAddress(Interpreter::_throw_ArrayStoreException_entry));
+  // Come here on failure
+  // object is at TOS
+  __ b(Interpreter::_throw_ArrayStoreException_entry);
 
-    // Come here on success
-    __ bind(ok_is_subtype);
+  // Come here on success
+  __ bind(ok_is_subtype);
 
-    // Get the value we will store
-    __ movptr(rax, at_tos());
-    // Now store using the appropriate barrier
-    __ store_heap_oop(Address(rdx, 0), rax);
-    __ jmp(done);
+  // Get the value we will store
+  __ ldr(r0, at_tos());
+  // Now store using the appropriate barrier
+  do_oop_store(_masm, element_address, r0, _bs->kind(), true);
+  __ b(done);
 
-    // Have a NULL in rax, rdx=array, ecx=index.  Store NULL at ary[idx]
-    __ bind(is_null);
-    __ profile_null_seen(rbx);
+  // Have a NULL in r0, r3=array, r2=index.  Store NULL at ary[idx]
+  __ bind(is_null);
+  __ profile_null_seen(r2);
 
-    // Store a NULL
-    __ store_heap_oop_null(element_address);
-    // Pop stack arguments
-    __ bind(done);
-    __ addptr(rsp, 3 * Interpreter::stackElementSize);
+  // Store a NULL
+  do_oop_store(_masm, element_address, noreg, _bs->kind(), true);
+
+  // Pop stack arguments
+  __ bind(done);
+  __ add(esp, esp, 3 * Interpreter::stackElementSize);
 }
 void NormalCompileTask::bastore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // eax: value
-    // ebx: index
-    // rdx: array
-    index_check(rdx, rbx); // prefer index in ebx
-    // Need to check whether array is boolean or byte
-    // since both types share the bastore bytecode.
-    __ load_klass(rcx, rdx);
-    __ movl(rcx, Address(rcx, Klass::layout_helper_offset()));
-    int diffbit = Klass::layout_helper_boolean_diffbit();
-    __ testl(rcx, diffbit);
-    Label L_skip;
-    __ jccb(Assembler::zero, L_skip);
-    __ andl(rax, 1);  // if it is a T_BOOLEAN array, mask the stored value to 0/1
-    __ bind(L_skip);
-    __ movb(Address(rdx, rbx,
-                    Address::times_1,
-                    arrayOopDesc::base_offset_in_bytes(T_BYTE)),
-            rax);
+  transition(itos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // r0: value
+  // r1: index
+  // r3: array
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  index_check(r3, r1); // prefer index in r1
+
+  // Need to check whether array is boolean or byte
+  // since both types share the bastore bytecode.
+  __ load_klass(r2, r3);
+  __ ldrw(r2, Address(r2, Klass::layout_helper_offset()));
+  int diffbit = Klass::layout_helper_boolean_diffbit();
+  __ andw(rscratch1, r2, diffbit);
+  Label L_skip;
+  __ cbzw(rscratch1, L_skip);
+  __ andw(r0, r0, 1);  // if it is a T_BOOLEAN array, mask the stored value to 0/1
+  __ bind(L_skip);
+
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(0)));
+  __ strb(r0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
 void NormalCompileTask::castore() {
-    __ pop_i(rbx);
-    __ pop_ptr(rdx);
-    // eax: value
-    // ebx: index
-    // rdx: array
-    index_check(rdx, rbx);  // prefer index in ebx
-    __ movw(Address(rdx, rbx,
-                    Address::times_2,
-                    arrayOopDesc::base_offset_in_bytes(T_CHAR)),
-            rax);
+  transition(itos, vtos);
+  __ pop_i(r1);
+  __ pop_ptr(r3);
+  // r0: value
+  // r1: index
+  // r3: array
+  index_check(r3, r1); // prefer index in r1
+  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  __ lea(rscratch1, Address(r3, r1, Address::uxtw(1)));
+  __ strh(r0, Address(rscratch1,
+		      arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
 void NormalCompileTask::sastore() {
     castore();
 }
 void NormalCompileTask::pop() {
-    if (tos == vtos)
-        __ addptr(rsp, Interpreter::stackElementSize);
-    tos = vtos;
+  transition(vtos, vtos);
+  __ add(esp, esp, Interpreter::stackElementSize);
 }
 void NormalCompileTask::pop2() {
-    if (tos == vtos)
-        __ addptr(rsp, 2 * Interpreter::stackElementSize);
-    else
-        __ addptr(rsp, 1 * Interpreter::stackElementSize);
-
+  transition(vtos, vtos);
+  __ add(esp, esp, 2 * Interpreter::stackElementSize);
 }
 void NormalCompileTask::dup() {
-    if (tos == vtos) {
-        __ load_ptr(0, rax);
-        tos = atos;
-    }
-    else
-      __ push_ptr(rax);
+  transition(vtos, vtos);
+  __ ldr(r0, Address(esp, 0));
+  __ push(r0);
+  // stack: ..., a, a
 }
 void NormalCompileTask::dup_x1() {
-    if (tos == vtos) {
-        __ load_ptr(0, rax);  // load b
-        __ load_ptr(1, rcx);  // load a
-        __ store_ptr(1, rax);  // store b
-        __ store_ptr(0, rcx);  // store a
-        __ push_ptr(rax);      // push b
-    } else {
-        __ load_ptr(0, rcx);
-        __ store_ptr(0, rax);
-        __ push_ptr(rcx);
-    }
+  transition(vtos, vtos);
+  // stack: ..., a, b
+  __ ldr(r0, at_tos());  // load b
+  __ ldr(r2, at_tos_p1());  // load a
+  __ str(r0, at_tos_p1());  // store b
+  __ str(r2, at_tos());  // store a
+  __ push(r0);			// push b
+  // stack: ..., b, a, b
 }
 void NormalCompileTask::dup_x2() {
-    if (tos == vtos) {
-        // stack: ..., a, b, c
-        __ load_ptr(0, rax);  // load c
-        __ load_ptr(2, rcx);  // load a
-        __ store_ptr(2, rax);  // store c in a
-        __ push_ptr(rax);      // push c
-        // stack: ..., c, b, c, c
-        __ load_ptr(2, rax);  // load b
-        __ store_ptr(2, rcx);  // store a in b
-        // stack: ..., c, a, c, c
-        __ store_ptr(1, rax);  // store b in c
-        // stack: ..., c, a, b, c
-    } else {
-        __ load_ptr(0, rbx);
-        __ load_ptr(1, rcx);
-        __ push_ptr(rbx);
-        __ store_ptr(2, rax);
-        __ store_ptr(1, rcx);
-        __ push_ptr(rbx);
-    }
+  transition(vtos, vtos);
+  // stack: ..., a, b, c
+  __ ldr(r0, at_tos());  // load c
+  __ ldr(r2, at_tos_p2());  // load a
+  __ str(r0, at_tos_p2());  // store c in a
+  __ push(r0);      // push c
+  // stack: ..., c, b, c, c
+  __ ldr(r0, at_tos_p2());  // load b
+  __ str(r2, at_tos_p2());  // store a in b
+  // stack: ..., c, a, c, c
+  __ str(r0, at_tos_p1());  // store b in c
+  // stack: ..., c, a, b, c
 }
 void NormalCompileTask::dup2() {
-    if (tos == vtos) {
-        // stack: ..., a, b
-        __ load_ptr(1, rax);  // load a
-        __ push_ptr(rax);     // push a
-        __ load_ptr(1, rax);  // load b
-        __ push_ptr(rax);     // push b
-        // stack: ..., a, b, a, b
-    } else if (tos == ltos || tos == dtos) {
-        // tos is two-word length
-        __ push(tos);
-    } else {
-        __ load_ptr(0, rcx);
-        __ push_ptr(rax);
-        __ push_ptr(rcx);
-    }
+  transition(vtos, vtos);
+  // stack: ..., a, b
+  __ ldr(r0, at_tos_p1());  // load a
+  __ push(r0);                  // push a
+  __ ldr(r0, at_tos_p1());  // load b
+  __ push(r0);                  // push b
+  // stack: ..., a, b, a, b
 }
 void NormalCompileTask::dup2_x1(){
-    if (tos != vtos) {
-        __ push(tos);
-        tos = vtos;
-    }
-    // stack: ..., a, b, c
-    __ load_ptr( 0, rcx);  // load c
-    __ load_ptr( 1, rax);  // load b
-    __ push_ptr(rax);      // push b
-    __ push_ptr(rcx);      // push c
-    // stack: ..., a, b, c, b, c
-    __ store_ptr(3, rcx);  // store c in b
-    // stack: ..., a, c, c, b, c
-    __ load_ptr( 4, rcx);  // load a
-    __ store_ptr(2, rcx);  // store a in 2nd c
-    // stack: ..., a, c, a, b, c
-    __ store_ptr(4, rax);  // store b in a
-    // stack: ..., b, c, a, b, c
+  transition(vtos, vtos);
+  // stack: ..., a, b, c
+  __ ldr(r2, at_tos());  // load c
+  __ ldr(r0, at_tos_p1());  // load b
+  __ push(r0);                  // push b
+  __ push(r2);                  // push c
+  // stack: ..., a, b, c, b, c
+  __ str(r2, at_tos_p3());  // store c in b
+  // stack: ..., a, c, c, b, c
+  __ ldr(r2, at_tos_p4());  // load a
+  __ str(r2, at_tos_p2());  // store a in 2nd c
+  // stack: ..., a, c, a, b, c
+  __ str(r0, at_tos_p4());  // store b in a
+  // stack: ..., b, c, a, b, c
 }
 void NormalCompileTask::dup2_x2(){
-    if (tos != vtos) {
-        __ push(tos);
-        tos = vtos;
-    }
-    // stack: ..., a, b, c, d
-    __ load_ptr( 0, rcx);  // load d
-    __ load_ptr( 1, rax);  // load c
-    __ push_ptr(rax);      // push c
-    __ push_ptr(rcx);      // push d
-    // stack: ..., a, b, c, d, c, d
-    __ load_ptr( 4, rax);  // load b
-    __ store_ptr(2, rax);  // store b in d
-    __ store_ptr(4, rcx);  // store d in b
-    // stack: ..., a, d, c, b, c, d
-    __ load_ptr( 5, rcx);  // load a
-    __ load_ptr( 3, rax);  // load c
-    __ store_ptr(3, rcx);  // store a in c
-    __ store_ptr(5, rax);  // store c in a
-    // stack: ..., c, d, a, b, c, d
+  transition(vtos, vtos);
+  // stack: ..., a, b, c, d
+  __ ldr(r2, at_tos());  // load d
+  __ ldr(r0, at_tos_p1());  // load c
+  __ push(r0)            ;      // push c
+  __ push(r2);                  // push d
+  // stack: ..., a, b, c, d, c, d
+  __ ldr(r0, at_tos_p4());  // load b
+  __ str(r0, at_tos_p2());  // store b in d
+  __ str(r2, at_tos_p4());  // store d in b
+  // stack: ..., a, d, c, b, c, d
+  __ ldr(r2, at_tos_p5());  // load a
+  __ ldr(r0, at_tos_p3());  // load c
+  __ str(r2, at_tos_p3());  // store a in c
+  __ str(r0, at_tos_p5());  // store c in a
+  // stack: ..., c, d, a, b, c, d
 }
 void NormalCompileTask::swap(){
-    if (tos == vtos) {
-        // stack: ..., a, b
-        __ load_ptr(1, rcx);  // load a
-        __ load_ptr(0, rax);  // load b
-        __ store_ptr(0, rcx);  // store a in b
-        __ store_ptr(1, rax);  // store b in a
-        // stack: ..., b, a
-    } else {
-        __ load_ptr(0, rcx);
-        __ store_ptr(0, rax);
-        __ mov(rax, rcx);
-    }
+  transition(vtos, vtos);
+  // stack: ..., a, b
+  __ ldr(r2, at_tos_p1());  // load a
+  __ ldr(r0, at_tos());  // load b
+  __ str(r2, at_tos());  // store a in b
+  __ str(r0, at_tos_p1());  // store b in a
+  // stack: ..., b, a
 }
 void NormalCompileTask::iop2(Operation op){
-    switch (op) {
-        case add  :                    __ pop_i(rdx); __ addl (rax, rdx); break;
-        case sub  : __ movl(rdx, rax); __ pop_i(rax); __ subl (rax, rdx); break;
-        case mul  :                    __ pop_i(rdx); __ imull(rax, rdx); break;
-        case _and :                    __ pop_i(rdx); __ andl (rax, rdx); break;
-        case _or  :                    __ pop_i(rdx); __ orl  (rax, rdx); break;
-        case _xor :                    __ pop_i(rdx); __ xorl (rax, rdx); break;
-        case shl  : __ movl(rcx, rax); __ pop_i(rax); __ shll (rax);      break;
-        case shr  : __ movl(rcx, rax); __ pop_i(rax); __ sarl (rax);      break;
-        case ushr : __ movl(rcx, rax); __ pop_i(rax); __ shrl (rax);      break;
-        default   : ShouldNotReachHere();
-    }
+  transition(itos, itos);
+  // r0 <== r1 op r0
+  __ pop_i(r1);
+  switch (op) {
+  case add  : __ addw(r0, r1, r0); break;
+  case sub  : __ subw(r0, r1, r0); break;
+  case mul  : __ mulw(r0, r1, r0); break;
+  case _and : __ andw(r0, r1, r0); break;
+  case _or  : __ orrw(r0, r1, r0); break;
+  case _xor : __ eorw(r0, r1, r0); break;
+  case shl  : __ lslvw(r0, r1, r0); break;
+  case shr  : __ asrvw(r0, r1, r0); break;
+  case ushr : __ lsrvw(r0, r1, r0);break;
+  default   : ShouldNotReachHere();
+  }
 }
 void NormalCompileTask::lop2(Operation op){
-    switch (op) {
-        case add  :                    __ pop_l(rdx); __ addptr(rax, rdx); break;
-        case sub  : __ mov(rdx, rax);  __ pop_l(rax); __ subptr(rax, rdx); break;
-        case _and :                    __ pop_l(rdx); __ andptr(rax, rdx); break;
-        case _or  :                    __ pop_l(rdx); __ orptr (rax, rdx); break;
-        case _xor :                    __ pop_l(rdx); __ xorptr(rax, rdx); break;
-        default   : ShouldNotReachHere();
-    }
+  transition(ltos, ltos);
+  // r0 <== r1 op r0
+  __ pop_l(r1);
+  switch (op) {
+  case add  : __ add(r0, r1, r0); break;
+  case sub  : __ sub(r0, r1, r0); break;
+  case mul  : __ mul(r0, r1, r0); break;
+  case _and : __ andr(r0, r1, r0); break;
+  case _or  : __ orr(r0, r1, r0); break;
+  case _xor : __ eor(r0, r1, r0); break;
+  default   : ShouldNotReachHere();
+  }
 }
 void NormalCompileTask::fop2(Operation op){
-    switch (op) {
-        case add:
-            __ addss(xmm0, at_rsp());
-            __ addptr(rsp, Interpreter::stackElementSize);
-            break;
-        case sub:
-            __ movflt(xmm1, xmm0);
-            __ pop_f(xmm0);
-            __ subss(xmm0, xmm1);
-            break;
-        case mul:
-            __ mulss(xmm0, at_rsp());
-            __ addptr(rsp, Interpreter::stackElementSize);
-            break;
-        case div:
-            __ movflt(xmm1, xmm0);
-            __ pop_f(xmm0);
-            __ divss(xmm0, xmm1);
-            break;
-        case rem:
-            __ movflt(xmm1, xmm0);
-            __ pop_f(xmm0);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::frem), 2);
-            break;
-        default:
-            ShouldNotReachHere();
-            break;
-    }
+  transition(ftos, ftos);
+  switch (op) {
+  case add:
+    // n.b. use ldrd because this is a 64 bit slot
+    __ pop_f(v1);
+    __ fadds(v0, v1, v0);
+    break;
+  case sub:
+    __ pop_f(v1);
+    __ fsubs(v0, v1, v0);
+    break;
+  case mul:
+    __ pop_f(v1);
+    __ fmuls(v0, v1, v0);
+    break;
+  case div:
+    __ pop_f(v1);
+    __ fdivs(v0, v1, v0);
+    break;
+  case rem:
+    __ fmovs(v1, v0);
+    __ pop_f(v0);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::frem));
+    break;
+  default:
+    ShouldNotReachHere();
+    break;
+  }
 }
 void NormalCompileTask::dop2(Operation op){
-    switch (op) {
-        case add:
-            __ addsd(xmm0, at_rsp());
-            __ addptr(rsp, 2 * Interpreter::stackElementSize);
-            break;
-        case sub:
-            __ movdbl(xmm1, xmm0);
-            __ pop_d(xmm0);
-            __ subsd(xmm0, xmm1);
-            break;
-        case mul:
-            __ mulsd(xmm0, at_rsp());
-            __ addptr(rsp, 2 * Interpreter::stackElementSize);
-            break;
-        case div:
-            __ movdbl(xmm1, xmm0);
-            __ pop_d(xmm0);
-            __ divsd(xmm0, xmm1);
-            break;
-        case rem:
-            __ movdbl(xmm1, xmm0);
-            __ pop_d(xmm0);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::drem), 2);
-            break;
-        default:
-            ShouldNotReachHere();
-            break;
-    }
+  transition(dtos, dtos);
+  switch (op) {
+  case add:
+    // n.b. use ldrd because this is a 64 bit slot
+    __ pop_d(v1);
+    __ faddd(v0, v1, v0);
+    break;
+  case sub:
+    __ pop_d(v1);
+    __ fsubd(v0, v1, v0);
+    break;
+  case mul:
+    __ pop_d(v1);
+    __ fmuld(v0, v1, v0);
+    break;
+  case div:
+    __ pop_d(v1);
+    __ fdivd(v0, v1, v0);
+    break;
+  case rem:
+    __ fmovd(v1, v0);
+    __ pop_d(v0);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::drem));
+    break;
+  default:
+    ShouldNotReachHere();
+    break;
+  }
 }
 void NormalCompileTask::irem(){
-    __ movl(rcx, rax);
-    __ pop_i(rax);
-    // Note: could xor eax and ecx and compare with (-1 ^ min_int). If
-    //       they are not equal, one could do a normal division (no correction
-    //       needed), which may speed up this implementation for the common case.
-    //       (see also JVM spec., p.243 & p.271)
-    __ corrected_idivl(rcx);
-    __ movl(rax, rdx);
+  transition(itos, itos);
+  // explicitly check for div0
+  Label no_div0;
+  __ cbnzw(r0, no_div0);
+  __ mov(rscratch1, Interpreter::_throw_ArithmeticException_entry);
+  __ br(rscratch1);
+  __ bind(no_div0);
+  __ pop_i(r1);
+  // r0 <== r1 irem r0
+  __ corrected_idivl(r0, r1, r0, /* want_remainder */ true);
 }
 void NormalCompileTask::lrem(){
-    __ mov(rcx, rax);
-    __ pop_l(rax);
-    __ testq(rcx, rcx);
-    __ jump_cc(Assembler::zero,
-               ExternalAddress(Interpreter::_throw_ArithmeticException_entry));
-    // Note: could xor rax and rcx and compare with (-1 ^ min_int). If
-    //       they are not equal, one could do a normal division (no correction
-    //       needed), which may speed up this implementation for the common case.
-    //       (see also JVM spec., p.243 & p.271)
-    __ corrected_idivq(rcx); // kills rbx
-    __ mov(rax, rdx);
+  transition(ltos, ltos);
+  // explicitly check for div0
+  Label no_div0;
+  __ cbnz(r0, no_div0);
+  __ mov(rscratch1, Interpreter::_throw_ArithmeticException_entry);
+  __ br(rscratch1);
+  __ bind(no_div0);
+  __ pop_l(r1);
+  // r0 <== r1 lrem r0
+  __ corrected_idivq(r0, r1, r0, /* want_remainder */ true);
 }
 void NormalCompileTask::ineg(){
-    __ negl(rax);
+  transition(itos, itos);
+  __ negw(r0, r0);
 }
 void NormalCompileTask::lneg(){
-    __ negq(rax);
+  transition(ltos, ltos);
+  __ neg(r0, r0);
 }
 void NormalCompileTask::fneg(){
-    static jlong *float_signflip  = double_quadword(&float_signflip_pool[1], 0x8000000080000000, 0x8000000080000000);
-    __ xorps(xmm0, ExternalAddress((address) float_signflip));
+  transition(ftos, ftos);
+  __ fnegs(v0, v0);
 }
 void NormalCompileTask::dneg(){
-    static jlong *double_signflip  = double_quadword(&double_signflip_pool[1], 0x8000000000000000, 0x8000000000000000);
-    __ xorpd(xmm0, ExternalAddress((address) double_signflip));
+  transition(dtos, dtos);
+  __ fnegd(v0, v0);
 }
 void NormalCompileTask::lshl(){
-    __ movl(rcx, rax);                             // get shift count
-    __ pop_l(rax);                                 // get shift value
-    __ shlq(rax);
+  transition(itos, ltos);
+  // shift count is in r0
+  __ pop_l(r1);
+  __ lslv(r0, r1, r0);
 }
 void NormalCompileTask::lshr(){
-    __ movl(rcx, rax);                             // get shift count
-    __ pop_l(rax);                                 // get shift value
-    __ sarq(rax);
+  transition(itos, ltos);
+  // shift count is in r0
+  __ pop_l(r1);
+  __ asrv(r0, r1, r0);
 }
 void NormalCompileTask::lushr(){
-    __ movl(rcx, rax);                             // get shift count
-    __ pop_l(rax);                                 // get shift value
-    __ shrq(rax);
+  transition(itos, ltos);
+  // shift count is in r0
+  __ pop_l(r1);
+  __ lsrv(r0, r1, r0);
 }
 void NormalCompileTask::convert(){
-    static const int64_t is_nan = 0x8000000000000000L;
-
-    // Conversion
-    switch (bs->code()) {
-        case Bytecodes::_i2l:
-            __ movslq(rax, rax);
-            break;
-        case Bytecodes::_i2f:
-            __ cvtsi2ssl(xmm0, rax);
-            break;
-        case Bytecodes::_i2d:
-            __ cvtsi2sdl(xmm0, rax);
-            break;
-        case Bytecodes::_i2b:
-            __ movsbl(rax, rax);
-            break;
-        case Bytecodes::_i2c:
-            __ movzwl(rax, rax);
-            break;
-        case Bytecodes::_i2s:
-            __ movswl(rax, rax);
-            break;
-        case Bytecodes::_l2i:
-            __ movl(rax, rax);
-            break;
-        case Bytecodes::_l2f:
-            __ cvtsi2ssq(xmm0, rax);
-            break;
-        case Bytecodes::_l2d:
-            __ cvtsi2sdq(xmm0, rax);
-            break;
-        case Bytecodes::_f2i:
-        {
-            Label L;
-            __ cvttss2sil(rax, xmm0);
-            __ cmpl(rax, 0x80000000); // NaN or overflow/underflow?
-            __ jcc(Assembler::notEqual, L);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::f2i), 1);
-            __ bind(L);
-        }
-            break;
-        case Bytecodes::_f2l:
-        {
-            Label L;
-            __ cvttss2siq(rax, xmm0);
-            // NaN or overflow/underflow?
-            __ cmp64(rax, ExternalAddress((address) &is_nan));
-            __ jcc(Assembler::notEqual, L);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::f2l), 1);
-            __ bind(L);
-        }
-            break;
-        case Bytecodes::_f2d:
-            __ cvtss2sd(xmm0, xmm0);
-            break;
-        case Bytecodes::_d2i:
-        {
-            Label L;
-            __ cvttsd2sil(rax, xmm0);
-            __ cmpl(rax, 0x80000000); // NaN or overflow/underflow?
-            __ jcc(Assembler::notEqual, L);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::d2i), 1);
-            __ bind(L);
-        }
-            break;
-        case Bytecodes::_d2l:
-        {
-            Label L;
-            __ cvttsd2siq(rax, xmm0);
-            // NaN or overflow/underflow?
-            __ cmp64(rax, ExternalAddress((address) &is_nan));
-            __ jcc(Assembler::notEqual, L);
-            __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::d2l), 1);
-            __ bind(L);
-        }
-            break;
-        case Bytecodes::_d2f:
-            __ cvtsd2ss(xmm0, xmm0);
-            break;
-        default:
-            ShouldNotReachHere();
+  // Checking
+#ifdef ASSERT
+  {
+    TosState tos_in  = ilgl;
+    TosState tos_out = ilgl;
+    switch (bytecode()) {
+    case Bytecodes::_i2l: // fall through
+    case Bytecodes::_i2f: // fall through
+    case Bytecodes::_i2d: // fall through
+    case Bytecodes::_i2b: // fall through
+    case Bytecodes::_i2c: // fall through
+    case Bytecodes::_i2s: tos_in = itos; break;
+    case Bytecodes::_l2i: // fall through
+    case Bytecodes::_l2f: // fall through
+    case Bytecodes::_l2d: tos_in = ltos; break;
+    case Bytecodes::_f2i: // fall through
+    case Bytecodes::_f2l: // fall through
+    case Bytecodes::_f2d: tos_in = ftos; break;
+    case Bytecodes::_d2i: // fall through
+    case Bytecodes::_d2l: // fall through
+    case Bytecodes::_d2f: tos_in = dtos; break;
+    default             : ShouldNotReachHere();
     }
+    switch (bytecode()) {
+    case Bytecodes::_l2i: // fall through
+    case Bytecodes::_f2i: // fall through
+    case Bytecodes::_d2i: // fall through
+    case Bytecodes::_i2b: // fall through
+    case Bytecodes::_i2c: // fall through
+    case Bytecodes::_i2s: tos_out = itos; break;
+    case Bytecodes::_i2l: // fall through
+    case Bytecodes::_f2l: // fall through
+    case Bytecodes::_d2l: tos_out = ltos; break;
+    case Bytecodes::_i2f: // fall through
+    case Bytecodes::_l2f: // fall through
+    case Bytecodes::_d2f: tos_out = ftos; break;
+    case Bytecodes::_i2d: // fall through
+    case Bytecodes::_l2d: // fall through
+    case Bytecodes::_f2d: tos_out = dtos; break;
+    default             : ShouldNotReachHere();
+    }
+    transition(tos_in, tos_out);
+  }
+#endif // ASSERT
+  // static const int64_t is_nan = 0x8000000000000000L;
+
+  // Conversion
+  switch (bytecode()) {
+  case Bytecodes::_i2l:
+    __ sxtw(r0, r0);
+    break;
+  case Bytecodes::_i2f:
+    __ scvtfws(v0, r0);
+    break;
+  case Bytecodes::_i2d:
+    __ scvtfwd(v0, r0);
+    break;
+  case Bytecodes::_i2b:
+    __ sxtbw(r0, r0);
+    break;
+  case Bytecodes::_i2c:
+    __ uxthw(r0, r0);
+    break;
+  case Bytecodes::_i2s:
+    __ sxthw(r0, r0);
+    break;
+  case Bytecodes::_l2i:
+    __ uxtw(r0, r0);
+    break;
+  case Bytecodes::_l2f:
+    __ scvtfs(v0, r0);
+    break;
+  case Bytecodes::_l2d:
+    __ scvtfd(v0, r0);
+    break;
+  case Bytecodes::_f2i:
+  {
+    Label L_Okay;
+    __ clear_fpsr();
+    __ fcvtzsw(r0, v0);
+    __ get_fpsr(r1);
+    __ cbzw(r1, L_Okay);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::f2i));
+    __ bind(L_Okay);
+  }
+    break;
+  case Bytecodes::_f2l:
+  {
+    Label L_Okay;
+    __ clear_fpsr();
+    __ fcvtzs(r0, v0);
+    __ get_fpsr(r1);
+    __ cbzw(r1, L_Okay);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::f2l));
+    __ bind(L_Okay);
+  }
+    break;
+  case Bytecodes::_f2d:
+    __ fcvts(v0, v0);
+    break;
+  case Bytecodes::_d2i:
+  {
+    Label L_Okay;
+    __ clear_fpsr();
+    __ fcvtzdw(r0, v0);
+    __ get_fpsr(r1);
+    __ cbzw(r1, L_Okay);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::d2i));
+    __ bind(L_Okay);
+  }
+    break;
+  case Bytecodes::_d2l:
+  {
+    Label L_Okay;
+    __ clear_fpsr();
+    __ fcvtzd(r0, v0);
+    __ get_fpsr(r1);
+    __ cbzw(r1, L_Okay);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::d2l));
+    __ bind(L_Okay);
+  }
+    break;
+  case Bytecodes::_d2f:
+    __ fcvtd(v0, v0);
+    break;
+  default:
+    ShouldNotReachHere();
+  }
 }
 void NormalCompileTask::lcmp(){
-    Label done;
-    __ pop_l(rdx);
-    __ cmpq(rdx, rax);
-    __ movl(rax, -1);
-    __ jccb(Assembler::less, done);
-    __ setb(Assembler::notEqual, rax);
-    __ movzbl(rax, rax);
-    __ bind(done);
+  transition(ltos, itos);
+  Label done;
+  __ pop_l(r1);
+  __ cmp(r1, r0);
+  __ mov(r0, (u_int64_t)-1L);
+  __ br(Assembler::LT, done);
+  // __ mov(r0, 1UL);
+  // __ csel(r0, r0, zr, Assembler::NE);
+  // and here is a faster way
+  __ csinc(r0, zr, zr, Assembler::EQ);
+  __ bind(done);
 }
 void NormalCompileTask::float_cmp(int unordered_result) {
     float_cmp(true, unordered_result);
 }
 void NormalCompileTask::float_cmp(bool is_float, int unordered_result) {
-    Label done;
-    if (is_float) {
-        // XXX get rid of pop here, use ... reg, mem32
-        __ pop_f(xmm1);
-        __ ucomiss(xmm1, xmm0);
-    } else {
-        // XXX get rid of pop here, use ... reg, mem64
-        __ pop_d(xmm1);
-        __ ucomisd(xmm1, xmm0);
-    }
-    if (unordered_result < 0) {
-        __ movl(rax, -1);
-        __ jccb(Assembler::parity, done);
-        __ jccb(Assembler::below, done);
-        __ setb(Assembler::notEqual, rdx);
-        __ movzbl(rax, rdx);
-    } else {
-        __ movl(rax, 1);
-        __ jccb(Assembler::parity, done);
-        __ jccb(Assembler::above, done);
-        __ movl(rax, 0);
-        __ jccb(Assembler::equal, done);
-        __ decrementl(rax);
-    }
-    __ bind(done);
+  Label done;
+  if (is_float) {
+    // XXX get rid of pop here, use ... reg, mem32
+    __ pop_f(v1);
+    __ fcmps(v1, v0);
+  } else {
+    // XXX get rid of pop here, use ... reg, mem64
+    __ pop_d(v1);
+    __ fcmpd(v1, v0);
+  }
+  if (unordered_result < 0) {
+    // we want -1 for unordered or less than, 0 for equal and 1 for
+    // greater than.
+    __ mov(r0, (u_int64_t)-1L);
+    // for FP LT tests less than or unordered
+    __ br(Assembler::LT, done);
+    // install 0 for EQ otherwise 1
+    __ csinc(r0, zr, zr, Assembler::EQ);
+  } else {
+    // we want -1 for less than, 0 for equal and 1 for unordered or
+    // greater than.
+    __ mov(r0, 1L);
+    // for FP HI tests greater than or unordered
+    __ br(Assembler::HI, done);
+    // install 0 for EQ otherwise ~0
+    __ csinv(r0, zr, zr, Assembler::EQ);
+
+  }
+  __ bind(done);
 }
 void NormalCompileTask::double_cmp(int unordered_result) {
     float_cmp(false, unordered_result);
 }
 void NormalCompileTask::if_0cmp(NormalCompileTask::Condition cc) {
-    __ testl(rax, rax);
-    branch(false, false, cc);
-    __ profile_not_taken_branch(rax);
+  transition(itos, vtos);
+  // assume branch is more often taken than not (loops use backward branches)
+  Label not_taken;
+  if (cc == equal)
+    __ cbnzw(r0, not_taken);
+  else if (cc == not_equal)
+    __ cbzw(r0, not_taken);
+  else {
+    __ andsw(zr, r0, r0);
+    __ br(j_not(cc), not_taken);
+  }
+
+  branch(false, false, none);
+  __ bind(not_taken);
+  __ profile_not_taken_branch(r0);
 }
 void NormalCompileTask::if_icmp(NormalCompileTask::Condition cc) {
-    __ pop_i(rdx);
-    __ cmpl(rdx, rax);
-    branch(false, false, cc);
+  transition(itos, vtos);
+  // assume branch is more often taken than not (loops use backward branches)
+  Label not_taken;
+  __ pop_i(r1);
+  __ cmpw(r1, r0, Assembler::LSL);
+  __ br(j_not(cc), not_taken);
+  branch(false, false, none);
+  __ bind(not_taken);
+  __ profile_not_taken_branch(r0);
 }
+
 void NormalCompileTask::if_acmp(NormalCompileTask::Condition cc) {
-    // assume branch is more often taken than not (loops use backward branches)
-    __ pop_ptr(rdx);
-    __ cmpptr(rdx, rax);
-    branch(false, false, cc);
-    __ profile_not_taken_branch(rax);
+  transition(atos, vtos);
+  // assume branch is more often taken than not (loops use backward branches)
+  Label not_taken;
+  __ pop_ptr(r1);
+  __ cmpoops(r1, r0);
+  __ br(j_not(cc), not_taken);
+  branch(false, false, none);
+  __ bind(not_taken);
+  __ profile_not_taken_branch(r0);
 }
+
+static Assembler::Condition j_not(TemplateTable::Condition cc) {
+  switch (cc) {
+  case TemplateTable::equal        : return Assembler::NE;
+  case TemplateTable::not_equal    : return Assembler::EQ;
+  case TemplateTable::less         : return Assembler::GE;
+  case TemplateTable::less_equal   : return Assembler::GT;
+  case TemplateTable::greater      : return Assembler::LE;
+  case TemplateTable::greater_equal: return Assembler::LT;
+  }
+  ShouldNotReachHere();
+  return Assembler::EQ;
+}
+
 void NormalCompileTask::if_nullcmp(NormalCompileTask::Condition cc) {
-    // assume branch is more often taken than not (loops use backward branches)
-    __ testptr(rax, rax);
-    branch(false, false, cc);
-    __ profile_not_taken_branch(rax);
+  transition(atos, vtos);
+  // assume branch is more often taken than not (loops use backward branches)
+  Label not_taken;
+  if (cc == equal)
+    __ cbnz(r0, not_taken);
+  else
+    __ cbz(r0, not_taken);
+  branch(false, false, none);
+  __ bind(not_taken);
+  __ profile_not_taken_branch(r0);
 }
+//not found in aarch64 template table
 void NormalCompileTask::_goto() {
     branch(false, false, none);
     tos = udtos;
@@ -1415,54 +1640,294 @@ void NormalCompileTask::jsr(){
     Unimplemented();
 }
 void NormalCompileTask::ret(){
-    Unimplemented();
+  transition(vtos, vtos);
+  // We might be moving to a safepoint.  The thread which calls
+  // Interpreter::notice_safepoints() will effectively flush its cache
+  // when it makes a system call, but we need to do something to
+  // ensure that we see the changed dispatch table.
+  __ membar(MacroAssembler::LoadLoad);
+
+  locals_index(r1);
+  __ ldr(r1, aaddress(r1)); // get return bci, compute return bcp
+  __ profile_ret(r1, r2);
+  __ ldr(rbcp, Address(rmethod, Method::const_offset()));
+  __ lea(rbcp, Address(rbcp, r1));
+  __ add(rbcp, rbcp, in_bytes(ConstMethod::codes_offset()));
+  __ dispatch_next(vtos);
 }
 void NormalCompileTask::iinc(){
-    signed char* value_pointer = (signed char*)bs->bcp() + 2;
-    __ movl(rdx, *value_pointer); // get constant
-    __ addl(iaddress(bs->get_index_u1()), rdx);
+  transition(vtos, vtos);
+  __ load_signed_byte(r1, at_bcp(2)); // get constant
+  locals_index(r2);
+  __ ldr(r0, iaddress(r2));
+  __ addw(r0, r0, r1);
+  __ str(r0, iaddress(r2));
 }
 void NormalCompileTask::wide_iinc() {
-    Unimplemented();
+  transition(vtos, vtos);
+  // __ mov(r1, zr);
+  __ ldrw(r1, at_bcp(2)); // get constant and index
+  __ rev16(r1, r1);
+  __ ubfx(r2, r1, 0, 16);
+  __ neg(r2, r2);
+  __ sbfx(r1, r1, 16, 16);
+  __ ldr(r0, iaddress(r2));
+  __ addw(r0, r0, r1);
+  __ str(r0, iaddress(r2));
 }
 void NormalCompileTask::branch(bool is_jsr, bool is_wide, Condition c){
-    int target = 0;
-    if (is_wide)
-        target = bs->get_far_dest();
-    else
-        target = bs->get_dest();
+  // We might be moving to a safepoint.  The thread which calls
+  // Interpreter::notice_safepoints() will effectively flush its cache
+  // when it makes a system call, but we need to do something to
+  // ensure that we see the changed dispatch table.
+  __ membar(MacroAssembler::LoadLoad);
 
-    if (is_jsr)
-        Unimplemented();
+  __ profile_taken_branch(r0, r1);
+  const ByteSize be_offset = MethodCounters::backedge_counter_offset() +
+                             InvocationCounter::counter_offset();
+  const ByteSize inv_offset = MethodCounters::invocation_counter_offset() +
+                              InvocationCounter::counter_offset();
 
-    jump_target(target, c);
-    will_run = false;
+  // load branch displacement
+  if (!is_wide) {
+    __ ldrh(r2, at_bcp(1));
+    __ rev16(r2, r2);
+    // sign extend the 16 bit value in r2
+    __ sbfm(r2, r2, 0, 15);
+  } else {
+    __ ldrw(r2, at_bcp(1));
+    __ revw(r2, r2);
+    // sign extend the 32 bit value in r2
+    __ sbfm(r2, r2, 0, 31);
+  }
+
+  // Handle all the JSR stuff here, then exit.
+  // It's much shorter and cleaner than intermingling with the non-JSR
+  // normal-branch stuff occurring below.
+
+  if (is_jsr) {
+    // Pre-load the next target bytecode into rscratch1
+    __ load_unsigned_byte(rscratch1, Address(rbcp, r2));
+    // compute return address as bci
+    __ ldr(rscratch2, Address(rmethod, Method::const_offset()));
+    __ add(rscratch2, rscratch2,
+	   in_bytes(ConstMethod::codes_offset()) - (is_wide ? 5 : 3));
+    __ sub(r1, rbcp, rscratch2);
+    __ push_i(r1);
+    // Adjust the bcp by the 16-bit displacement in r2
+    __ add(rbcp, rbcp, r2);
+    __ dispatch_only(vtos);
+    return;
+  }
+
+  // Normal (non-jsr) branch handling
+
+  // Adjust the bcp by the displacement in r2
+  __ add(rbcp, rbcp, r2);
+
+  assert(UseLoopCounter || !UseOnStackReplacement,
+         "on-stack-replacement requires loop counters");
+  Label backedge_counter_overflow;
+  Label profile_method;
+  Label dispatch;
+  if (UseLoopCounter) {
+    // increment backedge counter for backward branches
+    // r0: MDO
+    // w1: MDO bumped taken-count
+    // r2: target offset
+    __ cmp(r2, zr);
+    __ br(Assembler::GT, dispatch); // count only if backward branch
+
+    // ECN: FIXME: This code smells
+    // check if MethodCounters exists
+    Label has_counters;
+    __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
+    __ cbnz(rscratch1, has_counters);
+    __ push(r0);
+    __ push(r1);
+    __ push(r2);
+    __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+	    InterpreterRuntime::build_method_counters), rmethod);
+    __ pop(r2);
+    __ pop(r1);
+    __ pop(r0);
+    __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
+    __ cbz(rscratch1, dispatch); // No MethodCounters allocated, OutOfMemory
+    __ bind(has_counters);
+
+    if (TieredCompilation) {
+      Label no_mdo;
+      int increment = InvocationCounter::count_increment;
+      int mask = ((1 << Tier0BackedgeNotifyFreqLog) - 1) << InvocationCounter::count_shift;
+      if (ProfileInterpreter) {
+        // Are we profiling?
+        __ ldr(r1, Address(rmethod, in_bytes(Method::method_data_offset())));
+	__ cbz(r1, no_mdo);
+        // Increment the MDO backedge counter
+        const Address mdo_backedge_counter(r1, in_bytes(MethodData::backedge_counter_offset()) +
+                                           in_bytes(InvocationCounter::counter_offset()));
+        __ increment_mask_and_jump(mdo_backedge_counter, increment, mask,
+                                   r0, rscratch2, false, Assembler::EQ, &backedge_counter_overflow);
+        __ b(dispatch);
+      }
+      __ bind(no_mdo);
+      // Increment backedge counter in MethodCounters*
+      __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
+      __ increment_mask_and_jump(Address(rscratch1, be_offset), increment, mask,
+                                 r0, rscratch2, false, Assembler::EQ, &backedge_counter_overflow);
+    } else {
+      // increment counter
+      __ ldr(rscratch2, Address(rmethod, Method::method_counters_offset()));
+      __ ldrw(r0, Address(rscratch2, be_offset));        // load backedge counter
+      __ addw(rscratch1, r0, InvocationCounter::count_increment); // increment counter
+      __ strw(rscratch1, Address(rscratch2, be_offset));        // store counter
+
+      __ ldrw(r0, Address(rscratch2, inv_offset));    // load invocation counter
+      __ andw(r0, r0, (unsigned)InvocationCounter::count_mask_value); // and the status bits
+      __ addw(r0, r0, rscratch1);        // add both counters
+
+      if (ProfileInterpreter) {
+        // Test to see if we should create a method data oop
+	__ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterProfileLimit));
+	__ ldrw(rscratch1, rscratch1);
+        __ cmpw(r0, rscratch1);
+        __ br(Assembler::LT, dispatch);
+
+        // if no method data exists, go to profile method
+        __ test_method_data_pointer(r0, profile_method);
+
+        if (UseOnStackReplacement) {
+          // check for overflow against w1 which is the MDO taken count
+	  __ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterBackwardBranchLimit));
+	  __ ldrw(rscratch1, rscratch1);
+          __ cmpw(r1, rscratch1);
+          __ br(Assembler::LO, dispatch); // Intel == Assembler::below
+
+          // When ProfileInterpreter is on, the backedge_count comes
+          // from the MethodData*, which value does not get reset on
+          // the call to frequency_counter_overflow().  To avoid
+          // excessive calls to the overflow routine while the method is
+          // being compiled, add a second test to make sure the overflow
+          // function is called only once every overflow_frequency.
+          const int overflow_frequency = 1024;
+          __ andsw(r1, r1, overflow_frequency - 1);
+          __ br(Assembler::EQ, backedge_counter_overflow);
+
+        }
+      } else {
+        if (UseOnStackReplacement) {
+          // check for overflow against w0, which is the sum of the
+          // counters
+	  __ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterBackwardBranchLimit));
+	  __ ldrw(rscratch1, rscratch1);
+          __ cmpw(r0, rscratch1);
+          __ br(Assembler::HS, backedge_counter_overflow); // Intel == Assembler::aboveEqual
+        }
+      }
+    }
+  }
+  __ bind(dispatch);
+
+  // Pre-load the next target bytecode into rscratch1
+  __ load_unsigned_byte(rscratch1, Address(rbcp, 0));
+
+  // continue with the bytecode @ target
+  // rscratch1: target bytecode
+  // rbcp: target bcp
+  __ dispatch_only(vtos);
+
+  if (UseLoopCounter) {
+    if (ProfileInterpreter) {
+      // Out-of-line code to allocate method data oop.
+      __ bind(profile_method);
+      __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::profile_method));
+      __ load_unsigned_byte(r1, Address(rbcp, 0));  // restore target bytecode
+      __ set_method_data_pointer_for_bcp();
+      __ b(dispatch);
+    }
+
+    if (TieredCompilation || UseOnStackReplacement) {
+      // invocation counter overflow
+      __ bind(backedge_counter_overflow);
+      __ neg(r2, r2);
+      __ add(r2, r2, rbcp);	// branch bcp
+      // IcoResult frequency_counter_overflow([JavaThread*], address branch_bcp)
+      __ call_VM(noreg,
+                 CAST_FROM_FN_PTR(address,
+                                  InterpreterRuntime::frequency_counter_overflow),
+                 r2);
+      if (!UseOnStackReplacement)
+        __ b(dispatch);
+    }
+
+    if (UseOnStackReplacement) {
+      __ load_unsigned_byte(r1, Address(rbcp, 0));  // restore target bytecode
+
+      // r0: osr nmethod (osr ok) or NULL (osr not possible)
+      // w1: target bytecode
+      // r2: scratch
+      __ cbz(r0, dispatch);	// test result -- no osr if null
+      // nmethod may have been invalidated (VM may block upon call_VM return)
+      __ ldrw(r2, Address(r0, nmethod::entry_bci_offset()));
+      // InvalidOSREntryBci == -2 which overflows cmpw as unsigned
+      // use cmnw against -InvalidOSREntryBci which does the same thing
+      __ cmn(r2, -InvalidOSREntryBci);
+      __ br(Assembler::EQ, dispatch);
+
+      // We have the address of an on stack replacement routine in r0
+      // We need to prepare to execute the OSR method. First we must
+      // migrate the locals and monitors off of the stack.
+
+      __ mov(r19, r0);                             // save the nmethod
+
+      call_VM(noreg, CAST_FROM_FN_PTR(address, SharedRuntime::OSR_migration_begin));
+
+      // r0 is OSR buffer, move it to expected parameter location
+      __ mov(j_rarg0, r0);
+
+      // remove activation
+      // get sender esp
+      __ ldr(esp,
+	  Address(rfp, frame::interpreter_frame_sender_sp_offset * wordSize));
+      // remove frame anchor
+      __ leave();
+      // Ensure compiled code always sees stack at proper alignment
+      __ andr(sp, esp, -16);
+
+      // and begin the OSR nmethod
+      __ ldr(rscratch1, Address(r19, nmethod::osr_entry_point_offset()));
+      __ br(rscratch1);
+    }
+  }
 }
 void NormalCompileTask::lmul() {
-    __ pop_l(rdx);
-    __ imulq(rax, rdx);
+  transition(ltos, ltos);
+  __ pop_l(r1);
+  __ mul(r0, r0, r1);
 }
 void NormalCompileTask::ldiv(){
-    __ mov(rcx, rax);
-    __ pop_l(rax);
-    // generate explicit div0 check
-    __ testq(rcx, rcx);
-    __ jump_cc(Assembler::zero,
-               ExternalAddress(Interpreter::_throw_ArithmeticException_entry));
-    // Note: could xor rax and rcx and compare with (-1 ^ min_int). If
-    //       they are not equal, one could do a normal division (no correction
-    //       needed), which may speed up this implementation for the common case.
-    //       (see also JVM spec., p.243 & p.271)
-    __ corrected_idivq(rcx); // kills rbx
+  transition(ltos, ltos);
+  // explicitly check for div0
+  Label no_div0;
+  __ cbnz(r0, no_div0);
+  __ mov(rscratch1, Interpreter::_throw_ArithmeticException_entry);
+  __ br(rscratch1);
+  __ bind(no_div0);
+  __ pop_l(r1);
+  // r0 <== r1 ldiv r0
+  __ corrected_idivq(r0, r1, r0, /* want_remainder */ false);
 }
 void NormalCompileTask::idiv(){
-    __ movl(rcx, rax);
-    __ pop_i(rax);
-    // Note: could xor eax and ecx and compare with (-1 ^ min_int). If
-    //       they are not equal, one could do a normal division (no correction
-    //       needed), which may speed up this implementation for the common case.
-    //       (see also JVM spec., p.243 & p.271)
-    __ corrected_idivl(rcx);
+  transition(itos, itos);
+  // explicitly check for div0
+  Label no_div0;
+  __ cbnzw(r0, no_div0);
+  __ mov(rscratch1, Interpreter::_throw_ArithmeticException_entry);
+  __ br(rscratch1);
+  __ bind(no_div0);
+  __ pop_i(r1);
+  // r0 <== r1 idiv r0
+  __ corrected_idivl(r0, r1, r0, /* want_remainder */ false);
 }
 
 void NormalCompileTask::entry() {
@@ -1620,91 +2085,172 @@ void NormalCompileTask::index_check(Register array, Register index) {
 }
 //void NormalCompileTask::locals_index(Register reg, int offset) { Unimplemented(); }
 
+//-----------------------------------------------------------------------------
+// Allocation
+
 void NormalCompileTask::_new() {
-    int idx = bs->get_index_u2();
-    constantTag tag =  method->constants()->tag_at(idx);
-    if (!tag.is_klass()) {
-        if (will_run) {
-            Bytecode_new bytecode_new(method, method->bcp_from(bs->bci()));
-            Klass* klass = method->constants()->klass_at(bytecode_new.index(), JavaThread::current());
-            __ movptr(rdx, (intptr_t) klass);
-        } else {
-            // do the patch
-            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
-            __ movptr(rdx, NULL_WORD);
-            patchingStub->install();
-            append_stub(patchingStub);
-        }
+  transition(vtos, atos);
+
+  __ get_unsigned_2_byte_index_at_bcp(r3, 1);
+  Label slow_case;
+  Label done;
+  Label initialize_header;
+  Label initialize_object; // including clearing the fields
+  Label allocate_shared;
+
+  __ get_cpool_and_tags(r4, r0);
+  // Make sure the class we're about to instantiate has been resolved.
+  // This is done before loading InstanceKlass to be consistent with the order
+  // how Constant Pool is updated (see ConstantPool::klass_at_put)
+  const int tags_offset = Array<u1>::base_offset_in_bytes();
+  __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
+  __ lea(rscratch1, Address(rscratch1, tags_offset));
+  __ ldarb(rscratch1, rscratch1);
+  __ cmp(rscratch1, JVM_CONSTANT_Class);
+  __ br(Assembler::NE, slow_case);
+
+  // get InstanceKlass
+  __ lea(r4, Address(r4, r3, Address::lsl(3)));
+  __ ldr(r4, Address(r4, sizeof(ConstantPool)));
+
+  // make sure klass is initialized & doesn't have finalizer
+  // make sure klass is fully initialized
+  __ ldrb(rscratch1, Address(r4, InstanceKlass::init_state_offset()));
+  __ cmp(rscratch1, InstanceKlass::fully_initialized);
+  __ br(Assembler::NE, slow_case);
+
+  // get instance_size in InstanceKlass (scaled to a count of bytes)
+  __ ldrw(r3,
+          Address(r4,
+                  Klass::layout_helper_offset()));
+  // test to see if it has a finalizer or is malformed in some way
+  __ tbnz(r3, exact_log2(Klass::_lh_instance_slow_path_bit), slow_case);
+
+  // Allocate the instance
+  // 1) Try to allocate in the TLAB
+  // 2) if fail and the object is large allocate in the shared Eden
+  // 3) if the above fails (or is not applicable), go to a slow case
+  // (creates a new TLAB, etc.)
+
+  const bool allow_shared_alloc =
+    Universe::heap()->supports_inline_contig_alloc() && !CMSIncrementalMode;
+
+  if (UseTLAB) {
+    __ tlab_allocate(r0, r3, 0, noreg, r1,
+		     allow_shared_alloc ? allocate_shared : slow_case);
+
+    if (ZeroTLAB) {
+      // the fields have been already cleared
+      __ b(initialize_header);
     } else {
-        Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
-        __ movptr(rdx, (intptr_t) klass);
+      // initialize both the header and fields
+      __ b(initialize_object);
     }
-    gc_point();
-    __ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
+  }
+
+  // Allocation in the shared Eden, if allowed.
+  //
+  // r3: instance size in bytes
+  if (allow_shared_alloc) {
+    __ bind(allocate_shared);
+
+    __ eden_allocate(r0, r3, 0, r10, slow_case);
+    __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
+  }
+
+  if (UseTLAB || Universe::heap()->supports_inline_contig_alloc()) {
+    // The object is initialized before the header.  If the object size is
+    // zero, go directly to the header initialization.
+    __ bind(initialize_object);
+    __ sub(r3, r3, sizeof(oopDesc));
+    __ cbz(r3, initialize_header);
+
+    // Initialize object fields
+    {
+      __ add(r2, r0, sizeof(oopDesc));
+      Label loop;
+      __ bind(loop);
+      __ str(zr, Address(__ post(r2, BytesPerLong)));
+      __ sub(r3, r3, BytesPerLong);
+      __ cbnz(r3, loop);
+    }
+
+    // initialize object header only.
+    __ bind(initialize_header);
+    if (UseBiasedLocking) {
+      __ ldr(rscratch1, Address(r4, Klass::prototype_header_offset()));
+    } else {
+      __ mov(rscratch1, (intptr_t)markOopDesc::prototype());
+    }
+    __ str(rscratch1, Address(r0, oopDesc::mark_offset_in_bytes()));
+    __ store_klass_gap(r0, zr);  // zero klass gap for compressed oops
+    __ store_klass(r0, r4);      // store klass last
+
+    {
+      SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
+      // Trigger dtrace event for fastpath
+      __ push(atos); // save the return value
+      __ call_VM_leaf(
+           CAST_FROM_FN_PTR(address, SharedRuntime::dtrace_object_alloc), r0);
+      __ pop(atos); // restore the return value
+
+    }
+    __ b(done);
+  }
+
+  // slow case
+  __ bind(slow_case);
+  __ get_constant_pool(c_rarg1);
+  __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
+  __ verify_oop(r0);
+
+  // continue
+  __ bind(done);
+  // Must prevent reordering of stores for object initialization with stores that publish the new object.
+  __ membar(Assembler::StoreStore);
 }
 
 
 void NormalCompileTask::newarray() {
-    Register length = rbx;
-    Register klass  = rdx;
-    gc_point();
-    __ movl(length, rax);
-    if (EnclaveMemory::_type_array_klass == NULL) {
-        EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
-    }
-    __ movptr(rax, (intptr_t)EnclaveMemory::_type_array_klass);
-    __ movptr(klass, Address(rax, (int32_t)bs->get_index_u1(), Address::times_ptr));
-
-    gc_point();
-    __ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
+  transition(itos, atos);
+  __ load_unsigned_byte(c_rarg1, at_bcp(1));
+  __ mov(c_rarg2, r0);
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
+          c_rarg1, c_rarg2);
+  // Must prevent reordering of stores for object initialization with stores that publish the new object.
+  __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::anewarray() {
-    gc_point();
-    int idx = bs->get_index_u2();
-    __ movl(rbx, rax);
-    constantTag tag =  method->constants()->tag_at(idx);
-    if (!tag.is_klass()) {
-        if (will_run) {
-            Bytecode_anewarray anew(method, method->bcp_from(bs->bci()));
-            Klass* ek = method->constants()->klass_at(anew.index(), JavaThread::current());
-            Klass* klass = (Klass*)KLASS_array_klass(ek, 1, 0);
-            __ movptr(rdx, (intptr_t)klass);
-        } else {
-            // do the patch
-            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
-            __ movptr(rdx, NULL_WORD);
-            patchingStub->install();
-            append_stub(patchingStub);
-        }
-    } else {
-        Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
-        klass = (Klass*)KLASS_array_klass(klass, 1, 0);
-        __ movptr(rdx, (intptr_t) klass);
-    }
-
-    gc_point();
-    __ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_object_array_id)));
+  transition(itos, atos);
+  __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
+  __ get_constant_pool(c_rarg1);
+  __ mov(c_rarg3, r0);
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
+          c_rarg1, c_rarg2, c_rarg3);
+  // Must prevent reordering of stores for object initialization with stores that publish the new object.
+  __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::arraylength() {
-    __ null_check(rax, arrayOopDesc::length_offset_in_bytes());
-    __ movl(rax, Address(rax, arrayOopDesc::length_offset_in_bytes()));
+  transition(atos, itos);
+  __ null_check(r0, arrayOopDesc::length_offset_in_bytes());
+  __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
 
 void NormalCompileTask::multianewarray() {
-    gc_point();
-    int nfold = bs->bcp()[3];
-    __ lea(rcx, Address(rsp, nfold, Address::times_8, -wordSize));
-
-    __ movptr(c_rarg1, (intptr_t)method->constants());
-    __ movl(c_rarg2, bs->get_index_u2());
-    __ mov(c_rarg3, rcx);
-    __ movl(c_rarg4, nfold);
-
-    __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_cpoll_multi_array));
-    __ lea(rsp, Address(rsp, nfold, Address::times_8));
-    __ current_entry->clear_bit_prev(nfold);
+  transition(vtos, atos);
+  __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
+  // last dim is on top of stack; we want address of first one:
+  // first_addr = last_addr + (ndims - 1) * wordSize
+  __ lea(c_rarg1, Address(esp, r0, Address::uxtw(3)));
+  __ sub(c_rarg1, c_rarg1, wordSize);
+  call_VM(r0,
+          CAST_FROM_FN_PTR(address, InterpreterRuntime::multianewarray),
+          c_rarg1);
+  __ load_unsigned_byte(r1, at_bcp(3));
+  __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
 
 void NormalCompileTask::putfield(int byte_no) {
@@ -1724,48 +2270,200 @@ void NormalCompileTask::getstatic(int byte_no) {
 }
 
 void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
-    //  1. resolved and put index into rdx, obj in rax, volatile??
-    //  2. put the object
-    // this expects tos is cached
-    if (tos == vtos)
-        __ pop(rax);
+  transition(vtos, vtos);
 
-    const Register obj = rcx;
+  const Register cache = r2;
+  const Register index = r3;
+  const Register obj   = r2;
+  const Register off   = r19;
+  const Register flags = r0;
+  const Register bc    = r4;
 
-    int off = 0xa1;
-    TosState tosState = ilgl;
+  resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
+  jvmti_post_field_mod(cache, index, is_static);
+  load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
 
-    // we do not need to pop the field
-    // __ pop(tos);
+  Label Done;
+  __ mov(r5, flags);
 
-    // pop the object
+  {
+    Label notVolatile;
+    __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
+    __ membar(MacroAssembler::StoreStore | MacroAssembler::LoadStore);
+    __ bind(notVolatile);
+  }
+
+  // field address
+  const Address field(obj, off);
+
+  Label notByte, notBool, notInt, notShort, notChar,
+        notLong, notFloat, notObj, notDouble;
+
+  // x86 uses a shift and mask or wings it with a shift plus assert
+  // the mask is not needed. aarch64 just uses bitfield extract
+  __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
+
+  assert(btos == 0, "change code, btos != 0");
+  __ cbnz(flags, notByte);
+
+  // btos
+  {
+    __ pop(btos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strb(r0, field);
     if (!is_static) {
-        __ pop_ptr(obj);
-        __ sgx_bound_check(obj, out_of_bound);
-        has_bound_check = true;
+      patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
     }
+    __ b(Done);
+  }
 
-    PatchingStub *patching = resolve_cache_and_index(byte_no, obj, off, tosState, is_static);
+  __ bind(notByte);
+  __ cmp(flags, ztos);
+  __ br(Assembler::NE, notBool);
 
-    Address field(obj, off);
-    switch(tosState) {
-        case btos: __ movb(field, rax); break;
-        case ztos: __ movb(field, rax); break;
-        case itos: __ movl(field, rax); break;
-        case ctos: __ movw(field, rax); break;
-        case stos: __ movw(field, rax); break;
-        case ltos: __ movq(field, rax); break;
-        case ftos: __ movflt(field, xmm0); break;
-        case dtos: __ movdbl(field, xmm0); break;
-        case atos: __ store_heap_oop(field, rax); break;
-        default:
-            ShouldNotReachHere();
+  // ztos
+  {
+    __ pop(ztos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ andw(r0, r0, 0x1);
+    __ strb(r0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_zputfield, bc, r1, true, byte_no);
     }
-    tos = vtos;
-    if (patching) {
-        patching->install();
-        append_stub(patching);
+    __ b(Done);
+  }
+
+  __ bind(notBool);
+  __ cmp(flags, atos);
+  __ br(Assembler::NE, notObj);
+
+  // atos
+  {
+    __ pop(atos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    // Store into the field
+    do_oop_store(_masm, field, r0, _bs->kind(), false);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_aputfield, bc, r1, true, byte_no);
     }
+    __ b(Done);
+  }
+
+  __ bind(notObj);
+  __ cmp(flags, itos);
+  __ br(Assembler::NE, notInt);
+
+  // itos
+  {
+    __ pop(itos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strw(r0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
+    }
+    __ b(Done);
+  }
+
+  __ bind(notInt);
+  __ cmp(flags, ctos);
+  __ br(Assembler::NE, notChar);
+
+  // ctos
+  {
+    __ pop(ctos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strh(r0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
+    }
+    __ b(Done);
+  }
+
+  __ bind(notChar);
+  __ cmp(flags, stos);
+  __ br(Assembler::NE, notShort);
+
+  // stos
+  {
+    __ pop(stos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strh(r0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
+    }
+    __ b(Done);
+  }
+
+  __ bind(notShort);
+  __ cmp(flags, ltos);
+  __ br(Assembler::NE, notLong);
+
+  // ltos
+  {
+    __ pop(ltos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ str(r0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
+    }
+    __ b(Done);
+  }
+
+  __ bind(notLong);
+  __ cmp(flags, ftos);
+  __ br(Assembler::NE, notFloat);
+
+  // ftos
+  {
+    __ pop(ftos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strs(v0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
+    }
+    __ b(Done);
+  }
+
+  __ bind(notFloat);
+#ifdef ASSERT
+  __ cmp(flags, dtos);
+  __ br(Assembler::NE, notDouble);
+#endif
+
+  // dtos
+  {
+    __ pop(dtos);
+    if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    __ strd(v0, field);
+    if (!is_static) {
+      patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
+    }
+  }
+
+#ifdef ASSERT
+  __ b(Done);
+
+  __ bind(notDouble);
+  __ stop("Bad state");
+#endif
+
+  __ bind(Done);
+
+  {
+    Label notVolatile;
+    __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
+    __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
+    __ bind(notVolatile);
+  }
 }
 
 void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
@@ -1868,16 +2566,60 @@ void NormalCompileTask::goto_w() {
     branch(false, true, none);
 }
 
-void NormalCompileTask::invokevirtual(int byte_no) {
-    // how to do a invokevirtual call?
-    // 1. resolve the function first
-    // 2. compile the function, if not
-    // 3. call the function
-    // 4. put the function, jmp to / put the parameters
-    // 5. the return handling of function
+void NormalCompileTask::invokevirtual_helper(Register index,
+                                         Register recv,
+                                         Register flags)
+{
+  // Uses temporary registers r0, r3
+  assert_different_registers(index, recv, r0, r3);
+  // Test for an invoke of a final method
+  Label notFinal;
+  __ tbz(flags, ConstantPoolCacheEntry::is_vfinal_shift, notFinal);
 
-    // * need to change the calling convention, if necessary
-    invoke(byte_no, rbx, rbx, rcx, rdx);
+  const Register method = index;  // method must be rmethod
+  assert(method == rmethod,
+         "methodOop must be rmethod for interpreter calling convention");
+
+  // do the call - the index is actually the method to call
+  // that is, f2 is a vtable index if !is_vfinal, else f2 is a Method*
+
+  // It's final, need a null check here!
+  __ null_check(recv);
+
+  // profile this call
+  __ profile_final_call(r0);
+  __ profile_arguments_type(r0, method, r4, true);
+
+  __ jump_from_interpreted(method, r0);
+
+  __ bind(notFinal);
+
+  // get receiver klass
+  __ null_check(recv, oopDesc::klass_offset_in_bytes());
+  __ load_klass(r0, recv);
+
+  // profile this call
+  __ profile_virtual_call(r0, rlocals, r3);
+
+  // get target methodOop & entry point
+  __ lookup_virtual_method(r0, index, method);
+  __ profile_arguments_type(r3, method, r4, true);
+  // FIXME -- this looks completely redundant. is it?
+  // __ ldr(r3, Address(method, Method::interpreter_entry_offset()));
+  __ jump_from_interpreted(method, r3);
+}
+
+void NormalCompileTask::invokevirtual(int byte_no) {
+  transition(vtos, vtos);
+  assert(byte_no == f2_byte, "use this argument");
+
+  prepare_invoke(byte_no, rmethod, noreg, r2, r3);
+
+  // rmethod: index (actually a Method*)
+  // r2: receiver
+  // r3: flags
+
+  invokevirtual_helper(rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
@@ -1885,15 +2627,140 @@ void NormalCompileTask::invokespecial(int byte_no) {
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
-    invoke(byte_no, rbx, rbx, rcx, rdx);
+  transition(vtos, vtos);
+  assert(byte_no == f1_byte, "use this argument");
+
+  prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
+		 r2, r3); // recv, flags
+
+  // r0: interface klass (from f1)
+  // rmethod: method (from f2)
+  // r2: receiver
+  // r3: flags
+
+  // Special case of invokeinterface called for virtual method of
+  // java.lang.Object.  See cpCacheOop.cpp for details.
+  // This code isn't produced by javac, but could be produced by
+  // another compliant java compiler.
+  Label notMethod;
+  __ tbz(r3, ConstantPoolCacheEntry::is_forced_virtual_shift, notMethod);
+
+  invokevirtual_helper(rmethod, r2, r3);
+  __ bind(notMethod);
+
+  // Get receiver klass into r3 - also a null check
+  __ restore_locals();
+  __ null_check(r2, oopDesc::klass_offset_in_bytes());
+  __ load_klass(r3, r2);
+
+  Label no_such_interface, no_such_method;
+
+  // Receiver subtype check against REFC.
+  // Superklass in r0. Subklass in r3. Blows rscratch2, r13.
+  __ lookup_interface_method(// inputs: rec. class, interface, itable index
+                             r3, r0, noreg,
+                             // outputs: scan temp. reg, scan temp. reg
+                             rscratch2, r13,
+                             no_such_interface,
+                             /*return_method=*/false);
+
+  // profile this call
+  __ profile_virtual_call(r3, r13, r19);
+
+  // Get declaring interface class from method, and itable index
+  __ ldr(r0, Address(rmethod, Method::const_offset()));
+  __ ldr(r0, Address(r0, ConstMethod::constants_offset()));
+  __ ldr(r0, Address(r0, ConstantPool::pool_holder_offset_in_bytes()));
+  __ ldrw(rmethod, Address(rmethod, Method::itable_index_offset()));
+  __ subw(rmethod, rmethod, Method::itable_index_max);
+  __ negw(rmethod, rmethod);
+
+  __ lookup_interface_method(// inputs: rec. class, interface, itable index
+                             r3, r0, rmethod,
+                             // outputs: method, scan temp. reg
+                             rmethod, r13,
+                             no_such_interface);
+
+  // rmethod,: methodOop to call
+  // r2: receiver
+  // Check for abstract method error
+  // Note: This should be done more efficiently via a throw_abstract_method_error
+  //       interpreter entry point and a conditional jump to it in case of a null
+  //       method.
+  __ cbz(rmethod, no_such_method);
+
+  __ profile_arguments_type(r3, rmethod, r13, true);
+
+  // do the call
+  // r2: receiver
+  // rmethod,: methodOop
+  __ jump_from_interpreted(rmethod, r3);
+  __ should_not_reach_here();
+
+  // exception handling code follows...
+  // note: must restore interpreter registers to canonical
+  //       state for exception handling to work correctly!
+
+  __ bind(no_such_method);
+  // throw exception
+  __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
+  __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
+  __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_AbstractMethodError));
+  // the call_VM checks for exception, so we should never return here.
+  __ should_not_reach_here();
+
+  __ bind(no_such_interface);
+  // throw exception
+  __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
+  __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
+  __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+                   InterpreterRuntime::throw_IncompatibleClassChangeError));
+  // the call_VM checks for exception, so we should never return here.
+  __ should_not_reach_here();
+  return;
 }
 
 void NormalCompileTask::invokestatic(int byte_no) {
-    invoke(byte_no, rbx, noreg, noreg, noreg);
+  transition(vtos, vtos);
+  assert(byte_no == f1_byte, "use this argument");
+
+  prepare_invoke(byte_no, rmethod);  // get f1 Method*
+  // do the call
+  __ profile_call(r0);
+  __ profile_arguments_type(r0, rmethod, r4, false);
+  __ jump_from_interpreted(rmethod, r0);
 }
 
 void NormalCompileTask::invokedynamic(int byte_no) {
+  transition(vtos, vtos);
+  assert(byte_no == f1_byte, "use this argument");
 
+  if (!EnableInvokeDynamic) {
+    // We should not encounter this bytecode if !EnableInvokeDynamic.
+    // The verifier will stop it.  However, if we get past the verifier,
+    // this will stop the thread in a reasonable way, without crashing the JVM.
+    __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+                     InterpreterRuntime::throw_IncompatibleClassChangeError));
+    // the call_VM checks for exception, so we should never return here.
+    __ should_not_reach_here();
+    return;
+  }
+
+  prepare_invoke(byte_no, rmethod, r0);
+
+  // r0: CallSite object (from cpool->resolved_references[])
+  // rmethod: MH.linkToCallSite method (from f2)
+
+  // Note:  r0_callsite is already pushed by prepare_invoke
+
+  // %%% should make a type profile for any invokedynamic that takes a ref argument
+  // profile this call
+  __ profile_call(rbcp);
+  __ profile_arguments_type(r3, rmethod, r13, false);
+
+  __ verify_oop(r0);
+
+  __ jump_from_interpreted(rmethod, r0);
 }
 
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
@@ -2066,109 +2933,114 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 }
 
 void NormalCompileTask::checkcast() {
-    Label done, is_null, ok_is_subtype, quicked, resolved;
+  transition(atos, atos);
+  Label done, is_null, ok_is_subtype, quicked, resolved;
+  __ cbz(r0, is_null);
 
-    __ testptr(rax, rax); // object is in rax
-    __ jcc(Assembler::zero, is_null);
-    // rax: obj
-    int idx = bs->get_index_u2();
-    constantTag tag =  method->constants()->tag_at(idx);
-    if (tag.is_klass()) {
-       __ mov(rdx, rax);
-       __ movptr(rax, (intptr_t)method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx));
-    } else {
-        __ mov(rdx, rax);
-        if (will_run) {
-            Bytecode_checkcast cc(method, method->bcp_from(bs->bci()));
-            Klass* klass = method->constants()->klass_at(cc.index(), JavaThread::current());
-            __ movptr(rax, (intptr_t)klass);
-        } else {
-            PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
-            __ movptr(rax, NULL_WORD);
-            stub->install();
-            append_stub(stub);
-        }
-    }
+  // Get cpool & tags index
+  __ get_cpool_and_tags(r2, r3); // r2=cpool, r3=tags array
+  __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
+  // See if bytecode has already been quicked
+  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+  __ lea(r1, Address(rscratch1, r19));
+  __ ldarb(r1, r1);
+  __ cmp(r1, JVM_CONSTANT_Class);
+  __ br(Assembler::EQ, quicked);
 
-    // rax: klass
-    // rdx: obj
+  __ push(atos); // save receiver for result, and for GC
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  // vm_result_2 has metadata result
+  __ get_vm_result_2(r0, rthread);
+  __ pop(r3); // restore receiver
+  __ b(resolved);
 
-    __ load_klass(rbx, rdx);
+  // Get superklass in r0 and subklass in r3
+  __ bind(quicked);
+  __ mov(r3, r0); // Save object in r3; r0 needed for subtype check
+  __ lea(r0, Address(r2, r19, Address::lsl(3)));
+  __ ldr(r0, Address(r0, sizeof(ConstantPool)));
 
-    // Generate subtype check.  Blows rcx, rdi.  Object in rdx.
-    // Superklass in rax.  Subklass in rbx.
-    __ gen_subtype_check(rbx, ok_is_subtype);
+  __ bind(resolved);
+  __ load_klass(r19, r3);
 
-    // Come here on failure
-    __ push_ptr(rdx);
-    // object is at TOS
-    __ jump(ExternalAddress(Interpreter::_throw_ClassCastException_entry));
+  // Generate subtype check.  Blows r2, r5.  Object in r3.
+  // Superklass in r0.  Subklass in r19.
+  __ gen_subtype_check(r19, ok_is_subtype);
 
-    // Come here on success
-    __ bind(ok_is_subtype);
-    __ mov(rax, rdx); // Restore object in rdx
+  // Come here on failure
+  __ push(r3);
+  // object is at TOS
+  __ b(Interpreter::_throw_ClassCastException_entry);
 
-    // Collect counts on whether this check-cast sees NULLs a lot or not.
-    if (ProfileInterpreter) {
-        __ jmp(done);
-        __ bind(is_null);
-        __ profile_null_seen(rcx);
-    } else {
-        __ bind(is_null);   // same as 'done'
-    }
-    __ bind(done);
+  // Come here on success
+  __ bind(ok_is_subtype);
+  __ mov(r0, r3); // Restore object in r3
+
+  // Collect counts on whether this test sees NULLs a lot or not.
+  if (ProfileInterpreter) {
+    __ b(done);
+    __ bind(is_null);
+    __ profile_null_seen(r2);
+  } else {
+    __ bind(is_null);   // same as 'done'
+  }
+  __ bind(done);
 }
 
 void NormalCompileTask::instanceof() {
+  transition(atos, itos);
+  Label done, is_null, ok_is_subtype, quicked, resolved;
+  __ cbz(r0, is_null);
 
-    Label done, is_null, ok_is_subtype, quicked, resolved;
-    __ testptr(rax, rax);
-    __ jcc(Assembler::zero, is_null);
+  // Get cpool & tags index
+  __ get_cpool_and_tags(r2, r3); // r2=cpool, r3=tags array
+  __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
+  // See if bytecode has already been quicked
+  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+  __ lea(r1, Address(rscratch1, r19));
+  __ ldarb(r1, r1);
+  __ cmp(r1, JVM_CONSTANT_Class);
+  __ br(Assembler::EQ, quicked);
 
-    // rax: obj
-    int idx = bs->get_index_u2();
-    constantTag tag =  method->constants()->tag_at(idx);
-    if (tag.is_klass()) {
-        __ mov(rdx, rax);
-        __ movptr(rax, (intptr_t)method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx));
-    } else {
-        __ mov(rdx, rax);
-        if (will_run) {
-            Bytecode_instanceof io(method, method->bcp_from(bs->bci()));
-            Klass* k = method->constants()->klass_at(io.index(), JavaThread::current());
-            __ movptr(rax, (intptr_t)k);
-        } else {
-            PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
-            __ movptr(rax, NULL_WORD);
-            stub->install();
-            append_stub(stub);
-        }
-    }
-    __ load_klass(rdx, rdx);
-    // rdx: klass of obj
-    // rax: klass of instanceof klass
+  __ push(atos); // save receiver for result, and for GC
+  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  // vm_result_2 has metadata result
+  __ get_vm_result_2(r0, rthread);
+  __ pop(r3); // restore receiver
+  __ verify_oop(r3);
+  __ load_klass(r3, r3);
+  __ b(resolved);
 
+  // Get superklass in r0 and subklass in r3
+  __ bind(quicked);
+  __ load_klass(r3, r0);
+  __ lea(r0, Address(r2, r19, Address::lsl(3)));
+  __ ldr(r0, Address(r0, sizeof(ConstantPool)));
 
-    // Generate subtype check.  Blows rcx, rdi
-    // Superklass in rax.  Subklass in rdx.
-    __ gen_subtype_check(rdx, ok_is_subtype);
+  __ bind(resolved);
 
-    // Come here on failure
-    __ xorl(rax, rax);
-    __ jmpb(done);
-    // Come here on success
-    __ bind(ok_is_subtype);
-    __ movl(rax, 1);
+  // Generate subtype check.  Blows r2, r5
+  // Superklass in r0.  Subklass in r3.
+  __ gen_subtype_check(r3, ok_is_subtype);
 
-    // Collect counts on whether this test sees NULLs a lot or not.
-    if (ProfileInterpreter) {
-        __ jmp(done);
-        __ bind(is_null);
-        __ profile_null_seen(rcx);
-    } else {
-        __ bind(is_null);   // same as 'done'
-    }
-    __ bind(done);
+  // Come here on failure
+  __ mov(r0, 0);
+  __ b(done);
+  // Come here on success
+  __ bind(ok_is_subtype);
+  __ mov(r0, 1);
+
+  // Collect counts on whether this test sees NULLs a lot or not.
+  if (ProfileInterpreter) {
+    __ b(done);
+    __ bind(is_null);
+    __ profile_null_seen(r2);
+  } else {
+    __ bind(is_null);   // same as 'done'
+  }
+  __ bind(done);
+  // r0 = 0: obj == NULL or  obj is not an instanceof the specified klass
+  // r0 = 1: obj != NULL and obj is     an instanceof the specified klass
 }
 
 void NormalCompileTask::gc_point() {
@@ -2177,72 +3049,42 @@ void NormalCompileTask::gc_point() {
 }
 
 void NormalCompileTask::lookupswitch() {
-  // bytecode structure of tableswitch
-  // u1 opcode
-  // 0 - 3 byte padding
-  // default_offset
-  // n
-  // <high>
-  Label default_case;
-  // the val is stored in rax
-  intptr_t offset_start = round_to(bs->bcp() + 1, 4);
-  int32_t* offsets = (int32_t*)(offset_start);
-
-  int branch_n = Bytes::get_Java_u4((address)(offsets + 1));
-  int default_bci_offset = Bytes::get_Java_u4((address)(offsets + 0));
-  int target;
-  int target_key;
-  for (int i = 0;i < branch_n;i++) {
-    target_key = Bytes::get_Java_u4((address)(offsets + i * 2 + 2));
-    target = bs->bci() + Bytes::get_Java_u4((address)(offsets + i * 2 + 2 + 1));
-    __ cmpl(rax, target_key);
-    jump_target(target, equal);
-  }
-  jump_target(bs->bci() + default_bci_offset, none);
+  transition(itos, itos);
+  __ stop("lookupswitch bytecode should have been rewritten");
 }
 
 void NormalCompileTask::tableswitch() {
-    // bytecode structure of tableswitch
-    // u1 opcode
-    // 0 - 3 byte padding
-    // default_offset
-    // <low>
-    // <high>
-
-    Label default_case;
-    // the val is stored in rax
-
-    intptr_t offset_start = round_to(bs->bcp() + 1, 4);
-    uint32_t* offsets = (uint32_t*)(offset_start);
-
-    int low = Bytes::get_Java_u4((address)(offsets + 1));
-    int high = Bytes::get_Java_u4((address)(offsets + 2));
-    int default_bci_offset = Bytes::get_Java_u4((address)(offsets + 0));
-
-    // compare low
-    __ cmpl(rax, low);
-    jump_target(bs->bci() + default_bci_offset, less);
-    // compare high
-    __ cmpl(rax, high);
-    jump_target(bs->bci() + default_bci_offset, greater);
-    __ subl(rax, low);
-
-    // store the dispatch table
-    address mov_dispatch_table = __ pc();
-    __ movptr(rdx, NULL);
-    __ movptr(rax, Address(rdx, rax, Address::times_ptr));
-    __ jmp(rax);
-    address dispatch_table_start = __ pc();
-    NativeMovConstReg* mov_dispatch = nativeMovConstReg_at(mov_dispatch_table);
-    mov_dispatch->set_data((intptr_t)dispatch_table_start);
-
-    int target;
-    for (int i = 0;i < high - low + 1;i++) {
-        target = bs->bci() + Bytes::get_Java_u4((address)(offsets + i + 3));
-        patch_dispatch.push_back(std::pair<int, address> (target, __ pc()));
-        __ emit_address(NULL);
-        jmp_target.insert(std::pair<int, TosState>(target, vtos));
-    }
+  Label default_case, continue_execution;
+  transition(itos, vtos);
+  // align rbcp
+  __ lea(r1, at_bcp(BytesPerInt));
+  __ andr(r1, r1, -BytesPerInt);
+  // load lo & hi
+  __ ldrw(r2, Address(r1, BytesPerInt));
+  __ ldrw(r3, Address(r1, 2 * BytesPerInt));
+  __ rev32(r2, r2);
+  __ rev32(r3, r3);
+  // check against lo & hi
+  __ cmpw(r0, r2);
+  __ br(Assembler::LT, default_case);
+  __ cmpw(r0, r3);
+  __ br(Assembler::GT, default_case);
+  // lookup dispatch offset
+  __ subw(r0, r0, r2);
+  __ lea(r3, Address(r1, r0, Address::uxtw(2)));
+  __ ldrw(r3, Address(r3, 3 * BytesPerInt));
+  __ profile_switch_case(r0, r1, r2);
+  // continue execution
+  __ bind(continue_execution);
+  __ rev32(r3, r3);
+  __ load_unsigned_byte(rscratch1, Address(rbcp, r3, Address::sxtw(0)));
+  __ add(rbcp, rbcp, r3, ext::sxtw);
+  __ dispatch_only(vtos);
+  // handle default
+  __ bind(default_case);
+  __ profile_switch_default(r0);
+  __ ldrw(r3, Address(r1, 0));
+  __ b(continue_execution);
 }
 
 void NormalCompileTask::jump_target(int target, Condition cc) {
@@ -2448,7 +3290,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
         default:                break;
     }
 }
-
+//not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
     __ jmp(ret_now);
     ret_tos = tos;
@@ -2489,46 +3331,188 @@ void NormalCompileTask::adjust_tos() {
     }
 }
 
+//-----------------------------------------------------------------------------
+// Exceptions
+
 void NormalCompileTask::athrow() {
-    // crash the system when a exception is throw
-    __ pop(atos);
-    __ movptr(rax, (intptr_t)NULL);
-    __ jmp(rax);
-    tos = udtos;
+  transition(atos, vtos);
+  __ null_check(r0);
+  __ b(Interpreter::throw_exception_entry());
 }
 
+//-----------------------------------------------------------------------------
+// Synchronization
+//
+// Note: monitorenter & exit are symmetric routines; which is reflected
+//       in the assembly code structure as well
+//
+// Stack layout:
+//
+// [expressions  ] <--- esp               = expression stack top
+// ..
+// [expressions  ]
+// [monitor entry] <--- monitor block top = expression stack bot
+// ..
+// [monitor entry]
+// [frame data   ] <--- monitor block bot
+// ...
+// [saved rbp    ] <--- rbp
+
 void NormalCompileTask::monitorenter() {
-    // rax cache the object
-    Label retry;
+  transition(atos, vtos);
 
-    __ lea(rcx, Address(rax, oopDesc::mark_offset_in_bytes()));
+  // check for NULL object
+  __ null_check(r0);
 
-    __ bind(retry);
-    __ mov(rdx, rcx);
-    
-    __ movptr(rax, Address(rdx, 0));
-    __ movptr(rdx, rax);
-    __ andptr(rdx, markOopDesc::lock_mask_in_place);
-    __ cmpptr(rdx, markOopDesc::unlocked_value);
-    __ jcc(Assembler::notEqual, retry);
+  // We need to preemptively evacuate the object, because we later compare
+  // it to objects in the BasicObjectLock list, and we might get false negatives
+  // if another thread evacuates the object in the meantime. See acmp.
+  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
 
-    __ movptr(rdx, rax);
+  const Address monitor_block_top(
+        rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
+  const Address monitor_block_bot(
+        rfp, frame::interpreter_frame_initial_sp_offset * wordSize);
+  const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
 
-    // clear lock
-    __ andptr(rdx, ~markOopDesc::lock_mask_in_place);
+  Label allocated;
 
-    if (os::is_MP()) {
-        __ lock();
-    }
-    __ cmpxchgptr(rax, Address(rcx, 0));
-    __ jcc(Assembler::notEqual, retry);
+  // initialize entry pointer
+  __ mov(c_rarg1, zr); // points to free slot or NULL
+
+  // find a free slot in the monitor block (result in c_rarg1)
+  {
+    Label entry, loop, exit;
+    __ ldr(c_rarg3, monitor_block_top); // points to current entry,
+                                        // starting with top-most entry
+    __ lea(c_rarg2, monitor_block_bot); // points to word before bottom
+
+    __ b(entry);
+
+    __ bind(loop);
+    // check if current entry is used
+    // if not used then remember entry in c_rarg1
+    __ ldr(rscratch1, Address(c_rarg3, BasicObjectLock::obj_offset_in_bytes()));
+    __ cmp(zr, rscratch1);
+    __ csel(c_rarg1, c_rarg3, c_rarg1, Assembler::EQ);
+    // check if current entry is for same object
+    __ cmp(r0, rscratch1);
+    // if same object then stop searching
+    __ br(Assembler::EQ, exit);
+    // otherwise advance to next entry
+    __ add(c_rarg3, c_rarg3, entry_size);
+    __ bind(entry);
+    // check if bottom reached
+    __ cmp(c_rarg3, c_rarg2);
+    // if not at bottom then check this entry
+    __ br(Assembler::NE, loop);
+    __ bind(exit);
+  }
+
+  __ cbnz(c_rarg1, allocated); // check if a slot has been found and
+                            // if found, continue with that on
+
+  // allocate one if there's no free slot
+  {
+    Label entry, loop;
+    // 1. compute new pointers            // rsp: old expression stack top
+    __ ldr(c_rarg1, monitor_block_bot);   // c_rarg1: old expression stack bottom
+    __ sub(esp, esp, entry_size);         // move expression stack top
+    __ sub(c_rarg1, c_rarg1, entry_size); // move expression stack bottom
+    __ mov(c_rarg3, esp);                 // set start value for copy loop
+    __ str(c_rarg1, monitor_block_bot);   // set new monitor block bottom
+
+    __ sub(sp, sp, entry_size);           // make room for the monitor
+
+    __ b(entry);
+    // 2. move expression stack contents
+    __ bind(loop);
+    __ ldr(c_rarg2, Address(c_rarg3, entry_size)); // load expression stack
+                                                   // word from old location
+    __ str(c_rarg2, Address(c_rarg3, 0));          // and store it at new location
+    __ add(c_rarg3, c_rarg3, wordSize);            // advance to next word
+    __ bind(entry);
+    __ cmp(c_rarg3, c_rarg1);        // check if bottom reached
+    __ br(Assembler::NE, loop);      // if not at bottom then
+                                     // copy next word
+  }
+
+  // call run-time routine
+  // c_rarg1: points to monitor entry
+  __ bind(allocated);
+
+  // Increment bcp to point to the next bytecode, so exception
+  // handling for async. exceptions work correctly.
+  // The object has already been poped from the stack, so the
+  // expression stack looks correct.
+  __ increment(rbcp);
+
+  // store object
+  __ str(r0, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
+  __ lock_object(c_rarg1);
+
+  // check to make sure this monitor doesn't cause stack overflow after locking
+  __ save_bcp();  // in case of exception
+  __ generate_stack_overflow_check(0);
+
+  // The bcp has already been incremented. Just need to dispatch to
+  // next instruction.
+  __ dispatch_next(vtos);
 }
 
 void NormalCompileTask::monitorexit() {
-    // rax cache the object
-    __ movptr(rdx, Address(rax, oopDesc::mark_offset_in_bytes()));
-    __ orptr(rdx, markOopDesc::unlocked_value);
-    __ movptr(Address(rax, markOopDesc::mark_offset_in_bytes()), rdx);
+  transition(atos, vtos);
+
+  // check for NULL object
+  __ null_check(r0);
+
+  // We need to preemptively evacuate the object, because we later compare
+  // it to objects in the BasicObjectLock list, and we might get false negatives
+  // if another thread evacuates the object in the meantime. See acmp.
+  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+
+  const Address monitor_block_top(
+        rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
+  const Address monitor_block_bot(
+        rfp, frame::interpreter_frame_initial_sp_offset * wordSize);
+  const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
+
+  Label found;
+
+  // find matching slot
+  {
+    Label entry, loop;
+    __ ldr(c_rarg1, monitor_block_top); // points to current entry,
+                                        // starting with top-most entry
+    __ lea(c_rarg2, monitor_block_bot); // points to word before bottom
+                                        // of monitor block
+    __ b(entry);
+
+    __ bind(loop);
+    // check if current entry is for same object
+    __ ldr(rscratch1, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
+    __ cmp(r0, rscratch1);
+    // if same object then stop searching
+    __ br(Assembler::EQ, found);
+    // otherwise advance to next entry
+    __ add(c_rarg1, c_rarg1, entry_size);
+    __ bind(entry);
+    // check if bottom reached
+    __ cmp(c_rarg1, c_rarg2);
+    // if not at bottom then check this entry
+    __ br(Assembler::NE, loop);
+  }
+
+  // error handling. Unlocking was not block-structured
+  __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+                   InterpreterRuntime::throw_illegal_monitor_state_exception));
+  __ should_not_reach_here();
+
+  // call run-time routine
+  __ bind(found);
+  __ push_ptr(r0); // make sure object is on stack (contract with oopMaps)
+  __ unlock_object(c_rarg1);
+  __ pop_ptr(r0); // discard object
 }
 
 inline bool is_jump_code(Bytecodes::Code code) {

@@ -62,6 +62,7 @@ public:
     static int break_bci;
     static char* break_method;
     static char* break_klass;
+    
 
     // check if all jump target is vtos
     std::map<int, TosState> jmp_target;
@@ -92,6 +93,10 @@ public:
     int fast_compile();
 
     int compile(int size);
+
+    class RegisterImpl;
+    typedef RegisterImpl* Register;
+    void invokevirtual_helper(Register index, Register recv, Register flags);
 
     // compile template
     void nop();
