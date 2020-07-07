@@ -6,6 +6,7 @@
 #include "C0_MacroAssembler.hpp"
 #include "c0_CodeStubs.hpp"
 
+
 void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool force_compile, PatchingStub* &stub) {
     lea(r13, Address(rsp, 0));
     movptr(Address(rbp, frame::interpreter_frame_last_sp_offset * wordSize), r13);
@@ -24,14 +25,14 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         call(rax);
     }
 }
-
+/*
 void C0_MacroAssembler::addptr(Register dst, int32_t imm32)  {
     if (dst == rsp && start_expression) {
         current_entry->clear_bit_prev(imm32 / Interpreter::stackElementSize);
     }
     InterpreterMacroAssembler::addptr(dst, imm32);
 }
-
+*/
 void C0_MacroAssembler::initialize_header(Register obj, Register klass, Register len, Register t1, Register t2) {
     assert_different_registers(obj, klass, len);
     if (UseBiasedLocking && !len->is_valid()) {
