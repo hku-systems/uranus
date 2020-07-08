@@ -3,7 +3,7 @@
 //
 
 #include <precompiled.hpp>
-#include <nativeInst_x86.hpp>
+#include <nativeInst_aarch64.hpp>
 #include "c0_CodeStubs.hpp"
 #include "c0_Runtime.hpp"
 

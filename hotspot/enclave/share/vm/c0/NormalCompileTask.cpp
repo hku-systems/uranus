@@ -9,7 +9,7 @@
 #include <interpreter/bytecode.hpp>
 #include <code/codeBlob.hpp>
 #include <runtime/sharedRuntime.hpp>
-#include <nativeInst_x86.hpp>
+#include <nativeInst_aarch64.hpp>
 #include <runtime/fieldType.hpp>
 #include <enclave/sc/EnclaveNative.h>
 #include "interpreter/interpreter.hpp"
