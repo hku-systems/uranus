@@ -12,7 +12,7 @@
 #define HAVE_COMPILER
 
 #ifdef HAVE_COMPILER
-#include "NormalCompileTask.hpp"
+#include "NormalCompileTask.h"
 #include "NativeCompileTask.hpp"
 #include "OCallCompileTask.hpp"
 JCompiler* JCompiler::compiler = NULL;
