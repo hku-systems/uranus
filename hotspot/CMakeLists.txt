@@ -54,7 +54,7 @@ find_library(SGX_TCRYPTO sgx_tcrypto ${TOP_DIR}/lib)
 
 file(GLOB_RECURSE src_app 
         enclave/share/vm/asm/*.c*
-        enclave_src/share/vm/c0/*pp
+        enclave/share/vm/c0/*pp
         enclave/share/vm/classfile/*.c*
         enclave/share/vm/code/*.c*
         enclave/share/vm/enclave/*.c*
