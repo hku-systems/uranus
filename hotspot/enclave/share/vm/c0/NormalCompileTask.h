@@ -90,7 +90,8 @@ public:
 
     void checkcast_state(TosState tos, TosState intos);
 
-    int fast_compile();
+    //Comment out because it is in x86 format
+    //int fast_compile();
 
     int compile(int size);
 

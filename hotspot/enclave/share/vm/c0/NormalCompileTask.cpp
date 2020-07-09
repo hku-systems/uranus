@@ -3528,7 +3528,9 @@ inline bool is_klass_code(Bytecodes::Code code) {
     return (code >= Bytecodes::_new && code <= Bytecodes::_multianewarray);
 }
 
+//Comment out because it is in x86 format
 // fast_compile compile method less than 6 instructions (typically setter and getter)
+/*
 int NormalCompileTask::fast_compile() {
     int ins_count = 0;
     int depth = 0;
@@ -3823,5 +3825,5 @@ int NormalCompileTask::fast_compile() {
 
     return true;
 }
-
+*/
 #undef __
