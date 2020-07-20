@@ -19,10 +19,10 @@
 #include "Disassembler.hpp"
 #include "MetadataAccessor.hpp"
 #include "c0_Runtime.hpp"
-#include "enclave/sc/securecompiler.h"
 
 #include <interpreter/interpreterRuntime.hpp>
 #define __ _masm->
+#define transition(from, to)
 
 // 1. If we expect vtos, push rax into stacks
 // 2. If we expect non-tos, pop to rax
@@ -136,7 +136,7 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     }
 
 static inline Address iaddress(int n) {
-    return Address(r14, Interpreter::local_offset_in_bytes(n));
+    return Address(rlocals, Interpreter::local_offset_in_bytes(n));
 }
 
 static inline Address laddress(int n) {
@@ -156,19 +156,22 @@ static inline Address aaddress(int n) {
 }
 
 static inline Address iaddress(Register r) {
-    return Address(r14, r, Address::times_8);
+    return Address(rlocals, r, Address::lsl(3));
 }
 
-static inline Address laddress(Register r) {
-    return Address(r14, r, Address::times_8, Interpreter::local_offset_in_bytes(1));
+static inline Address laddress(Register r, Register scratch,
+                               InterpreterMacroAssembler* _masm) {
+    __ lea(scratch, Address(rlocals, r, Address::lsl(3)));
+    return Address(scratch, Interpreter::local_offset_in_bytes(1));
 }
 
 static inline Address faddress(Register r) {
     return iaddress(r);
 }
 
-static inline Address daddress(Register r) {
-    return laddress(r);
+static inline Address daddress(Register r, Register scratch,
+                               InterpreterMacroAssembler* _masm) {
+    return laddress(r, scratch, _masm);
 }
 
 static inline Address aaddress(Register r) {
@@ -176,23 +179,25 @@ static inline Address aaddress(Register r) {
 }
 
 static inline Address at_rsp() {
-    return Address(rsp, 0);
+    return Address(esp, 0);
 }
 
+// At top of Java expression stack which may be different than esp().  It
+// isn't for category 1 objects.
 static inline Address at_tos   () {
-    return Address(rsp,  Interpreter::expr_offset_in_bytes(0));
+    return Address(esp,  Interpreter::expr_offset_in_bytes(0));
 }
 
 static inline Address at_tos_p1() {
-    return Address(rsp,  Interpreter::expr_offset_in_bytes(1));
+    return Address(esp,  Interpreter::expr_offset_in_bytes(1));
 }
 
 static inline Address at_tos_p2() {
-    return Address(rsp,  Interpreter::expr_offset_in_bytes(2));
+    return Address(esp,  Interpreter::expr_offset_in_bytes(2));
 }
 
 static inline Address at_tos_p3() {
-    return Address(rsp,  Interpreter::expr_offset_in_bytes(3));
+    return Address(esp,  Interpreter::expr_offset_in_bytes(3));
 }
 
 // At top of Java expression stack which may be different than esp().  It
@@ -248,8 +253,9 @@ int NormalCompileTask::compile(int size) {
 #ifndef ENCLAVE_MPX
     char* start_heap = (char*)get_enclave_heap();
     char* end_heap = start_heap + get_enclave_heap_size();
-    __ movptr(r8, (intptr_t)start_heap);
-    __ movptr(r9, (intptr_t)end_heap);
+    // last 2 registers to hold argument values
+    __ movptr(r6, (intptr_t)start_heap);
+    __ movptr(r7, (intptr_t)end_heap);
 #endif
 #endif
 
@@ -518,8 +524,9 @@ int NormalCompileTask::compile(int size) {
 
     if (has_interface) {
       __ bind(no_such_interface);
-      __ movptr(rax, (intptr_t)-1);
-      __ movptr(rax, Address(rax, 0));
+      //abort
+      __ movptr(r0, (intptr_t)-1);
+      __ movptr(r0, Address(r0, 0));
     }
 
     __ flush();
@@ -1929,7 +1936,7 @@ void NormalCompileTask::idiv(){
   // r0 <== r1 idiv r0
   __ corrected_idivl(r0, r1, r0, /* want_remainder */ false);
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::entry() {
     // determine code generation flags
 
@@ -2013,7 +2020,7 @@ void NormalCompileTask::entry() {
 //    __ movbool(do_not_unlock_if_synchronized, false);
 
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
     Register parameter = rcx;
@@ -2465,7 +2472,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
     __ bind(notVolatile);
   }
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     // this expects tos is not cached
 
@@ -2510,7 +2517,7 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
         append_stub(patching);
     }
 }
-
+// TODO: change to aarch64
 PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static) {
     // for loop of code
     Klass* klass_holder = method->method_holder();
@@ -2621,7 +2628,7 @@ void NormalCompileTask::invokevirtual(int byte_no) {
 
   invokevirtual_helper(rmethod, r2, r3);
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::invokespecial(int byte_no) {
     invoke(byte_no, rbx, noreg, rcx, noreg);
 }
@@ -2762,7 +2769,7 @@ void NormalCompileTask::invokedynamic(int byte_no) {
 
   __ jump_from_interpreted(rmethod, r0);
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
 
@@ -3137,7 +3144,7 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
     }
 
 }
-
+// TODO: change to aarch64
 void NormalCompileTask::remove_activation(TosState state, Register ret_addr, bool throw_monitor_exception,
                                           bool install_monitor_exception, bool notify_jvmdi) {
     // Note: Registers rdx xmm0 may be in use for the

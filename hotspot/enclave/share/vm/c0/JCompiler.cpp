@@ -9,7 +9,7 @@
 
 //Change to JIT
 
-#define HAVE_COMPILER
+#define HAVE_COMPILER (1==1)
 
 #ifdef HAVE_COMPILER
 #include "NormalCompileTask.h"

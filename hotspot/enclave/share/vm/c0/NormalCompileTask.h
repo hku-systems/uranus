@@ -95,8 +95,6 @@ public:
 
     int compile(int size);
 
-    class RegisterImpl;
-    typedef RegisterImpl* Register;
     void invokevirtual_helper(Register index, Register recv, Register flags);
 
     // compile template
