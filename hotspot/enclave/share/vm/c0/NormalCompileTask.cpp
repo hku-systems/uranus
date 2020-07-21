@@ -1936,7 +1936,7 @@ void NormalCompileTask::idiv(){
   // r0 <== r1 idiv r0
   __ corrected_idivl(r0, r1, r0, /* want_remainder */ false);
 }
-// TODO: change to aarch64
+
 void NormalCompileTask::entry() {
     // determine code generation flags
 
@@ -1951,15 +1951,15 @@ void NormalCompileTask::entry() {
     int addtional_locals = size_locals - size_parameters;
 
     #ifdef DB_FRAME
+    //Comment out because it is for debug and it is for x86
+      //__ push(r11);
+      //__ mov(c_rarg0, r15_thread);
+      //__ mov(c_rarg1, r13);
+      //__ movptr(c_rarg2, (intptr_t)method);
 
-      __ push(r11);
-      __ mov(c_rarg0, r15_thread);
-      __ mov(c_rarg1, r13);
-      __ movptr(c_rarg2, (intptr_t)method);
+      //__ call_VME(CAST_FROM_FN_PTR(address, print_enclave_frame), false, true);
 
-      __ call_VME(CAST_FROM_FN_PTR(address, print_enclave_frame), false, true);
-
-      __ pop(r11);
+      //__ pop(r11);
     #endif
 
     if (break_method != NULL &&
@@ -1976,26 +1976,35 @@ void NormalCompileTask::entry() {
 //    generate_stack_overflow_check();
 
     // get return address
-    __ pop(rax);
+    // Comment out because it is not in aarch64 templateInterpreter
+    //__ pop(rax);
 
+    // r11 changed to r15 because all are caller saved last register
     // is ecall
     if (is_sgx_interface(method) || strncmp(method->name()->as_C_string(), "sgx_hook", 8) == 0) {
         for (int i = 0;i < size_parameters;i++)
         {
-            __ movptr(r11, Address(r14, size_parameters - i, Address::times_8));
-            __ push(r11);
+            __ movptr(r15, Address(rlocals, size_parameters - i, Address::times_8));
+            __ push(r15);
         }
     }
 
-    // compute beginning of parameters (r14)
-    __ lea(r14, Address(rsp, size_parameters, Address::times_8, -wordSize));
+    // compute beginning of parameters (rlocals)
+    __ add(rlocals, esp, r2, ext::uxtx, 3);
+    __ sub(rlocals, rlocals, wordSize);
 
-    // rdx - # of additional locals
+    //Add because it is in hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
+    // Make room for locals
+    __ sub(rscratch1, esp, r3, ext::uxtx, 3);
+    __ andr(sp, rscratch1, -16);
+
+    // r3 - # of additional locals
     // allocate space for locals
     // explicitly initialize locals
     for (int i = 0;i < addtional_locals;i++)
     {
-        __ push((int) NULL_WORD); // initialize local variables
+        // for r3, hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp line 1109
+        __ str(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
     }
 
     // initialize fixed part of activation frame
@@ -2021,6 +2030,7 @@ void NormalCompileTask::entry() {
 
 }
 // TODO: change to aarch64
+// address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
     Register parameter = rcx;
@@ -2472,52 +2482,157 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
     __ bind(notVolatile);
   }
 }
-// TODO: change to aarch64
+
 void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
-    // this expects tos is not cached
+    const Register cache = r2;
+    const Register index = r3;
+    const Register obj   = r4;
+    const Register off   = r19;
+    const Register flags = r0;
+    const Register bc    = r4; // uses same reg as obj, so don't mix them
 
+    resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
+    jvmti_post_field_access(cache, index, is_static, false);
+    load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
 
-    // resolve the field and put the field id into cache
-    // patch if not resolved
-    // resolve_cache_and_index
-    const Register obj = rcx;
-    int off = 0xa1;
-    TosState tosState = ilgl;
     if (!is_static) {
-        assert_different_registers(obj, rax);
-        if (tos == vtos) {
-            __ pop(atos);
-        }
-        __ mov(obj, rax);
-        __ sgx_bound_check(obj, out_of_bound);
-        has_bound_check = true;
-    } else {
-        if (tos != vtos)
-            __ push(tos);
+        // obj is on the stack
+        pop_and_check_object(obj);
     }
-    PatchingStub* patching = resolve_cache_and_index(byte_no, obj, off, tosState, is_static);
-    Address field(obj, off);
-    // depends on the field type
-    // should not be tos
-    switch(tosState) {
-        case btos: tos = btos; __ load_signed_byte(rax, field); break;
-        case ztos: tos = ztos; __ load_signed_byte(rax, field); break;
-        case itos: tos = itos; __ movl(rax, field); break;
-        case ctos: tos = ctos; __ load_unsigned_short(rax, field); break;
-        case stos: tos = stos; __ load_signed_short(rax, field); break;
-        case ltos: tos = ltos; __ movq(rax, field); break;
-        case ftos: tos = ftos; __ movflt(xmm0, field); break;
-        case dtos: tos = dtos; __ movdbl(xmm0, field); break;
-        case atos: tos = atos; __ load_heap_oop(rax, field); break;
-        default:
-            ShouldNotReachHere();
+    // oopDesc::bs()->interpreter_read_barrier_not_null(_masm, obj);
+
+    const Address field(obj, off);
+
+    Label Done, notByte, notBool, notInt, notShort, notChar,
+            notLong, notFloat, notObj, notDouble;
+
+    // x86 uses a shift and mask or wings it with a shift plus assert
+    // the mask is not needed. aarch64 just uses bitfield extract
+    __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
+
+    assert(btos == 0, "change code, btos != 0");
+    __ cbnz(flags, notByte);
+
+    // btos
+    __ load_signed_byte(r0, field);
+    __ push(btos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1);
     }
-    if (patching) {
-        patching->install();
-        append_stub(patching);
+    __ b(Done);
+
+    __ bind(notByte);
+    __ cmp(flags, ztos);
+    __ br(Assembler::NE, notBool);
+
+    // ztos (same code as btos)
+    __ ldrsb(r0, field);
+    __ push(ztos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        // use btos rewriting, no truncating to t/f bit is needed for getfield.
+        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1);
     }
+    __ b(Done);
+
+    __ bind(notBool);
+    __ cmp(flags, atos);
+    __ br(Assembler::NE, notObj);
+    // atos
+    __ load_heap_oop(r0, field);
+    __ push(atos);
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_agetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notObj);
+    __ cmp(flags, itos);
+    __ br(Assembler::NE, notInt);
+    // itos
+    __ ldrw(r0, field);
+    __ push(itos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_igetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notInt);
+    __ cmp(flags, ctos);
+    __ br(Assembler::NE, notChar);
+    // ctos
+    __ load_unsigned_short(r0, field);
+    __ push(ctos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_cgetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notChar);
+    __ cmp(flags, stos);
+    __ br(Assembler::NE, notShort);
+    // stos
+    __ load_signed_short(r0, field);
+    __ push(stos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_sgetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notShort);
+    __ cmp(flags, ltos);
+    __ br(Assembler::NE, notLong);
+    // ltos
+    __ ldr(r0, field);
+    __ push(ltos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_lgetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notLong);
+    __ cmp(flags, ftos);
+    __ br(Assembler::NE, notFloat);
+    // ftos
+    __ ldrs(v0, field);
+    __ push(ftos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_fgetfield, bc, r1);
+    }
+    __ b(Done);
+
+    __ bind(notFloat);
+#ifdef ASSERT
+    __ cmp(flags, dtos);
+  __ br(Assembler::NE, notDouble);
+#endif
+    // dtos
+    __ ldrd(v0, field);
+    __ push(dtos);
+    // Rewrite bytecode to be faster
+    if (!is_static) {
+        patch_bytecode(Bytecodes::_fast_dgetfield, bc, r1);
+    }
+#ifdef ASSERT
+        __ b(Done);
+
+  __ bind(notDouble);
+  __ stop("Bad state");
+#endif
+
+    __ bind(Done);
+    // It's really not worth bothering to check whether this field
+    // really is volatile in the slow case.
+    __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
+
 }
-// TODO: change to aarch64
+
 PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static) {
     // for loop of code
     Klass* klass_holder = method->method_holder();
@@ -2628,9 +2743,19 @@ void NormalCompileTask::invokevirtual(int byte_no) {
 
   invokevirtual_helper(rmethod, r2, r3);
 }
-// TODO: change to aarch64
+
 void NormalCompileTask::invokespecial(int byte_no) {
-    invoke(byte_no, rbx, noreg, rcx, noreg);
+    transition(vtos, vtos);
+    assert(byte_no == f1_byte, "use this argument");
+
+    prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
+                   r2);  // get receiver also for null check
+    __ verify_oop(r2);
+    __ null_check(r2);
+    // do the call
+    __ profile_call(r0);
+    __ profile_arguments_type(r0, rmethod, rbcp, false);
+    __ jump_from_interpreted(rmethod, r0);
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
@@ -2769,7 +2894,8 @@ void NormalCompileTask::invokedynamic(int byte_no) {
 
   __ jump_from_interpreted(rmethod, r0);
 }
-// TODO: change to aarch64
+// Comment out because not used
+/*
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
 
@@ -2938,7 +3064,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         append_stub(patch_compile);
     }
 }
-
+*/
 void NormalCompileTask::checkcast() {
   transition(atos, atos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
