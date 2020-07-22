@@ -254,8 +254,9 @@ int NormalCompileTask::compile(int size) {
     char* start_heap = (char*)get_enclave_heap();
     char* end_heap = start_heap + get_enclave_heap_size();
     // last 2 registers to hold argument values
-    __ movptr(r6, (intptr_t)start_heap);
-    __ movptr(r7, (intptr_t)end_heap);
+    // movptr change to ldr
+    __ ldr(r6, (intptr_t)start_heap);
+    __ ldr(r7, (intptr_t)end_heap);
 #endif
 #endif
 
@@ -525,8 +526,9 @@ int NormalCompileTask::compile(int size) {
     if (has_interface) {
       __ bind(no_such_interface);
       //abort
-      __ movptr(r0, (intptr_t)-1);
-      __ movptr(r0, Address(r0, 0));
+      // movptr change to ldr
+      __ ldr(r0, (intptr_t)-1);
+      __ ldr(r0, Address(r0, 0));
     }
 
     __ flush();
@@ -1984,7 +1986,8 @@ void NormalCompileTask::entry() {
     if (is_sgx_interface(method) || strncmp(method->name()->as_C_string(), "sgx_hook", 8) == 0) {
         for (int i = 0;i < size_parameters;i++)
         {
-            __ movptr(r15, Address(rlocals, size_parameters - i, Address::times_8));
+            // movptr change to ldr
+            __ ldr(r15, Address(rlocals, size_parameters - i, Address::times_8));
             __ push(r15);
         }
     }
@@ -2029,22 +2032,31 @@ void NormalCompileTask::entry() {
 //    __ movbool(do_not_unlock_if_synchronized, false);
 
 }
-// TODO: change to aarch64
+
 // address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
-    Register parameter = rcx;
+    //Change to r2 because reference to use of generate_normal_entry's use of rcx register related to parameter
+    Register parameter = r2;
 
     // Restore stack bottom in case i2c adjusted stack
-    __ movptr(rsp, Address(rbp, frame::interpreter_frame_last_sp_offset * wordSize));
+    __ ldr(esp, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
     // and NULL it as marker that esp is now tos until next java call
-    __ movptr(Address(rbp, frame::interpreter_frame_last_sp_offset * wordSize), (int32_t)NULL_WORD);
-
+    __ str(zr, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
     __ restore_bcp();
     __ restore_locals();
+    __ restore_constant_pool_cache();
+    __ get_method(rmethod);
 
 //    __ movl(parameter, parameter_size);
-    __ lea(rsp, Address(rsp, parameter_size, Interpreter::stackElementScale()));
+    // Restore machine SP
+    __ ldr(rscratch1, Address(rmethod, Method::const_offset()));
+    __ ldrh(rscratch1, Address(rscratch1, ConstMethod::max_stack_offset()));
+    __ add(rscratch1, rscratch1, frame::interpreter_frame_monitor_size() + 2);
+    __ ldr(rscratch2,
+           Address(rfp, frame::interpreter_frame_initial_sp_offset * wordSize));
+    __ sub(rscratch1, rscratch2, rscratch1, ext::uxtw, 3);
+    __ andr(sp, rscratch1, -16);
 
     // the parameters plus the ret address
     __ current_entry->clear_bit_prev(parameter_size + 1);
@@ -2053,7 +2065,8 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 void NormalCompileTask::_return(TosState state) {
   #ifdef DB_FRAME
     __ pusha();
-    __ movptr(c_rarg1, (intptr_t)method);
+    // movptr change to ldr
+    __ ldr(c_rarg1, (intptr_t)method);
     __ call_VME(CAST_FROM_FN_PTR(address, exit_enclave_frame), false, true);
     __ popa();
   #endif
@@ -2643,23 +2656,24 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
             MetadataAccessor::get_field_type_by_index(method->constants(), getfield_index()));
     Klass* field_holder_klass;
     if (is_static) {
+        // movptr change to ldr
         field_holder_klass = MetadataAccessor::get_field_holder_klass_if_loaded(method->constants(), getfield_index());
         if (field_holder_klass == NULL) {
             if (will_run) {
                 field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
-                __ movptr(c_obj, (intptr_t)field_holder_klass);
-                __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ ldr(c_obj, (intptr_t)field_holder_klass);
+                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
             } else {
                 // patch
                 PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ movptr(c_obj, NULL_WORD);
+                __ ldr(c_obj, NULL_WORD);
                 patchingStub->install();
-                __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
                 append_stub(patchingStub);
             }
         } else {
-            __ movptr(c_obj, (intptr_t)field_holder_klass);
-            __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+            __ ldr(c_obj, (intptr_t)field_holder_klass);
+            __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
         }
     }
 
@@ -3177,7 +3191,8 @@ void NormalCompileTask::instanceof() {
 }
 
 void NormalCompileTask::gc_point() {
-    __ movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
+    //movptr change to ldr
+    __ ldr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
@@ -3270,7 +3285,7 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
     }
 
 }
-// TODO: change to aarch64
+
 void NormalCompileTask::remove_activation(TosState state, Register ret_addr, bool throw_monitor_exception,
                                           bool install_monitor_exception, bool notify_jvmdi) {
     // Note: Registers rdx xmm0 may be in use for the
@@ -3394,12 +3409,16 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
 
 
     // remove activation
+    // movptr change to ldr
     // get sender sp
-    __ movptr(rbx,
-           Address(rbp, frame::interpreter_frame_sender_sp_offset * wordSize));
+
+    // from hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
+    // line 178, 549
+    __ ldr(esp,
+           Address(sp, frame::interpreter_frame_sender_sp_offset * wordSize));
     __ leave();                           // remove frame anchor
     __ pop(ret_addr);                     // get return address
-    __ mov(rsp, rbx);                     // set sp to sender sp
+    __ mov(sp, esp);                     // set sp to sender sp
     __ push(ret_addr);
 }
 
