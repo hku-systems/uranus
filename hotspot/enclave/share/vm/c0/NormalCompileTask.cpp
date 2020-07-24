@@ -3519,7 +3519,7 @@ void NormalCompileTask::monitorenter() {
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
@@ -3621,7 +3621,7 @@ void NormalCompileTask::monitorexit() {
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
