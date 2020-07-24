@@ -474,8 +474,8 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_athrow:        gen(athrow(),           atos, vtos);
             case Bytecodes::_checkcast:     gen(checkcast(),        atos, atos);
             case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
-            case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
-            case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
+            //case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
+            //case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
             case Bytecodes::_wide:
                 Unimplemented();
                 break;
@@ -3509,7 +3509,7 @@ void NormalCompileTask::athrow() {
 // [frame data   ] <--- monitor block bot
 // ...
 // [saved rbp    ] <--- rbp
-
+/*
 void NormalCompileTask::monitorenter() {
   transition(atos, vtos);
 
@@ -3519,7 +3519,7 @@ void NormalCompileTask::monitorenter() {
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  //oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
@@ -3611,7 +3611,8 @@ void NormalCompileTask::monitorenter() {
   // next instruction.
   __ dispatch_next(vtos);
 }
-
+*/
+/*
 void NormalCompileTask::monitorexit() {
   transition(atos, vtos);
 
@@ -3621,7 +3622,7 @@ void NormalCompileTask::monitorexit() {
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  //oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
@@ -3666,7 +3667,7 @@ void NormalCompileTask::monitorexit() {
   __ unlock_object(c_rarg1);
   __ pop_ptr(r0); // discard object
 }
-
+*/
 inline bool is_jump_code(Bytecodes::Code code) {
     return ((code >= Bytecodes::_lcmp && code <= Bytecodes::_lookupswitch)
             || (code >= Bytecodes::_ifnull && code <= Bytecodes::_breakpoint));
