@@ -3494,7 +3494,7 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
     __ mov(sp, esp);                     // set sp to sender sp
     __ push(ret_addr);
 }
-
+/*
 void NormalCompileTask::narrow(Register result, TosState tos) {
     switch (tos) {
         case ztos:  __ andl(result, (int32_t)0x1);    break;
@@ -3515,6 +3515,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
         default:                break;
     }
 }
+ */
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
     __ jmp(ret_now);
