@@ -284,6 +284,12 @@ public:
     void invokedynamic(int byte_no);
     void invokespecial(int byte_no);
     void invoke(int byte_no, Register m, Register index, Register recv, Register flags);
+    void prepare_invoke(int byte_no,
+                                       Register method, // linked method (or i-klass)
+                                       Register index,  // itable index, MethodType, etc.
+                                       Register recv,   // if caller wants to see it
+                                       Register flags   // if caller wants to test it
+    )
 
     void gc_point();
     PatchingStub* resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static);

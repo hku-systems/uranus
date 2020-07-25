@@ -2908,6 +2908,79 @@ void NormalCompileTask::invokedynamic(int byte_no) {
 
   __ jump_from_interpreted(rmethod, r0);
 }
+
+void NormalCompileTask::prepare_invoke(int byte_no,
+                                   Register method, // linked method (or i-klass)
+                                   Register index,  // itable index, MethodType, etc.
+                                   Register recv,   // if caller wants to see it
+                                   Register flags   // if caller wants to test it
+) {
+    // determine flags
+    Bytecodes::Code code = bytecode();
+    const bool is_invokeinterface  = code == Bytecodes::_invokeinterface;
+    const bool is_invokedynamic    = code == Bytecodes::_invokedynamic;
+    const bool is_invokehandle     = code == Bytecodes::_invokehandle;
+    const bool is_invokevirtual    = code == Bytecodes::_invokevirtual;
+    const bool is_invokespecial    = code == Bytecodes::_invokespecial;
+    const bool load_receiver       = (recv  != noreg);
+    const bool save_flags          = (flags != noreg);
+    assert(load_receiver == (code != Bytecodes::_invokestatic && code != Bytecodes::_invokedynamic), "");
+    assert(save_flags    == (is_invokeinterface || is_invokevirtual), "need flags for vfinal");
+    assert(flags == noreg || flags == r3, "");
+    assert(recv  == noreg || recv  == r2, "");
+
+    // setup registers & access constant pool cache
+    if (recv  == noreg)  recv  = r2;
+    if (flags == noreg)  flags = r3;
+    assert_different_registers(method, index, recv, flags);
+
+    // save 'interpreter return address'
+    __ save_bcp();
+
+    load_invoke_cp_cache_entry(byte_no, method, index, flags, is_invokevirtual, false, is_invokedynamic);
+
+    // maybe push appendix to arguments (just before return address)
+    if (is_invokedynamic || is_invokehandle) {
+        Label L_no_push;
+        __ tbz(flags, ConstantPoolCacheEntry::has_appendix_shift, L_no_push);
+        // Push the appendix as a trailing parameter.
+        // This must be done before we get the receiver,
+        // since the parameter_size includes it.
+        __ push(r19);
+        __ mov(r19, index);
+        assert(ConstantPoolCacheEntry::_indy_resolved_references_appendix_offset == 0, "appendix expected at index+0");
+        __ load_resolved_reference_at_index(index, r19);
+        __ pop(r19);
+        __ push(index);  // push appendix (MethodType, CallSite, etc.)
+        __ bind(L_no_push);
+    }
+
+    // load receiver if needed (note: no return address pushed yet)
+    if (load_receiver) {
+        __ andw(recv, flags, ConstantPoolCacheEntry::parameter_size_mask);
+        // FIXME -- is this actually correct? looks like it should be 2
+        // const int no_return_pc_pushed_yet = -1;  // argument slot correction before we push return address
+        // const int receiver_is_at_end      = -1;  // back off one slot to get receiver
+        // Address recv_addr = __ argument_address(recv, no_return_pc_pushed_yet + receiver_is_at_end);
+        // __ movptr(recv, recv_addr);
+        __ add(rscratch1, esp, recv, ext::uxtx, 3); // FIXME: uxtb here?
+        __ ldr(recv, Address(rscratch1, -Interpreter::expr_offset_in_bytes(1)));
+        __ verify_oop(recv);
+    }
+
+    // compute return type
+    // x86 uses a shift and mask or wings it with a shift plus assert
+    // the mask is not needed. aarch64 just uses bitfield extract
+    __ ubfxw(rscratch2, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
+    // load return address
+    {
+        const address table_addr = (address) Interpreter::invoke_return_entry_table_for(code);
+        __ mov(rscratch1, table_addr);
+        __ ldr(lr, Address(rscratch1, rscratch2, Address::lsl(3)));
+    }
+}
+
+
 // Comment out because not used
 /*
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
