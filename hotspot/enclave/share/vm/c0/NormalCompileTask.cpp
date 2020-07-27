@@ -134,7 +134,7 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     }                                               \
     break;                                          \
     }
-
+// rlocals points to first parameter
 static inline Address iaddress(int n) {
     return Address(rlocals, Interpreter::local_offset_in_bytes(n));
 }
@@ -254,9 +254,9 @@ int NormalCompileTask::compile(int size) {
     char* start_heap = (char*)get_enclave_heap();
     char* end_heap = start_heap + get_enclave_heap_size();
     // last 2 registers to hold argument values
-    // movptr change to ldr
-    __ ldr(r6, (intptr_t)start_heap);
-    __ ldr(r7, (intptr_t)end_heap);
+    // movptr change to str
+    __ str(r6, (intptr_t)start_heap);
+    __ str(r7, (intptr_t)end_heap);
 #endif
 #endif
 
@@ -526,9 +526,9 @@ int NormalCompileTask::compile(int size) {
     if (has_interface) {
       __ bind(no_such_interface);
       //abort
-      // movptr change to ldr
-      __ ldr(r0, (intptr_t)-1);
-      __ ldr(r0, Address(r0, 0));
+      // movptr change to str
+      __ str(r0, (intptr_t)-1);
+      __ str(r0, Address(r0, 0));
     }
 
     __ flush();
@@ -1986,8 +1986,8 @@ void NormalCompileTask::entry() {
     if (is_sgx_interface(method) || strncmp(method->name()->as_C_string(), "sgx_hook", 8) == 0) {
         for (int i = 0;i < size_parameters;i++)
         {
-            // movptr change to ldr
-            __ ldr(r15, Address(rlocals, size_parameters - i, Address::times_8));
+            // movptr change to str
+            __ str(r15, Address(rlocals, size_parameters - i, Address::times_8));
             __ push(r15);
         }
     }
@@ -2065,8 +2065,8 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 void NormalCompileTask::_return(TosState state) {
   #ifdef DB_FRAME
     __ pusha();
-    // movptr change to ldr
-    __ ldr(c_rarg1, (intptr_t)method);
+    // movptr change to str
+    __ str(c_rarg1, (intptr_t)method);
     __ call_VME(CAST_FROM_FN_PTR(address, exit_enclave_frame), false, true);
     __ popa();
   #endif
@@ -2656,24 +2656,24 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
             MetadataAccessor::get_field_type_by_index(method->constants(), getfield_index()));
     Klass* field_holder_klass;
     if (is_static) {
-        // movptr change to ldr
+        // movptr change to str
         field_holder_klass = MetadataAccessor::get_field_holder_klass_if_loaded(method->constants(), getfield_index());
         if (field_holder_klass == NULL) {
             if (will_run) {
                 field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
-                __ ldr(c_obj, (intptr_t)field_holder_klass);
-                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ str(c_obj, (intptr_t)field_holder_klass);
+                __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
             } else {
                 // patch
                 PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ ldr(c_obj, NULL_WORD);
+                __ str(c_obj, NULL_WORD);
                 patchingStub->install();
-                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
                 append_stub(patchingStub);
             }
         } else {
-            __ ldr(c_obj, (intptr_t)field_holder_klass);
-            __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+            __ str(c_obj, (intptr_t)field_holder_klass);
+            __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
         }
     }
 
@@ -3264,8 +3264,9 @@ void NormalCompileTask::instanceof() {
 }
 
 void NormalCompileTask::gc_point() {
-    //movptr change to ldr
-    __ ldr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
+    //movptr change to str
+    //rbp to ebp
+    __ str(Address(ebp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
@@ -3482,12 +3483,12 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
 
 
     // remove activation
-    // movptr change to ldr
+    // movptr change to str
     // get sender sp
 
     // from hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
     // line 178, 549
-    __ ldr(esp,
+    __ str(esp,
            Address(sp, frame::interpreter_frame_sender_sp_offset * wordSize));
     __ leave();                           // remove frame anchor
     __ pop(ret_addr);                     // get return address

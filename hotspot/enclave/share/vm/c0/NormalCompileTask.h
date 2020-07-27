@@ -121,14 +121,14 @@ public:
     void fload();
     void dload();
     void aload();
-
+/*
     void locals_index_wide(Register reg);
     void wide_iload();
     void wide_lload();
     void wide_fload();
     void wide_dload();
     void wide_aload();
-
+*/
     void iaload();
     void laload();
     void faload();
@@ -150,13 +150,13 @@ public:
     void fstore();
     void dstore();
     void astore();
-
+/*
     void wide_istore();
     void wide_lstore();
     void wide_fstore();
     void wide_dstore();
     void wide_astore();
-
+*/
     void iastore();
     void lastore();
     void fastore();
