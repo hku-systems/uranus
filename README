@@ -38,6 +38,37 @@ sudo cp ~/qemu-user-static/bin/qemu-aarch64-static temp/usr/bin/
 
 最後根據 docker file
 
+For loop program needed bytecodes
+
+       0: aload_0
+       1: invokespecial #1                  // Method java/lang/Object."<init>":()V
+       4: return
+
+       0: iconst_0
+       1: istore_1
+       2: getstatic     #2                  // Field java/lang/System.out:Ljava/io/PrintStream;
+       5: iload_1
+       6: invokestatic  #3                  // Method addTen:(I)I
+       9: invokevirtual #4                  // Method java/io/PrintStream.println:(I)V
+      12: return
+
+       0: iconst_0
+       1: istore_1
+       2: iload_1
+       3: bipush        10
+       5: if_icmpge     18
+       8: iload_0
+       9: iconst_1
+      10: iadd
+      11: istore_0
+      12: iinc          1, 1
+      15: goto          2
+      18: iload_0
+      19: ireturn
+
+
+
+
 
 
 README:
