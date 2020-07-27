@@ -289,7 +289,7 @@ public:
                                        Register index,  // itable index, MethodType, etc.
                                        Register recv,   // if caller wants to see it
                                        Register flags   // if caller wants to test it
-    )
+    );
 
     void gc_point();
     PatchingStub* resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static);
