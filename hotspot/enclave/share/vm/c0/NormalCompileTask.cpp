@@ -2346,7 +2346,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(btos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strb(r0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
@@ -2362,7 +2362,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(ztos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ andw(r0, r0, 0x1);
     __ strb(r0, field);
     if (!is_static) {
@@ -2379,7 +2379,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     // Store into the field
     do_oop_store(_masm, field, r0, _bs->kind(), false);
     if (!is_static) {
@@ -2396,7 +2396,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(itos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strw(r0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
@@ -2412,7 +2412,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(ctos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strh(r0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
@@ -2428,7 +2428,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(stos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strh(r0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
@@ -2444,7 +2444,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(ltos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+   //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ str(r0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
@@ -2460,7 +2460,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(ftos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+   // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strs(v0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
@@ -2478,7 +2478,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
   {
     __ pop(dtos);
     if (!is_static) pop_and_check_object(obj);
-    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ strd(v0, field);
     if (!is_static) {
       patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
@@ -2651,6 +2651,77 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
 
 }
+
+// The Rcache and index registers must be set before call
+// n.b unlike x86 cache already includes the index offset
+void NormalCompileTask::load_field_cp_cache_entry(Register obj,
+                                              Register cache,
+                                              Register index,
+                                              Register off,
+                                              Register flags,
+                                              bool is_static = false) {
+    assert_different_registers(cache, index, flags, off);
+
+    ByteSize cp_base_offset = ConstantPoolCache::base_offset();
+    // Field offset
+    __ ldr(off, Address(cache, in_bytes(cp_base_offset +
+                                        ConstantPoolCacheEntry::f2_offset())));
+    // Flags
+    __ ldrw(flags, Address(cache, in_bytes(cp_base_offset +
+                                           ConstantPoolCacheEntry::flags_offset())));
+
+    // klass overwrite register
+    if (is_static) {
+        __ ldr(obj, Address(cache, in_bytes(cp_base_offset +
+                                            ConstantPoolCacheEntry::f1_offset())));
+        const int mirror_offset = in_bytes(Klass::java_mirror_offset());
+        __ ldr(obj, Address(obj, mirror_offset));
+    }
+}
+
+// The registers cache and index expected to be set before call.
+// Correct values of the cache and index registers are preserved.
+void NormalCompileTask::jvmti_post_field_access(Register cache, Register index,
+                                            bool is_static, bool has_tos) {
+    // do the JVMTI work here to avoid disturbing the register state below
+    // We use c_rarg registers here because we want to use the register used in
+    // the call to the VM
+    if (JvmtiExport::can_post_field_access()) {
+        // Check to see if a field access watch has been set before we
+        // take the time to call into the VM.
+        Label L1;
+        assert_different_registers(cache, index, r0);
+        __ lea(rscratch1, ExternalAddress((address) JvmtiExport::get_field_access_count_addr()));
+        __ ldrw(r0, Address(rscratch1));
+        __ cbzw(r0, L1);
+
+        __ get_cache_and_index_at_bcp(c_rarg2, c_rarg3, 1);
+        __ lea(c_rarg2, Address(c_rarg2, in_bytes(ConstantPoolCache::base_offset())));
+
+        if (is_static) {
+            __ mov(c_rarg1, zr); // NULL object reference
+        } else {
+            __ ldr(c_rarg1, at_tos()); // get object pointer without popping it
+            __ verify_oop(c_rarg1);
+        }
+        // c_rarg1: object pointer or NULL
+        // c_rarg2: cache entry pointer
+        // c_rarg3: jvalue object on the stack
+        __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+                                           InterpreterRuntime::post_field_access),
+                   c_rarg1, c_rarg2, c_rarg3);
+        __ get_cache_and_index_at_bcp(cache, index, 1);
+        __ bind(L1);
+    }
+}
+
+void NormalCompileTask::pop_and_check_object(Register r)
+{
+    __ pop_ptr(r);
+    __ null_check(r);  // for field access must check obj.
+    __ verify_oop(r);
+}
+
 
 PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
                                                          Register Rcache,

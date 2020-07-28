@@ -296,6 +296,14 @@ public:
                                           Register Rcache,
                                           Register index,
                                           size_t index_size);
+    void load_field_cp_cache_entry(Register obj,
+                                                      Register cache,
+                                                      Register index,
+                                                      Register off,
+                                                      Register flags,
+                                                      bool is_static = false);
+    void jvmti_post_field_access(Register cache, Register index, bool is_static, bool has_tos);
+    void pop_and_check_object(Register r);
 
     int getfield_index() {
         return bs->get_index_u2_cpcache();
