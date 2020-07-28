@@ -8,6 +8,8 @@
 
 #define __ _masm->
 
+#ifdef HAVE_NATIVE_COMPILE_TASK
+
 class NativeParameterIterator {
 public:
     int _num_int_args;
@@ -553,3 +555,5 @@ int NativeCompileTask::compile(int size) {
 }
 
 #undef __
+
+#endif

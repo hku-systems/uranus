@@ -5,7 +5,7 @@
 #ifndef HOTSPOT_NATIVECOMPILETASK_HPP
 #define HOTSPOT_NATIVECOMPILETASK_HPP
 
-
+#ifdef HAVE_NATIVE_COMPILE_TASK
 #include "NormalCompileTask.h"
 #include "CompileTask.hpp"
 
@@ -16,5 +16,6 @@ public:
     void entry();
 };
 
-
+#endif
 #endif //HOTSPOT_NATIVECOMPILETASK_HPP
+
