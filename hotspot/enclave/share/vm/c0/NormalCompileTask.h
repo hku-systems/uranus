@@ -5,7 +5,6 @@
 #ifndef HOTSPOT_COMPILETASK_H
 #define HOTSPOT_COMPILETASK_H
 
-
 #include <asm/macroAssembler.hpp>
 #include "interpreter/interpMasm.hpp"
 #include "bytecodeStream.hpp"

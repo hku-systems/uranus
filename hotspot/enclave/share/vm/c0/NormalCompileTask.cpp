@@ -332,7 +332,8 @@ int NormalCompileTask::compile(int size) {
             strcmp(method->name()->as_C_string(), break_method) == 0 &&
             strcmp(method->klass_name()->as_C_string(), break_klass) == 0 &&
             break_bci == bs->bci()) {
-            __ os_breakpoint();
+            //__ os_breakpoint();
+            //Temporarily comment because it is for debug in macroAssembler
         }
 
         adjust_tos();
@@ -1856,8 +1857,8 @@ void NormalCompileTask::entry() {
         strcmp(method->name()->as_C_string(), break_method) == 0 &&
         strcmp(method->klass_name()->as_C_string(), break_klass) == 0) {
         //__ os_breakpoint();
-        //Temporarily change to break
-        break;
+        //Temporarily comment because it is for debug in macroAssembler
+        //break;
     }
 
     // YYY
