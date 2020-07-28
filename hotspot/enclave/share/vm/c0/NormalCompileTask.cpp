@@ -543,7 +543,7 @@ int NormalCompileTask::compile(int size) {
                 break;
             case Bytecodes::_multianewarray:gen(multianewarray(),   vtos, atos);
             case Bytecodes::_ifnull:        gen(if_nullcmp(equal),  atos, vtos);
-            case Bytecodes::_ifnonnull:     gen(if_nullcmp(notEqual),  atos, vtos);
+            case Bytecodes::_ifnonnull:     gen(if_nullcmp(not_equal),  atos, vtos);
             case Bytecodes::_goto_w:        gen(goto_w(),           vtos, vtos);
             case Bytecodes::_jsr_w:         gen(jsr_w(),            vtos, vtos);
             case Bytecodes::_breakpoint:
@@ -2142,200 +2142,200 @@ void NormalCompileTask::getstatic(int byte_no) {
 }
 
 void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
-  transition(vtos, vtos);
+    transition(vtos, vtos);
 
-  const Register cache = r2;
-  const Register index = r3;
-  const Register obj   = r2;
-  const Register off   = r19;
-  const Register flags = r0;
-  const Register bc    = r4;
+    const Register cache = r2;
+    const Register index = r3;
+    const Register obj   = r2;
+    const Register off   = r19;
+    const Register flags = r0;
+    const Register bc    = r4;
 
-  resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
-  jvmti_post_field_mod(cache, index, is_static);
-  load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
+    resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
+    jvmti_post_field_mod(cache, index, is_static);
+    load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
 
-  Label Done;
-  __ mov(r5, flags);
+    Label Done;
+    __ mov(r5, flags);
 
-  {
-    Label notVolatile;
-    __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-    __ membar(MacroAssembler::StoreStore | MacroAssembler::LoadStore);
-    __ bind(notVolatile);
-  }
-
-  // field address
-  const Address field(obj, off);
-
-  Label notByte, notBool, notInt, notShort, notChar,
-        notLong, notFloat, notObj, notDouble;
-
-  // x86 uses a shift and mask or wings it with a shift plus assert
-  // the mask is not needed. aarch64 just uses bitfield extract
-  __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
-
-  assert(btos == 0, "change code, btos != 0");
-  __ cbnz(flags, notByte);
-
-  // btos
-  {
-    __ pop(btos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strb(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
+    {
+        Label notVolatile;
+        __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
+        __ membar(MacroAssembler::StoreStore | MacroAssembler::LoadStore);
+        __ bind(notVolatile);
     }
-    __ b(Done);
-  }
 
-  __ bind(notByte);
-  __ cmp(flags, ztos);
-  __ br(Assembler::NE, notBool);
+    // field address
+    const Address field(obj, off);
 
-  // ztos
-  {
-    __ pop(ztos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ andw(r0, r0, 0x1);
-    __ strb(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_zputfield, bc, r1, true, byte_no);
+    Label notByte, notBool, notInt, notShort, notChar,
+            notLong, notFloat, notObj, notDouble;
+
+    // x86 uses a shift and mask or wings it with a shift plus assert
+    // the mask is not needed. aarch64 just uses bitfield extract
+    __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
+
+    assert(btos == 0, "change code, btos != 0");
+    __ cbnz(flags, notByte);
+
+    // btos
+    {
+        __ pop(btos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strb(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notBool);
-  __ cmp(flags, atos);
-  __ br(Assembler::NE, notObj);
+    __ bind(notByte);
+    __ cmp(flags, ztos);
+    __ br(Assembler::NE, notBool);
 
-  // atos
-  {
-    __ pop(atos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    // Store into the field
-    do_oop_store(_masm, field, r0, _bs->kind(), false);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_aputfield, bc, r1, true, byte_no);
+    // ztos
+    {
+        __ pop(ztos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ andw(r0, r0, 0x1);
+        __ strb(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_zputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notObj);
-  __ cmp(flags, itos);
-  __ br(Assembler::NE, notInt);
+    __ bind(notBool);
+    __ cmp(flags, atos);
+    __ br(Assembler::NE, notObj);
 
-  // itos
-  {
-    __ pop(itos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strw(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
+    // atos
+    {
+        __ pop(atos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        // Store into the field
+        do_oop_store(_masm, field, r0, BarrierSet::Other, false);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_aputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notInt);
-  __ cmp(flags, ctos);
-  __ br(Assembler::NE, notChar);
+    __ bind(notObj);
+    __ cmp(flags, itos);
+    __ br(Assembler::NE, notInt);
 
-  // ctos
-  {
-    __ pop(ctos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strh(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
+    // itos
+    {
+        __ pop(itos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strw(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notChar);
-  __ cmp(flags, stos);
-  __ br(Assembler::NE, notShort);
+    __ bind(notInt);
+    __ cmp(flags, ctos);
+    __ br(Assembler::NE, notChar);
 
-  // stos
-  {
-    __ pop(stos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strh(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
+    // ctos
+    {
+        __ pop(ctos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strh(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notShort);
-  __ cmp(flags, ltos);
-  __ br(Assembler::NE, notLong);
+    __ bind(notChar);
+    __ cmp(flags, stos);
+    __ br(Assembler::NE, notShort);
 
-  // ltos
-  {
-    __ pop(ltos);
-    if (!is_static) pop_and_check_object(obj);
-   //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ str(r0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
+    // stos
+    {
+        __ pop(stos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strh(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notLong);
-  __ cmp(flags, ftos);
-  __ br(Assembler::NE, notFloat);
+    __ bind(notShort);
+    __ cmp(flags, ltos);
+    __ br(Assembler::NE, notLong);
 
-  // ftos
-  {
-    __ pop(ftos);
-    if (!is_static) pop_and_check_object(obj);
-   // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strs(v0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
+    // ltos
+    {
+        __ pop(ltos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ str(r0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
     }
-    __ b(Done);
-  }
 
-  __ bind(notFloat);
+    __ bind(notLong);
+    __ cmp(flags, ftos);
+    __ br(Assembler::NE, notFloat);
+
+    // ftos
+    {
+        __ pop(ftos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strs(v0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
+        }
+        __ b(Done);
+    }
+
+    __ bind(notFloat);
 #ifdef ASSERT
-  __ cmp(flags, dtos);
+    __ cmp(flags, dtos);
   __ br(Assembler::NE, notDouble);
 #endif
 
-  // dtos
-  {
-    __ pop(dtos);
-    if (!is_static) pop_and_check_object(obj);
-    //oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-    __ strd(v0, field);
-    if (!is_static) {
-      patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
+    // dtos
+    {
+        __ pop(dtos);
+        if (!is_static) pop_and_check_object(obj);
+        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
+        __ strd(v0, field);
+        if (!is_static) {
+            patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
+        }
     }
-  }
 
 #ifdef ASSERT
-  __ b(Done);
+    __ b(Done);
 
   __ bind(notDouble);
   __ stop("Bad state");
 #endif
 
-  __ bind(Done);
+    __ bind(Done);
 
-  {
-    Label notVolatile;
-    __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-    __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
-    __ bind(notVolatile);
-  }
+    {
+        Label notVolatile;
+        __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
+        __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
+        __ bind(notVolatile);
+    }
 }
 
 void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
@@ -2663,97 +2663,99 @@ void NormalCompileTask::invokespecial(int byte_no) {
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
-  transition(vtos, vtos);
-  assert(byte_no == f1_byte, "use this argument");
+    // TODO: fix me
+    // transition(vtos, vtos);
+    // assert(byte_no == f1_byte, "use this argument");
 
-  prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
-		 r2, r3); // recv, flags
+    // prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
+    // 	 r2, r3); // recv, flags
 
-  // r0: interface klass (from f1)
-  // rmethod: method (from f2)
-  // r2: receiver
-  // r3: flags
+    // // r0: interface klass (from f1)
+    // // rmethod: method (from f2)
+    // // r2: receiver
+    // // r3: flags
 
-  // Special case of invokeinterface called for virtual method of
-  // java.lang.Object.  See cpCacheOop.cpp for details.
-  // This code isn't produced by javac, but could be produced by
-  // another compliant java compiler.
-  Label notMethod;
-  __ tbz(r3, ConstantPoolCacheEntry::is_forced_virtual_shift, notMethod);
+    // // Special case of invokeinterface called for virtual method of
+    // // java.lang.Object.  See cpCacheOop.cpp for details.
+    // // This code isn't produced by javac, but could be produced by
+    // // another compliant java compiler.
+    // Label notMethod;
+    // __ tbz(r3, ConstantPoolCacheEntry::is_forced_virtual_shift, notMethod);
 
-  invokevirtual_helper(rmethod, r2, r3);
-  __ bind(notMethod);
+    // invokevirtual_helper(rmethod, r2, r3);
+    // __ bind(notMethod);
 
-  // Get receiver klass into r3 - also a null check
-  __ restore_locals();
-  __ null_check(r2, oopDesc::klass_offset_in_bytes());
-  __ load_klass(r3, r2);
+    // // Get receiver klass into r3 - also a null check
+    // __ restore_locals();
+    // __ null_check(r2, oopDesc::klass_offset_in_bytes());
+    // __ load_klass(r3, r2);
 
-  Label no_such_interface, no_such_method;
+    // Label no_such_interface, no_such_method;
 
-  // Receiver subtype check against REFC.
-  // Superklass in r0. Subklass in r3. Blows rscratch2, r13.
-  __ lookup_interface_method(// inputs: rec. class, interface, itable index
-                             r3, r0, noreg,
-                             // outputs: scan temp. reg, scan temp. reg
-                             rscratch2, r13,
-                             no_such_interface,
-                             /*return_method=*/false);
+    // // Receiver subtype check against REFC.
+    // // Superklass in r0. Subklass in r3. Blows rscratch2, r13.
+    // __ lookup_interface_method(// inputs: rec. class, interface, itable index
+    //                            r3, r0, noreg,
+    //                            // outputs: scan temp. reg, scan temp. reg
+    //                            rscratch2, r13,
+    //                            no_such_interface,
+    //                            /*return_method=*/false);
 
-  // profile this call
-  __ profile_virtual_call(r3, r13, r19);
+    // // profile this call
+    // __ profile_virtual_call(r3, r13, r19);
 
-  // Get declaring interface class from method, and itable index
-  __ ldr(r0, Address(rmethod, Method::const_offset()));
-  __ ldr(r0, Address(r0, ConstMethod::constants_offset()));
-  __ ldr(r0, Address(r0, ConstantPool::pool_holder_offset_in_bytes()));
-  __ ldrw(rmethod, Address(rmethod, Method::itable_index_offset()));
-  __ subw(rmethod, rmethod, Method::itable_index_max);
-  __ negw(rmethod, rmethod);
+    // // Get declaring interface class from method, and itable index
+    // __ ldr(r0, Address(rmethod, Method::const_offset()));
+    // __ ldr(r0, Address(r0, ConstMethod::constants_offset()));
+    // __ ldr(r0, Address(r0, ConstantPool::pool_holder_offset_in_bytes()));
+    // __ ldrw(rmethod, Address(rmethod, Method::itable_index_offset()));
+    // __ subw(rmethod, rmethod, Method::itable_index_max);
+    // __ negw(rmethod, rmethod);
 
-  __ lookup_interface_method(// inputs: rec. class, interface, itable index
-                             r3, r0, rmethod,
-                             // outputs: method, scan temp. reg
-                             rmethod, r13,
-                             no_such_interface);
+    // __ lookup_interface_method(// inputs: rec. class, interface, itable index
+    //                            r3, r0, rmethod,
+    //                            // outputs: method, scan temp. reg
+    //                            rmethod, r13,
+    //                            no_such_interface);
 
-  // rmethod,: methodOop to call
-  // r2: receiver
-  // Check for abstract method error
-  // Note: This should be done more efficiently via a throw_abstract_method_error
-  //       interpreter entry point and a conditional jump to it in case of a null
-  //       method.
-  __ cbz(rmethod, no_such_method);
+    // // rmethod,: methodOop to call
+    // // r2: receiver
+    // // Check for abstract method error
+    // // Note: This should be done more efficiently via a throw_abstract_method_error
+    // //       interpreter entry point and a conditional jump to it in case of a null
+    // //       method.
+    // __ cbz(rmethod, no_such_method);
 
-  __ profile_arguments_type(r3, rmethod, r13, true);
+    // __ profile_arguments_type(r3, rmethod, r13, true);
 
-  // do the call
-  // r2: receiver
-  // rmethod,: methodOop
-  __ jump_from_interpreted(rmethod, r3);
-  __ should_not_reach_here();
+    // // do the call
+    // // r2: receiver
+    // // rmethod,: methodOop
+    // __ jump_from_interpreted(rmethod, r3);
+    // __ should_not_reach_here();
 
-  // exception handling code follows...
-  // note: must restore interpreter registers to canonical
-  //       state for exception handling to work correctly!
+    // // exception handling code follows...
+    // // note: must restore interpreter registers to canonical
+    // //       state for exception handling to work correctly!
 
-  __ bind(no_such_method);
-  // throw exception
-  __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
-  __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
-  __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_AbstractMethodError));
-  // the call_VM checks for exception, so we should never return here.
-  __ should_not_reach_here();
+    // __ bind(no_such_method);
+    // // throw exception
+    // __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
+    // __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
+    // __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_AbstractMethodError));
+    // // the call_VM checks for exception, so we should never return here.
+    // __ should_not_reach_here();
 
-  __ bind(no_such_interface);
-  // throw exception
-  __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
-  __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
-  __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-                   InterpreterRuntime::throw_IncompatibleClassChangeError));
-  // the call_VM checks for exception, so we should never return here.
-  __ should_not_reach_here();
-  return;
+    // __ bind(no_such_interface);
+    // // throw exception
+    // __ restore_bcp();      // bcp must be correct for exception handler   (was destroyed)
+    // __ restore_locals();   // make sure locals pointer is correct as well (was destroyed)
+    // __ call_VM(noreg, CAST_FROM_FN_PTR(address,
+    //                  InterpreterRuntime::throw_IncompatibleClassChangeError));
+    // // the call_VM checks for exception, so we should never return here.
+    // __ should_not_reach_here();
+    return;
+
 }
 
 void NormalCompileTask::invokestatic(int byte_no) {
