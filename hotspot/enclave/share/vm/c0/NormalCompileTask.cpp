@@ -714,7 +714,7 @@ void NormalCompileTask::ldc(bool wide) {
 
   __ bind(call_ldc);
   __ mov(c_rarg1, wide);
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
+  __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
   __ push_ptr(r0);
   __ verify_oop(r0);
   __ b(Done);
@@ -1968,7 +1968,9 @@ void NormalCompileTask::_return(TosState state) {
     // Narrow result if state is itos but result type is smaller.
     // Need to narrow in the return bytecode rather than in generate_return_entry
     // since compiled code callers expect the result to already be narrowed.
-    narrow(rax, state);
+
+    //change below for aarch64
+    __ narrow(r0, state);
     remove_activation(state, r13, true, true, true);
 
     __ ret(0);
@@ -2074,7 +2076,7 @@ void NormalCompileTask::_new() {
     __ bind(slow_case);
     __ get_constant_pool(c_rarg1);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
     __ verify_oop(r0);
 
     // continue
@@ -2088,7 +2090,7 @@ void NormalCompileTask::newarray() {
     transition(itos, atos);
     __ load_unsigned_byte(c_rarg1, at_bcp(1));
     __ mov(c_rarg2, r0);
-    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
             c_rarg1, c_rarg2);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
@@ -2099,7 +2101,7 @@ void NormalCompileTask::anewarray() {
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
@@ -2118,7 +2120,7 @@ void NormalCompileTask::multianewarray() {
     // first_addr = last_addr + (ndims - 1) * wordSize
     __ lea(c_rarg1, Address(esp, r0, Address::uxtw(3)));
     __ sub(c_rarg1, c_rarg1, wordSize);
-    call_VM(r0,
+    __ call_VM(r0,
             CAST_FROM_FN_PTR(address, InterpreterRuntime::multianewarray),
             c_rarg1);
     __ load_unsigned_byte(r1, at_bcp(3));
@@ -3152,7 +3154,7 @@ void NormalCompileTask::checkcast() {
   __ br(Assembler::EQ, quicked);
 
   __ push(atos); // save receiver for result, and for GC
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
   // vm_result_2 has metadata result
   __ get_vm_result_2(r0, rthread);
   __ pop(r3); // restore receiver
@@ -3207,7 +3209,7 @@ void NormalCompileTask::instanceof() {
   __ br(Assembler::EQ, quicked);
 
   __ push(atos); // save receiver for result, and for GC
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
   // vm_result_2 has metadata result
   __ get_vm_result_2(r0, rthread);
   __ pop(r3); // restore receiver
