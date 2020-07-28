@@ -11,6 +11,7 @@
 #include "interpreter/interpMasm.hpp"
 #include "C0MapOopEntry.hpp"
 #include "C0MapOopSet.hpp"
+#include <interp_masm_aarch64.hpp>
 
 class PatchingStub;
 

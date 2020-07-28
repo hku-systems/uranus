@@ -2900,7 +2900,7 @@ void NormalCompileTask::invokespecial(int byte_no) {
     assert(byte_no == f1_byte, "use this argument");
 
     prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
-                   r2);  // get receiver also for null check
+                   r2, noreg);  // get receiver also for null check
     __ verify_oop(r2);
     __ null_check(r2);
     // do the call
@@ -3007,7 +3007,7 @@ void NormalCompileTask::invokestatic(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f1_byte, "use this argument");
 
-  prepare_invoke(byte_no, rmethod);  // get f1 Method*
+  prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);  // get f1 Method*
   // do the call
   __ profile_call(r0);
   __ profile_arguments_type(r0, rmethod, r4, false);
@@ -3029,7 +3029,7 @@ void NormalCompileTask::invokedynamic(int byte_no) {
     return;
   }
 
-  prepare_invoke(byte_no, rmethod, r0);
+  prepare_invoke(byte_no, rmethod, r0, noreg, noreg);
 
   // r0: CallSite object (from cpool->resolved_references[])
   // rmethod: MH.linkToCallSite method (from f2)
