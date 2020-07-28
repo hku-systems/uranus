@@ -2152,7 +2152,7 @@ void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
     const Register bc    = r4;
 
     resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
-    jvmti_post_field_mod(cache, index, is_static);
+    //jvmti_post_field_mod(cache, index, is_static);
     load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
 
     Label Done;
