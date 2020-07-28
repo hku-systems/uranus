@@ -222,14 +222,14 @@ static inline Address at_tos_p5() {
 }
 
 // Condition conversion
-static Assembler::Condition j_not(TemplateTable::Condition cc) {
+static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
     switch (cc) {
-        case TemplateTable::equal        : return Assembler::NE;
-        case TemplateTable::not_equal    : return Assembler::EQ;
-        case TemplateTable::less         : return Assembler::GE;
-        case TemplateTable::less_equal   : return Assembler::GT;
-        case TemplateTable::greater      : return Assembler::LE;
-        case TemplateTable::greater_equal: return Assembler::LT;
+        case NormalCompileTask::equal        : return Assembler::NE;
+        case NormalCompileTask::not_equal    : return Assembler::EQ;
+        case NormalCompileTask::less         : return Assembler::GE;
+        case NormalCompileTask::less_equal   : return Assembler::GT;
+        case NormalCompileTask::greater      : return Assembler::LE;
+        case NormalCompileTask::greater_equal: return Assembler::LT;
     }
     ShouldNotReachHere();
     return Assembler::EQ;
@@ -495,19 +495,19 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_dcmpl:			gen(double_cmp(-1),	dtos, itos);
             case Bytecodes::_dcmpg:			gen(double_cmp(1),	dtos, itos);
             case Bytecodes::_ifeq:			gen(if_0cmp(equal),	        itos, vtos);
-            case Bytecodes::_ifne:			gen(if_0cmp(notEqual),	    itos, vtos);
+            case Bytecodes::_ifne:			gen(if_0cmp(not_equal),	    itos, vtos);
             case Bytecodes::_iflt:			gen(if_0cmp(less),		    itos, vtos);
-            case Bytecodes::_ifge:			gen(if_0cmp(greaterEqual),  itos, vtos);
+            case Bytecodes::_ifge:			gen(if_0cmp(greater_equal),  itos, vtos);
             case Bytecodes::_ifgt:			gen(if_0cmp(greater),		itos, vtos);
-            case Bytecodes::_ifle:			gen(if_0cmp(lessEqual),	    itos, vtos);
+            case Bytecodes::_ifle:			gen(if_0cmp(less_equal),	    itos, vtos);
             case Bytecodes::_if_icmpeq:		gen(if_icmp(equal),		    itos, vtos);
-            case Bytecodes::_if_icmpne:		gen(if_icmp(notEqual),		itos, vtos);
+            case Bytecodes::_if_icmpne:		gen(if_icmp(not_equal),		itos, vtos);
             case Bytecodes::_if_icmplt:		gen(if_icmp(less),		    itos, vtos);
-            case Bytecodes::_if_icmpge:		gen(if_icmp(greaterEqual),	itos, vtos);
+            case Bytecodes::_if_icmpge:		gen(if_icmp(greater_equal),	itos, vtos);
             case Bytecodes::_if_icmpgt:		gen(if_icmp(greater),		itos, vtos);
-            case Bytecodes::_if_icmple:		gen(if_icmp(lessEqual),	    itos, vtos);
+            case Bytecodes::_if_icmple:		gen(if_icmp(less_equal),	    itos, vtos);
             case Bytecodes::_if_acmpeq:		gen(if_acmp(equal),		    atos, vtos);
-            case Bytecodes::_if_acmpne:		gen(if_acmp(notEqual),		atos, vtos);
+            case Bytecodes::_if_acmpne:		gen(if_acmp(not_equal),		atos, vtos);
             case Bytecodes::_goto:			gen(_goto(),		vtos, vtos);
             case Bytecodes::_jsr:			gen(jsr(),		    vtos, vtos);
             case Bytecodes::_ret:			gen(ret(),		    vtos, vtos);
@@ -588,7 +588,7 @@ int NormalCompileTask::compile(int size) {
       __ bind(no_such_interface);
       //abort
       // movptr change to str
-      __ str(r0, (Address)-1);
+      __ str(r0, Address(r0, -1));
       __ str(r0, Address(r0, 0));
     }
 
@@ -805,7 +805,8 @@ void NormalCompileTask::iload() {
     // rewrite
     // bc: new bytecode
     __ bind(rewrite);
-    patch_bytecode(Bytecodes::_iload, bc, r1, false);
+      //fill with 0
+    patch_bytecode(Bytecodes::_iload, bc, r1, false, 0);
     __ bind(done);
 
   }
@@ -920,7 +921,8 @@ void NormalCompileTask::aload_0() {
     // rewrite
     // bc: new bytecode
     __ bind(rewrite);
-    patch_bytecode(Bytecodes::_aload_0, bc, r1, false);
+      //fill with 0
+    patch_bytecode(Bytecodes::_aload_0, bc, r1, false, 0);
 
     __ bind(done);
   } else {
@@ -1124,57 +1126,57 @@ void NormalCompileTask::dastore() {
 		      arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 }
 void NormalCompileTask::aastore() {
-  Label is_null, ok_is_subtype, done;
-  transition(vtos, vtos);
-  // stack: ..., array, index, value
-  __ ldr(r0, at_tos());    // value
-  __ ldr(r2, at_tos_p1()); // index
-  __ ldr(r3, at_tos_p2()); // array
+    Label is_null, ok_is_subtype, done;
+    transition(vtos, vtos);
+    // stack: ..., array, index, value
+    __ ldr(r0, at_tos());    // value
+    __ ldr(r2, at_tos_p1()); // index
+    __ ldr(r3, at_tos_p2()); // array
 
-  Address element_address(r4, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
+    Address element_address(r4, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
-  index_check(r3, r2);     // kills r1
-  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
-  __ lea(r4, Address(r3, r2, Address::uxtw(UseCompressedOops? 2 : 3)));
+    index_check(r3, r2);     // kills r1
+    // oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+    __ lea(r4, Address(r3, r2, Address::uxtw(UseCompressedOops? 2 : 3)));
 
-  // do array store check - check for NULL value first
-  __ cbz(r0, is_null);
+    // do array store check - check for NULL value first
+    __ cbz(r0, is_null);
 
-  // Move subklass into r1
-  __ load_klass(r1, r0);
-  // Move superklass into r0
-  __ load_klass(r0, r3);
-  __ ldr(r0, Address(r0,
-		     ObjArrayKlass::element_klass_offset()));
-  // Compress array + index*oopSize + 12 into a single register.  Frees r2.
+    // Move subklass into r1
+    __ load_klass(r1, r0);
+    // Move superklass into r0
+    __ load_klass(r0, r3);
+    __ ldr(r0, Address(r0,
+                       ObjArrayKlass::element_klass_offset()));
+    // Compress array + index*oopSize + 12 into a single register.  Frees r2.
 
-  // Generate subtype check.  Blows r2, r5
-  // Superklass in r0.  Subklass in r1.
-  __ gen_subtype_check(r1, ok_is_subtype);
+    // Generate subtype check.  Blows r2, r5
+    // Superklass in r0.  Subklass in r1.
+    __ gen_subtype_check(r1, ok_is_subtype);
 
-  // Come here on failure
-  // object is at TOS
-  __ b(Interpreter::_throw_ArrayStoreException_entry);
+    // Come here on failure
+    // object is at TOS
+    __ b(Interpreter::_throw_ArrayStoreException_entry);
 
-  // Come here on success
-  __ bind(ok_is_subtype);
+    // Come here on success
+    __ bind(ok_is_subtype);
 
-  // Get the value we will store
-  __ ldr(r0, at_tos());
-  // Now store using the appropriate barrier
-  do_oop_store(_masm, element_address, r0, _bs->kind(), true);
-  __ b(done);
+    // Get the value we will store
+    __ ldr(r0, at_tos());
+    // Now store using the appropriate barrier
+    do_oop_store(_masm, element_address, r0, BarrierSet::Other, true);
+    __ b(done);
 
-  // Have a NULL in r0, r3=array, r2=index.  Store NULL at ary[idx]
-  __ bind(is_null);
-  __ profile_null_seen(r2);
+    // Have a NULL in r0, r3=array, r2=index.  Store NULL at ary[idx]
+    __ bind(is_null);
+    __ profile_null_seen(r2);
 
-  // Store a NULL
-  do_oop_store(_masm, element_address, noreg, _bs->kind(), true);
+    // Store a NULL
+    do_oop_store(_masm, element_address, noreg, BarrierSet::Other, true);
 
-  // Pop stack arguments
-  __ bind(done);
-  __ add(esp, esp, 3 * Interpreter::stackElementSize);
+    // Pop stack arguments
+    __ bind(done);
+    __ add(esp, esp, 3 * Interpreter::stackElementSize);
 }
 void NormalCompileTask::bastore() {
   transition(itos, vtos);
@@ -1462,7 +1464,7 @@ void NormalCompileTask::convert(){
   {
     TosState tos_in  = ilgl;
     TosState tos_out = ilgl;
-    switch (bytecode()) {
+    switch (bs->code()) {
     case Bytecodes::_i2l: // fall through
     case Bytecodes::_i2f: // fall through
     case Bytecodes::_i2d: // fall through
@@ -1480,7 +1482,7 @@ void NormalCompileTask::convert(){
     case Bytecodes::_d2f: tos_in = dtos; break;
     default             : ShouldNotReachHere();
     }
-    switch (bytecode()) {
+    switch (bs->code()) {
     case Bytecodes::_l2i: // fall through
     case Bytecodes::_f2i: // fall through
     case Bytecodes::_d2i: // fall through
@@ -1504,7 +1506,7 @@ void NormalCompileTask::convert(){
   // static const int64_t is_nan = 0x8000000000000000L;
 
   // Conversion
-  switch (bytecode()) {
+  switch (bs->code()) {
   case Bytecodes::_i2l:
     __ sxtw(r0, r0);
     break;
@@ -1649,7 +1651,7 @@ void NormalCompileTask::if_0cmp(NormalCompileTask::Condition cc) {
     __ br(j_not(cc), not_taken);
   }
 
-  branch(false, false, none);
+  branch(false, false);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
@@ -1660,7 +1662,7 @@ void NormalCompileTask::if_icmp(NormalCompileTask::Condition cc) {
   __ pop_i(r1);
   __ cmpw(r1, r0, Assembler::LSL);
   __ br(j_not(cc), not_taken);
-  branch(false, false, none);
+  branch(false, false);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
@@ -1672,22 +1674,9 @@ void NormalCompileTask::if_acmp(NormalCompileTask::Condition cc) {
   __ pop_ptr(r1);
   __ cmpoops(r1, r0);
   __ br(j_not(cc), not_taken);
-  branch(false, false, none);
+  branch(false, false);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
-}
-
-static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
-  switch (cc) {
-  case NormalCompileTask::equal        : return Assembler::NE;
-  case NormalCompileTask::not_equal    : return Assembler::EQ;
-  case NormalCompileTask::less         : return Assembler::GE;
-  case NormalCompileTask::less_equal   : return Assembler::GT;
-  case NormalCompileTask::greater      : return Assembler::LE;
-  case NormalCompileTask::greater_equal: return Assembler::LT;
-  }
-  ShouldNotReachHere();
-  return Assembler::EQ;
 }
 
 void NormalCompileTask::if_nullcmp(NormalCompileTask::Condition cc) {
@@ -1698,13 +1687,13 @@ void NormalCompileTask::if_nullcmp(NormalCompileTask::Condition cc) {
     __ cbnz(r0, not_taken);
   else
     __ cbz(r0, not_taken);
-  branch(false, false, none);
+  branch(false, false);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
 //not found in aarch64 template table
 void NormalCompileTask::_goto() {
-    branch(false, false, none);
+    branch(false, false);
     tos = udtos;
 }
 void NormalCompileTask::jsr(){
@@ -2383,7 +2372,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(btos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2397,7 +2387,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     // Rewrite bytecode to be faster
     if (!is_static) {
         // use btos rewriting, no truncating to t/f bit is needed for getfield.
-        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2408,7 +2399,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ load_heap_oop(r0, field);
     __ push(atos);
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_agetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_agetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2420,7 +2412,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(itos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_igetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_igetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2432,7 +2425,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(ctos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_cgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_cgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2444,7 +2438,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(stos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_sgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_sgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2456,7 +2451,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(ltos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_lgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_lgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2468,7 +2464,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(ftos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_fgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_fgetfield, bc, r1, true, byte_no);
     }
     __ b(Done);
 
@@ -2482,7 +2479,8 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
     __ push(dtos);
     // Rewrite bytecode to be faster
     if (!is_static) {
-        patch_bytecode(Bytecodes::_fast_dgetfield, bc, r1);
+        //fill with true
+        patch_bytecode(Bytecodes::_fast_dgetfield, bc, r1, true, byte_no);
     }
 #ifdef ASSERT
         __ b(Done);
@@ -2549,12 +2547,12 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
     Label resolved;
     assert(byte_no == f1_byte || byte_no == f2_byte, "byte_no out of range");
     __ get_cache_and_index_and_bytecode_at_bcp(Rcache, index, temp, byte_no, 1, index_size);
-    __ cmp(temp, (int) bytecode());  // have we resolved this bytecode?
+    __ cmp(temp, (int) bs->code());  // have we resolved this bytecode?
     __ br(Assembler::EQ, resolved);
 
     // resolve first time through
     address entry;
-    switch (bytecode()) {
+    switch (bs->code()) {
         case Bytecodes::_getstatic:
         case Bytecodes::_putstatic:
         case Bytecodes::_getfield:
@@ -2574,10 +2572,10 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
             entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokedynamic);
             break;
         default:
-            fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bytecode())));
+            fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bs->code())));
             break;
     }
-    __ mov(temp, (int) bytecode());
+    __ mov(temp, (int) bs->code());
     __ call_VM(noreg, entry, temp);
 
     // Update registers with resolved info
@@ -2590,7 +2588,7 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
 
 void NormalCompileTask::jsr_w() { Unimplemented(); }
 void NormalCompileTask::goto_w() {
-    branch(false, true, none);
+    branch(false, true);
 }
 
 void NormalCompileTask::invokevirtual_helper(Register index,
@@ -2807,7 +2805,7 @@ void NormalCompileTask::prepare_invoke(int byte_no,
                                    Register flags   // if caller wants to test it
 ) {
     // determine flags
-    Bytecodes::Code code = bytecode();
+    Bytecodes::Code code = bs->code();
     const bool is_invokeinterface  = code == Bytecodes::_invokeinterface;
     const bool is_invokedynamic    = code == Bytecodes::_invokedynamic;
     const bool is_invokehandle     = code == Bytecodes::_invokehandle;
@@ -3320,25 +3318,27 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
     std::map<int, address>::iterator itr = bci_ptr_map.find(target);
     if (itr != bci_ptr_map.end()) {
         address next_addr = __ pc() + NativeGeneralJump::instruction_size;
-        if (cc == none) {
-            __ emit_int8((unsigned char) 0xE9);
-            __ emit_int32(itr->second - next_addr);
-        } else {
+        //no none condition
+        //if (cc == none) {
+        //    __ emit_int8((unsigned char) 0xE9);
+        //    __ emit_int32(itr->second - next_addr);
+        //} else {
             next_addr += 1;
             __ emit_int8((unsigned char) 0x0F);
             __ emit_int8((unsigned char) (0x80 | cc));
             __ emit_int32(itr->second - next_addr);
-        }
+        //}
     } else {
         patch_address.push_back(std::pair<int, address>(target, __ pc()));
-        if (cc == none) {
-            __ emit_int8((unsigned char) 0xE9);
-            __ emit_int32(0);
-        } else {
+        //no none condition
+        //if (cc == none) {
+        //    __ emit_int8((unsigned char) 0xE9);
+        //    __ emit_int32(0);
+        //} else {
             __ emit_int8((unsigned char) 0x0F);
             __ emit_int8((unsigned char) (0x80 | cc));
             __ emit_int32(0);
-        }
+        //}
     }
 
 }

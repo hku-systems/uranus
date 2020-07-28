@@ -20,7 +20,7 @@ using std::map;
 class NormalCompileTask: public CompileTask {
 public:
     enum Operation { add, sub, mul, div, rem, _and, _or, _xor, shl, shr, ushr };
-    enum Condition {                     // The x86 condition codes used for conditional jumps/moves.
+    enum Condition {
         equal,
         not_equal,
         less      ,
@@ -78,8 +78,6 @@ public:
                       Register val,
                       BarrierSet::Name barrier,
                       bool precise);
-
-    Address at_bcp(int offset);
 
     void checkcast_state(TosState tos, TosState intos);
 
