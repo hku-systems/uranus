@@ -200,6 +200,10 @@ static inline Address at_tos_p3() {
     return Address(esp,  Interpreter::expr_offset_in_bytes(3));
 }
 
+static inline Address at_tos_p4() {
+    return Address(esp,  Interpreter::expr_offset_in_bytes(4));
+}
+
 // At top of Java expression stack which may be different than esp().  It
 // isn't for category 1 objects.
 //static inline Address at_tos   () {
