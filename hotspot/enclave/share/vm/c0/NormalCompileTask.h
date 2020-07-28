@@ -292,7 +292,10 @@ public:
     );
 
     void gc_point();
-    PatchingStub* resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static);
+    PatchingStub* resolve_cache_and_index(int byte_no,
+                                          Register Rcache,
+                                          Register index,
+                                          size_t index_size);
 
     int getfield_index() {
         return bs->get_index_u2_cpcache();

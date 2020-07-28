@@ -2652,54 +2652,52 @@ void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
 
 }
 
-PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static) {
-    // for loop of code
-    Klass* klass_holder = method->method_holder();
-    // load the address offset and the klass to be loaded,
-    // it seems that putfield do not need to resolve it
-    ConstantPoolCacheEntry *field_entry = method->constants()->cache()->entry_at(getfield_index());
-    tosState = MetadataAccessor::basicType2tosState(
-            MetadataAccessor::get_field_type_by_index(method->constants(), getfield_index()));
-    Klass* field_holder_klass;
-    if (is_static) {
-        // movptr change to str
-        field_holder_klass = MetadataAccessor::get_field_holder_klass_if_loaded(method->constants(), getfield_index());
-        if (field_holder_klass == NULL) {
-            if (will_run) {
-                field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
-                __ str(c_obj, (intptr_t)field_holder_klass);
-                __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
-            } else {
-                // patch
-                PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ str(c_obj, NULL_WORD);
-                patchingStub->install();
-                __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
-                append_stub(patchingStub);
-            }
-        } else {
-            __ str(c_obj, (intptr_t)field_holder_klass);
-            __ str(c_obj, Address(c_obj, Klass::java_mirror_offset()));
-        }
-    }
+PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
+                                                         Register Rcache,
+                                                         Register index,
+                                                         size_t index_size) {
+    const Register temp = r19;
+    assert_different_registers(Rcache, index, temp);
 
-    if (field_entry == NULL || !field_entry->is_resolved(bs->code())) {
-        if (will_run) {
-            Bytecode_field f(methodHandle(method), bs->bci());
-            off = JVM_ENTRY_resolve_get_put_C(JavaThread::current(), method->constants(), f.index(), Bytecodes::java_code(bs->code()));
-            return NULL;
-        } else {
-            // __ movptr(c_obj, (intptr_t)field_entry->f1_as_klass()->java_mirror());
-            PatchingStub *patching = new PatchingStub(_masm, PatchingStub::access_field_id, bs->bci());
-            // patch
-            // __ movl(index, -1); // this value is patched later
-            // later jmp dest is replaced to call_after
-            return patching;
-        }
-    } else {
-        off = field_entry->f2_as_index();
-        return NULL;
+    Label resolved;
+    assert(byte_no == f1_byte || byte_no == f2_byte, "byte_no out of range");
+    __ get_cache_and_index_and_bytecode_at_bcp(Rcache, index, temp, byte_no, 1, index_size);
+    __ cmp(temp, (int) bytecode());  // have we resolved this bytecode?
+    __ br(Assembler::EQ, resolved);
+
+    // resolve first time through
+    address entry;
+    switch (bytecode()) {
+        case Bytecodes::_getstatic:
+        case Bytecodes::_putstatic:
+        case Bytecodes::_getfield:
+        case Bytecodes::_putfield:
+            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_get_put);
+            break;
+        case Bytecodes::_invokevirtual:
+        case Bytecodes::_invokespecial:
+        case Bytecodes::_invokestatic:
+        case Bytecodes::_invokeinterface:
+            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invoke);
+            break;
+        case Bytecodes::_invokehandle:
+            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokehandle);
+            break;
+        case Bytecodes::_invokedynamic:
+            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokedynamic);
+            break;
+        default:
+            fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bytecode())));
+            break;
     }
+    __ mov(temp, (int) bytecode());
+    __ call_VM(noreg, entry, temp);
+
+    // Update registers with resolved info
+    __ get_cache_and_index_at_bcp(Rcache, index, 1, index_size);
+    // n.b. unlike x86 Rcache is now rcpool plus the indexed offset
+    // so all clients ofthis method must be modified accordingly
+    __ bind(resolved);
 
 }
 
