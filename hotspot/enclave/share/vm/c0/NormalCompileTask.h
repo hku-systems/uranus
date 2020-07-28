@@ -88,6 +88,14 @@ public:
         delete bs;
     }
 
+    static void do_oop_store(InterpreterMacroAssembler* _masm,
+                      Address obj,
+                      Register val,
+                      BarrierSet::Name barrier,
+                      bool precise);
+
+    Address at_bcp(int offset);
+
     void checkcast_state(TosState tos, TosState intos);
 
     //Comment out because it is in x86 format
@@ -291,7 +299,20 @@ public:
                                        Register flags   // if caller wants to test it
     );
 
-    void gc_point();
+    void load_invoke_cp_cache_entry(int byte_no,
+                                                       Register method,
+                                                       Register itable_index,
+                                                       Register flags,
+                                                       bool is_invokevirtual,
+                                                       bool is_invokevfinal, /*unused*/
+                                                       bool is_invokedynamic);
+
+    void gc_point()
+
+    void patch_bytecode(Bytecodes::Code bc, Register bc_reg,
+                                           Register temp_reg, bool load_bc_into_bc_reg/*=true*/,
+                                           int byte_no);
+
     PatchingStub* resolve_cache_and_index(int byte_no,
                                           Register Rcache,
                                           Register index,

@@ -20,6 +20,17 @@
 #include "MetadataAccessor.hpp"
 #include "c0_Runtime.hpp"
 
+#include "interpreter/interpreter.hpp"
+#include "interpreter/interpreterRuntime.hpp"
+#include "interpreter/templateTable.hpp"
+
+#include "oops/method.hpp"
+#include "oops/objArrayKlass.hpp"
+#include "oops/oop.inline.hpp"
+
+#include "runtime/sharedRuntime.hpp"
+#include "runtime/stubRoutines.hpp"
+
 #include <interpreter/interpreterRuntime.hpp>
 #define __ _masm->
 #define transition(from, to)
@@ -202,6 +213,53 @@ static inline Address at_tos_p3() {
 
 static inline Address at_tos_p4() {
     return Address(esp,  Interpreter::expr_offset_in_bytes(4));
+}
+
+static inline Address at_tos_p5() {
+    return Address(esp,  Interpreter::expr_offset_in_bytes(5));
+}
+
+// Condition conversion
+static Assembler::Condition j_not(TemplateTable::Condition cc) {
+    switch (cc) {
+        case TemplateTable::equal        : return Assembler::NE;
+        case TemplateTable::not_equal    : return Assembler::EQ;
+        case TemplateTable::less         : return Assembler::GE;
+        case TemplateTable::less_equal   : return Assembler::GT;
+        case TemplateTable::greater      : return Assembler::LE;
+        case TemplateTable::greater_equal: return Assembler::LT;
+    }
+    ShouldNotReachHere();
+    return Assembler::EQ;
+}
+
+
+// Miscelaneous helper routines
+// Store an oop (or NULL) at the Address described by obj.
+// If val == noreg this means store a NULL
+static void do_oop_store(InterpreterMacroAssembler* _masm,
+                         Address obj,
+                         Register val,
+                         BarrierSet::Name barrier,
+                         bool precise) {
+    assert(val == noreg || val == r0, "parameter is just for looks");
+    switch (barrier) {
+        case BarrierSet::Other:
+            if (val == noreg) {
+                __ store_heap_oop_null(obj);
+            } else {
+                __ store_heap_oop(obj, val);
+            }
+            break;
+        default      :
+            ShouldNotReachHere();
+
+    }
+}
+
+Address NormalCompileTask::at_bcp(int offset) {
+    assert(_desc->uses_bcp(), "inconsistent uses_bcp information");
+    return Address(rbcp, offset);
 }
 
 // At top of Java expression stack which may be different than esp().  It
@@ -3059,6 +3117,98 @@ void NormalCompileTask::prepare_invoke(int byte_no,
     }
 }
 
+void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
+                                               Register method,
+                                               Register itable_index,
+                                               Register flags,
+                                               bool is_invokevirtual,
+                                               bool is_invokevfinal, /*unused*/
+                                               bool is_invokedynamic) {
+    // setup registers
+    const Register cache = rscratch2;
+    const Register index = r4;
+    assert_different_registers(method, flags);
+    assert_different_registers(method, cache, index);
+    assert_different_registers(itable_index, flags);
+    assert_different_registers(itable_index, cache, index);
+    // determine constant pool cache field offsets
+    assert(is_invokevirtual == (byte_no == f2_byte), "is_invokevirtual flag redundant");
+    const int method_offset = in_bytes(
+            ConstantPoolCache::base_offset() +
+            (is_invokevirtual
+             ? ConstantPoolCacheEntry::f2_offset()
+             : ConstantPoolCacheEntry::f1_offset()));
+    const int flags_offset = in_bytes(ConstantPoolCache::base_offset() +
+                                      ConstantPoolCacheEntry::flags_offset());
+    // access constant pool cache fields
+    const int index_offset = in_bytes(ConstantPoolCache::base_offset() +
+                                      ConstantPoolCacheEntry::f2_offset());
+
+    size_t index_size = (is_invokedynamic ? sizeof(u4) : sizeof(u2));
+    resolve_cache_and_index(byte_no, cache, index, index_size);
+    __ ldr(method, Address(cache, method_offset));
+
+    if (itable_index != noreg) {
+        __ ldr(itable_index, Address(cache, index_offset));
+    }
+    __ ldrw(flags, Address(cache, flags_offset));
+}
+
+void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
+                                   Register temp_reg, bool load_bc_into_bc_reg/*=true*/,
+                                   int byte_no)
+{
+    if (!RewriteBytecodes)  return;
+    Label L_patch_done;
+
+    switch (bc) {
+        case Bytecodes::_fast_aputfield:
+        case Bytecodes::_fast_bputfield:
+        case Bytecodes::_fast_zputfield:
+        case Bytecodes::_fast_cputfield:
+        case Bytecodes::_fast_dputfield:
+        case Bytecodes::_fast_fputfield:
+        case Bytecodes::_fast_iputfield:
+        case Bytecodes::_fast_lputfield:
+        case Bytecodes::_fast_sputfield:
+        {
+            // We skip bytecode quickening for putfield instructions when
+            // the put_code written to the constant pool cache is zero.
+            // This is required so that every execution of this instruction
+            // calls out to InterpreterRuntime::resolve_get_put to do
+            // additional, required work.
+            assert(byte_no == f1_byte || byte_no == f2_byte, "byte_no out of range");
+            assert(load_bc_into_bc_reg, "we use bc_reg as temp");
+            __ get_cache_and_index_and_bytecode_at_bcp(temp_reg, bc_reg, temp_reg, byte_no, 1);
+            __ movw(bc_reg, bc);
+            __ cmpw(temp_reg, (unsigned) 0);
+            __ br(Assembler::EQ, L_patch_done);  // don't patch
+        }
+            break;
+        default:
+            assert(byte_no == -1, "sanity");
+            // the pair bytecodes have already done the load.
+            if (load_bc_into_bc_reg) {
+                __ movw(bc_reg, bc);
+            }
+    }
+
+
+#ifdef ASSERT
+    Label L_okay;
+  __ load_unsigned_byte(temp_reg, at_bcp(0));
+  __ cmpw(temp_reg, (int) Bytecodes::java_code(bc));
+  __ br(Assembler::EQ, L_okay);
+  __ cmpw(temp_reg, bc_reg);
+  __ br(Assembler::EQ, L_okay);
+  __ stop("patching the wrong bytecode");
+  __ bind(L_okay);
+#endif
+
+    // patch bytecode
+    __ strb(bc_reg, at_bcp(0));
+    __ bind(L_patch_done);
+}
 
 // Comment out because not used
 /*
