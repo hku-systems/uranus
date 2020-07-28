@@ -866,6 +866,7 @@ void NormalCompileTask::aload_0() {
     aload(0);
   }
 }
+
 void NormalCompileTask::iaload() {
   transition(itos, itos);
   __ mov(r1, r0);
@@ -873,7 +874,7 @@ void NormalCompileTask::iaload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1, Address(r0, r1, Address::uxtw(2)));
   __ ldrw(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_INT)));
 }
@@ -884,7 +885,7 @@ void NormalCompileTask::laload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1, Address(r0, r1, Address::uxtw(3)));
   __ ldr(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_LONG)));
 }
@@ -895,7 +896,7 @@ void NormalCompileTask::faload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(2)));
   __ ldrs(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
@@ -906,7 +907,7 @@ void NormalCompileTask::daload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(3)));
   __ ldrd(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 
@@ -918,7 +919,7 @@ void NormalCompileTask::aaload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   int s = (UseCompressedOops ? 2 : 3);
   __ lea(r1, Address(r0, r1, Address::uxtw(s)));
   __ load_heap_oop(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
@@ -930,7 +931,7 @@ void NormalCompileTask::baload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(0)));
   __ load_signed_byte(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
@@ -941,7 +942,7 @@ void NormalCompileTask::caload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_unsigned_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
@@ -952,7 +953,7 @@ void NormalCompileTask::saload() {
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
+  //oopDesc::bs()->interpreter_read_barrier_not_null(_masm, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
@@ -1017,7 +1018,7 @@ void NormalCompileTask::iastore() {
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
   __ strw(r0, Address(rscratch1,
 		      arrayOopDesc::base_offset_in_bytes(T_INT)));
@@ -1030,7 +1031,7 @@ void NormalCompileTask::lastore() {
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
   __ str(r0, Address(rscratch1,
 		      arrayOopDesc::base_offset_in_bytes(T_LONG)));
@@ -1043,7 +1044,7 @@ void NormalCompileTask::fastore() {
   // r1:  index
   // r3:  array
   index_check(r3, r1); // prefer index in r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
   __ strs(v0, Address(rscratch1,
 		      arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
@@ -1056,7 +1057,7 @@ void NormalCompileTask::dastore() {
   // r1:  index
   // r3:  array
   index_check(r3, r1); // prefer index in r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
   __ strd(v0, Address(rscratch1,
 		      arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
@@ -1072,7 +1073,7 @@ void NormalCompileTask::aastore() {
   Address element_address(r4, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
   index_check(r3, r2);     // kills r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(r4, Address(r3, r2, Address::uxtw(UseCompressedOops? 2 : 3)));
 
   // do array store check - check for NULL value first
@@ -1121,7 +1122,7 @@ void NormalCompileTask::bastore() {
   // r0: value
   // r1: index
   // r3: array
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   index_check(r3, r1); // prefer index in r1
 
   // Need to check whether array is boolean or byte
@@ -1147,7 +1148,7 @@ void NormalCompileTask::castore() {
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  oopDesc::bs()->interpreter_write_barrier(_masm, r3);
+  //oopDesc::bs()->interpreter_write_barrier(_masm, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(1)));
   __ strh(r0, Address(rscratch1,
 		      arrayOopDesc::base_offset_in_bytes(T_CHAR)));
@@ -1986,8 +1987,8 @@ void NormalCompileTask::entry() {
     if (is_sgx_interface(method) || strncmp(method->name()->as_C_string(), "sgx_hook", 8) == 0) {
         for (int i = 0;i < size_parameters;i++)
         {
-            // movptr change to str
-            __ str(r15, Address(rlocals, size_parameters - i, Address::times_8));
+            // movptr change to str, times8 change to lsl(3)
+            __ str(r15, Address(rlocals, size_parameters - i, Address::lsl(3)));
             __ push(r15);
         }
     }
@@ -2098,20 +2099,25 @@ void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
 }
 
 void NormalCompileTask::index_check(Register array, Register index) {
-    // destroys rbx
+    // destroys r1, rscratch1
     // check array
     __ null_check(array, arrayOopDesc::length_offset_in_bytes());
     // sign extend index for use by indexed load
-    __ movl2ptr(index, index);
+    // __ movl2ptr(index, index);
     // check index
-    __ cmpl(index, Address(array, arrayOopDesc::length_offset_in_bytes()));
-    if (index != rbx) {
-        // ??? convention: move aberrant index into ebx for exception message
-        assert(rbx != array, "different registers");
-        __ movl(rbx, index);
+    Register length = rscratch1;
+    __ ldrw(length, Address(array, arrayOopDesc::length_offset_in_bytes()));
+    __ cmpw(index, length);
+    if (index != r1) {
+        // ??? convention: move aberrant index into r1 for exception message
+        assert(r1 != array, "different registers");
+        __ mov(r1, index);
     }
-    __ jump_cc(Assembler::aboveEqual,
-               ExternalAddress(Interpreter::_throw_ArrayIndexOutOfBoundsException_entry));
+    Label ok;
+    __ br(Assembler::LO, ok);
+    __ mov(rscratch1, Interpreter::_throw_ArrayIndexOutOfBoundsException_entry);
+    __ br(rscratch1);
+    __ bind(ok);
 }
 //void NormalCompileTask::locals_index(Register reg, int offset) { Unimplemented(); }
 
