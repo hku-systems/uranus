@@ -33,8 +33,6 @@
 
 #include "interpreter/bytecodes.hpp"
 
-#include "interpreter/JvmtiExport.hpp"
-
 #include <interpreter/interpreterRuntime.hpp>
 #define __ _masm->
 #define transition(from, to)
