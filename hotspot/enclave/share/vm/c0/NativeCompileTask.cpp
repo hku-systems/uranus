@@ -8,8 +8,7 @@
 
 #define __ _masm->
 
-#ifdef HAVE_NATIVE_COMPILE_TASK
-
+/*
 class NativeParameterIterator {
 public:
     int _num_int_args;
@@ -221,8 +220,9 @@ public:
         _offset += 1;
     }
 };
-
+*/
 void NativeCompileTask::entry() {
+#ifdef NATIVE
 
     // rbx: Method*
     // r13: sender sp
@@ -541,9 +541,11 @@ void NativeCompileTask::entry() {
     __ mov(rsp, t);                            // set sp to sender sp
     __ push(rdi);
     __ ret(0);
+#endif
 }
 
 int NativeCompileTask::compile(int size) {
+    /*
     BufferBlob* stub_blob = BufferBlob::create("EnclaveABI:", 4096);
     if (stub_blob == NULL) {
         ShouldNotReachHere();
@@ -552,8 +554,7 @@ int NativeCompileTask::compile(int size) {
     _masm = new C0_MacroAssembler(&c, NULL);
 
     entry();
+     */
 }
 
 #undef __
-
-#endif
