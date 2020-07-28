@@ -454,6 +454,7 @@ class Method : public Metadata {
   bool has_itable_index() const                  { return _vtable_index <= itable_index_max; }
   int  itable_index() const                      { assert(valid_itable_index(), "");
                                                    return itable_index_max - _vtable_index; }
+
   void set_itable_index(int index);
 
   // interpreter entry
@@ -650,6 +651,7 @@ class Method : public Metadata {
   static ByteSize interpreter_entry_offset()     { return byte_offset_of(Method, _i2i_entry ); }
   static ByteSize signature_handler_offset()     { return in_ByteSize(sizeof(Method) + wordSize);      }
   static ByteSize enclave_signature_handler_offset()     { return in_ByteSize(sizeof(Method) + wordSize * 3);      }
+  static ByteSize itable_index_offset()          { return byte_offset_of(Method, _vtable_index ); }
 
   // for code generation
   static int method_data_offset_in_bytes()       { return offset_of(Method, _method_data); }

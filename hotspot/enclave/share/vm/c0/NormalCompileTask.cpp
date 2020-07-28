@@ -31,6 +31,10 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 
+#include "interpreter/bytecodes.hpp"
+
+#include "interpreter/JvmtiExport.hpp"
+
 #include <interpreter/interpreterRuntime.hpp>
 #define __ _masm->
 #define transition(from, to)
@@ -257,10 +261,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
     }
 }
 
-Address NormalCompileTask::at_bcp(int offset) {
-    assert(_desc->uses_bcp(), "inconsistent uses_bcp information");
-    return Address(rbcp, offset);
-}
+
 
 // At top of Java expression stack which may be different than esp().  It
 // isn't for category 1 objects.
@@ -589,7 +590,7 @@ int NormalCompileTask::compile(int size) {
       __ bind(no_such_interface);
       //abort
       // movptr change to str
-      __ str(r0, (intptr_t)-1);
+      __ str(r0, (Address)-1);
       __ str(r0, Address(r0, 0));
     }
 
@@ -1678,14 +1679,14 @@ void NormalCompileTask::if_acmp(NormalCompileTask::Condition cc) {
   __ profile_not_taken_branch(r0);
 }
 
-static Assembler::Condition j_not(TemplateTable::Condition cc) {
+static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
   switch (cc) {
-  case TemplateTable::equal        : return Assembler::NE;
-  case TemplateTable::not_equal    : return Assembler::EQ;
-  case TemplateTable::less         : return Assembler::GE;
-  case TemplateTable::less_equal   : return Assembler::GT;
-  case TemplateTable::greater      : return Assembler::LE;
-  case TemplateTable::greater_equal: return Assembler::LT;
+  case NormalCompileTask::equal        : return Assembler::NE;
+  case NormalCompileTask::not_equal    : return Assembler::EQ;
+  case NormalCompileTask::less         : return Assembler::GE;
+  case NormalCompileTask::less_equal   : return Assembler::GT;
+  case NormalCompileTask::greater      : return Assembler::LE;
+  case NormalCompileTask::greater_equal: return Assembler::LT;
   }
   ShouldNotReachHere();
   return Assembler::EQ;
@@ -1747,230 +1748,67 @@ void NormalCompileTask::wide_iinc() {
   __ addw(r0, r0, r1);
   __ str(r0, iaddress(r2));
 }
-void NormalCompileTask::branch(bool is_jsr, bool is_wide, Condition c){
-  // We might be moving to a safepoint.  The thread which calls
-  // Interpreter::notice_safepoints() will effectively flush its cache
-  // when it makes a system call, but we need to do something to
-  // ensure that we see the changed dispatch table.
-  __ membar(MacroAssembler::LoadLoad);
+void NormalCompileTask::branch(bool is_jsr, bool is_wide){
+    // We might be moving to a safepoint.  The thread which calls
+    // Interpreter::notice_safepoints() will effectively flush its cache
+    // when it makes a system call, but we need to do something to
+    // ensure that we see the changed dispatch table.
+    __ membar(MacroAssembler::LoadLoad);
 
-  __ profile_taken_branch(r0, r1);
-  const ByteSize be_offset = MethodCounters::backedge_counter_offset() +
-                             InvocationCounter::counter_offset();
-  const ByteSize inv_offset = MethodCounters::invocation_counter_offset() +
-                              InvocationCounter::counter_offset();
+    __ profile_taken_branch(r0, r1);
 
-  // load branch displacement
-  if (!is_wide) {
-    __ ldrh(r2, at_bcp(1));
-    __ rev16(r2, r2);
-    // sign extend the 16 bit value in r2
-    __ sbfm(r2, r2, 0, 15);
-  } else {
-    __ ldrw(r2, at_bcp(1));
-    __ revw(r2, r2);
-    // sign extend the 32 bit value in r2
-    __ sbfm(r2, r2, 0, 31);
-  }
-
-  // Handle all the JSR stuff here, then exit.
-  // It's much shorter and cleaner than intermingling with the non-JSR
-  // normal-branch stuff occurring below.
-
-  if (is_jsr) {
-    // Pre-load the next target bytecode into rscratch1
-    __ load_unsigned_byte(rscratch1, Address(rbcp, r2));
-    // compute return address as bci
-    __ ldr(rscratch2, Address(rmethod, Method::const_offset()));
-    __ add(rscratch2, rscratch2,
-	   in_bytes(ConstMethod::codes_offset()) - (is_wide ? 5 : 3));
-    __ sub(r1, rbcp, rscratch2);
-    __ push_i(r1);
-    // Adjust the bcp by the 16-bit displacement in r2
-    __ add(rbcp, rbcp, r2);
-    __ dispatch_only(vtos);
-    return;
-  }
-
-  // Normal (non-jsr) branch handling
-
-  // Adjust the bcp by the displacement in r2
-  __ add(rbcp, rbcp, r2);
-
-  assert(UseLoopCounter || !UseOnStackReplacement,
-         "on-stack-replacement requires loop counters");
-  Label backedge_counter_overflow;
-  Label profile_method;
-  Label dispatch;
-  if (UseLoopCounter) {
-    // increment backedge counter for backward branches
-    // r0: MDO
-    // w1: MDO bumped taken-count
-    // r2: target offset
-    __ cmp(r2, zr);
-    __ br(Assembler::GT, dispatch); // count only if backward branch
-
-    // ECN: FIXME: This code smells
-    // check if MethodCounters exists
-    Label has_counters;
-    __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
-    __ cbnz(rscratch1, has_counters);
-    __ push(r0);
-    __ push(r1);
-    __ push(r2);
-    __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-	    InterpreterRuntime::build_method_counters), rmethod);
-    __ pop(r2);
-    __ pop(r1);
-    __ pop(r0);
-    __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
-    __ cbz(rscratch1, dispatch); // No MethodCounters allocated, OutOfMemory
-    __ bind(has_counters);
-
-    if (TieredCompilation) {
-      Label no_mdo;
-      int increment = InvocationCounter::count_increment;
-      int mask = ((1 << Tier0BackedgeNotifyFreqLog) - 1) << InvocationCounter::count_shift;
-      if (ProfileInterpreter) {
-        // Are we profiling?
-        __ ldr(r1, Address(rmethod, in_bytes(Method::method_data_offset())));
-	__ cbz(r1, no_mdo);
-        // Increment the MDO backedge counter
-        const Address mdo_backedge_counter(r1, in_bytes(MethodData::backedge_counter_offset()) +
-                                           in_bytes(InvocationCounter::counter_offset()));
-        __ increment_mask_and_jump(mdo_backedge_counter, increment, mask,
-                                   r0, rscratch2, false, Assembler::EQ, &backedge_counter_overflow);
-        __ b(dispatch);
-      }
-      __ bind(no_mdo);
-      // Increment backedge counter in MethodCounters*
-      __ ldr(rscratch1, Address(rmethod, Method::method_counters_offset()));
-      __ increment_mask_and_jump(Address(rscratch1, be_offset), increment, mask,
-                                 r0, rscratch2, false, Assembler::EQ, &backedge_counter_overflow);
+    // load branch displacement
+    if (!is_wide) {
+        __ ldrh(r2, at_bcp(1));
+        __ rev16(r2, r2);
+        // sign extend the 16 bit value in r2
+        __ sbfm(r2, r2, 0, 15);
     } else {
-      // increment counter
-      __ ldr(rscratch2, Address(rmethod, Method::method_counters_offset()));
-      __ ldrw(r0, Address(rscratch2, be_offset));        // load backedge counter
-      __ addw(rscratch1, r0, InvocationCounter::count_increment); // increment counter
-      __ strw(rscratch1, Address(rscratch2, be_offset));        // store counter
-
-      __ ldrw(r0, Address(rscratch2, inv_offset));    // load invocation counter
-      __ andw(r0, r0, (unsigned)InvocationCounter::count_mask_value); // and the status bits
-      __ addw(r0, r0, rscratch1);        // add both counters
-
-      if (ProfileInterpreter) {
-        // Test to see if we should create a method data oop
-	__ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterProfileLimit));
-	__ ldrw(rscratch1, rscratch1);
-        __ cmpw(r0, rscratch1);
-        __ br(Assembler::LT, dispatch);
-
-        // if no method data exists, go to profile method
-        __ test_method_data_pointer(r0, profile_method);
-
-        if (UseOnStackReplacement) {
-          // check for overflow against w1 which is the MDO taken count
-	  __ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterBackwardBranchLimit));
-	  __ ldrw(rscratch1, rscratch1);
-          __ cmpw(r1, rscratch1);
-          __ br(Assembler::LO, dispatch); // Intel == Assembler::below
-
-          // When ProfileInterpreter is on, the backedge_count comes
-          // from the MethodData*, which value does not get reset on
-          // the call to frequency_counter_overflow().  To avoid
-          // excessive calls to the overflow routine while the method is
-          // being compiled, add a second test to make sure the overflow
-          // function is called only once every overflow_frequency.
-          const int overflow_frequency = 1024;
-          __ andsw(r1, r1, overflow_frequency - 1);
-          __ br(Assembler::EQ, backedge_counter_overflow);
-
-        }
-      } else {
-        if (UseOnStackReplacement) {
-          // check for overflow against w0, which is the sum of the
-          // counters
-	  __ lea(rscratch1, ExternalAddress((address) &InvocationCounter::InterpreterBackwardBranchLimit));
-	  __ ldrw(rscratch1, rscratch1);
-          __ cmpw(r0, rscratch1);
-          __ br(Assembler::HS, backedge_counter_overflow); // Intel == Assembler::aboveEqual
-        }
-      }
-    }
-  }
-  __ bind(dispatch);
-
-  // Pre-load the next target bytecode into rscratch1
-  __ load_unsigned_byte(rscratch1, Address(rbcp, 0));
-
-  // continue with the bytecode @ target
-  // rscratch1: target bytecode
-  // rbcp: target bcp
-  __ dispatch_only(vtos);
-
-  if (UseLoopCounter) {
-    if (ProfileInterpreter) {
-      // Out-of-line code to allocate method data oop.
-      __ bind(profile_method);
-      __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::profile_method));
-      __ load_unsigned_byte(r1, Address(rbcp, 0));  // restore target bytecode
-      __ set_method_data_pointer_for_bcp();
-      __ b(dispatch);
+        __ ldrw(r2, at_bcp(1));
+        __ revw(r2, r2);
+        // sign extend the 32 bit value in r2
+        __ sbfm(r2, r2, 0, 31);
     }
 
-    if (TieredCompilation || UseOnStackReplacement) {
-      // invocation counter overflow
-      __ bind(backedge_counter_overflow);
-      __ neg(r2, r2);
-      __ add(r2, r2, rbcp);	// branch bcp
-      // IcoResult frequency_counter_overflow([JavaThread*], address branch_bcp)
-      __ call_VM(noreg,
-                 CAST_FROM_FN_PTR(address,
-                                  InterpreterRuntime::frequency_counter_overflow),
-                 r2);
-      if (!UseOnStackReplacement)
-        __ b(dispatch);
+    // Handle all the JSR stuff here, then exit.
+    // It's much shorter and cleaner than intermingling with the non-JSR
+    // normal-branch stuff occurring below.
+
+    if (is_jsr) {
+        // Pre-load the next target bytecode into rscratch1
+        __ load_unsigned_byte(rscratch1, Address(rbcp, r2));
+        // compute return address as bci
+        __ ldr(rscratch2, Address(rmethod, Method::const_offset()));
+        __ add(rscratch2, rscratch2,
+               in_bytes(ConstMethod::codes_offset()) - (is_wide ? 5 : 3));
+        __ sub(r1, rbcp, rscratch2);
+        __ push_i(r1);
+        // Adjust the bcp by the 16-bit displacement in r2
+        __ add(rbcp, rbcp, r2);
+        __ dispatch_only(vtos);
+        return;
     }
 
-    if (UseOnStackReplacement) {
-      __ load_unsigned_byte(r1, Address(rbcp, 0));  // restore target bytecode
+    // Normal (non-jsr) branch handling
 
-      // r0: osr nmethod (osr ok) or NULL (osr not possible)
-      // w1: target bytecode
-      // r2: scratch
-      __ cbz(r0, dispatch);	// test result -- no osr if null
-      // nmethod may have been invalidated (VM may block upon call_VM return)
-      __ ldrw(r2, Address(r0, nmethod::entry_bci_offset()));
-      // InvalidOSREntryBci == -2 which overflows cmpw as unsigned
-      // use cmnw against -InvalidOSREntryBci which does the same thing
-      __ cmn(r2, -InvalidOSREntryBci);
-      __ br(Assembler::EQ, dispatch);
+    // Adjust the bcp by the displacement in r2
+    __ add(rbcp, rbcp, r2);
 
-      // We have the address of an on stack replacement routine in r0
-      // We need to prepare to execute the OSR method. First we must
-      // migrate the locals and monitors off of the stack.
+    assert(UseLoopCounter || !UseOnStackReplacement,
+           "on-stack-replacement requires loop counters");
+    Label backedge_counter_overflow;
+    Label profile_method;
+    Label dispatch;
 
-      __ mov(r19, r0);                             // save the nmethod
+    __ bind(dispatch);
 
-      call_VM(noreg, CAST_FROM_FN_PTR(address, SharedRuntime::OSR_migration_begin));
+    // Pre-load the next target bytecode into rscratch1
+    __ load_unsigned_byte(rscratch1, Address(rbcp, 0));
 
-      // r0 is OSR buffer, move it to expected parameter location
-      __ mov(j_rarg0, r0);
-
-      // remove activation
-      // get sender esp
-      __ ldr(esp,
-	  Address(rfp, frame::interpreter_frame_sender_sp_offset * wordSize));
-      // remove frame anchor
-      __ leave();
-      // Ensure compiled code always sees stack at proper alignment
-      __ andr(sp, esp, -16);
-
-      // and begin the OSR nmethod
-      __ ldr(rscratch1, Address(r19, nmethod::osr_entry_point_offset()));
-      __ br(rscratch1);
-    }
-  }
+    // continue with the bytecode @ target
+    // rscratch1: target bytecode
+    // rbcp: target bcp
+    __ dispatch_only(vtos);
 }
 void NormalCompileTask::lmul() {
   transition(ltos, ltos);
@@ -2030,7 +1868,9 @@ void NormalCompileTask::entry() {
     if (break_method != NULL &&
         strcmp(method->name()->as_C_string(), break_method) == 0 &&
         strcmp(method->klass_name()->as_C_string(), break_klass) == 0) {
-        __ os_breakpoint();
+        //__ os_breakpoint();
+        //Temporarily change to break
+        break;
     }
 
     // YYY
@@ -2187,168 +2027,114 @@ void NormalCompileTask::index_check(Register array, Register index) {
 // Allocation
 
 void NormalCompileTask::_new() {
-  transition(vtos, atos);
+    transition(vtos, atos);
 
-  __ get_unsigned_2_byte_index_at_bcp(r3, 1);
-  Label slow_case;
-  Label done;
-  Label initialize_header;
-  Label initialize_object; // including clearing the fields
-  Label allocate_shared;
+    __ get_unsigned_2_byte_index_at_bcp(r3, 1);
+    Label slow_case;
+    Label done;
+    Label initialize_header;
+    Label initialize_object; // including clearing the fields
+    Label allocate_shared;
 
-  __ get_cpool_and_tags(r4, r0);
-  // Make sure the class we're about to instantiate has been resolved.
-  // This is done before loading InstanceKlass to be consistent with the order
-  // how Constant Pool is updated (see ConstantPool::klass_at_put)
-  const int tags_offset = Array<u1>::base_offset_in_bytes();
-  __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
-  __ lea(rscratch1, Address(rscratch1, tags_offset));
-  __ ldarb(rscratch1, rscratch1);
-  __ cmp(rscratch1, JVM_CONSTANT_Class);
-  __ br(Assembler::NE, slow_case);
+    __ get_cpool_and_tags(r4, r0);
+    // Make sure the class we're about to instantiate has been resolved.
+    // This is done before loading InstanceKlass to be consistent with the order
+    // how Constant Pool is updated (see ConstantPool::klass_at_put)
+    const int tags_offset = Array<u1>::base_offset_in_bytes();
+    __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
+    __ lea(rscratch1, Address(rscratch1, tags_offset));
+    __ ldarb(rscratch1, rscratch1);
+    __ cmp(rscratch1, JVM_CONSTANT_Class);
+    __ br(Assembler::NE, slow_case);
 
-  // get InstanceKlass
-  __ lea(r4, Address(r4, r3, Address::lsl(3)));
-  __ ldr(r4, Address(r4, sizeof(ConstantPool)));
+    // get InstanceKlass
+    __ lea(r4, Address(r4, r3, Address::lsl(3)));
+    __ ldr(r4, Address(r4, sizeof(ConstantPool)));
 
-  // make sure klass is initialized & doesn't have finalizer
-  // make sure klass is fully initialized
-  __ ldrb(rscratch1, Address(r4, InstanceKlass::init_state_offset()));
-  __ cmp(rscratch1, InstanceKlass::fully_initialized);
-  __ br(Assembler::NE, slow_case);
+    // make sure klass is initialized & doesn't have finalizer
+    // make sure klass is fully initialized
+    __ ldrb(rscratch1, Address(r4, InstanceKlass::init_state_offset()));
+    __ cmp(rscratch1, InstanceKlass::fully_initialized);
+    __ br(Assembler::NE, slow_case);
 
-  // get instance_size in InstanceKlass (scaled to a count of bytes)
-  __ ldrw(r3,
-          Address(r4,
-                  Klass::layout_helper_offset()));
-  // test to see if it has a finalizer or is malformed in some way
-  __ tbnz(r3, exact_log2(Klass::_lh_instance_slow_path_bit), slow_case);
+    // get instance_size in InstanceKlass (scaled to a count of bytes)
+    __ ldrw(r3,
+            Address(r4,
+                    Klass::layout_helper_offset()));
+    // test to see if it has a finalizer or is malformed in some way
+    __ tbnz(r3, exact_log2(Klass::_lh_instance_slow_path_bit), slow_case);
 
-  // Allocate the instance
-  // 1) Try to allocate in the TLAB
-  // 2) if fail and the object is large allocate in the shared Eden
-  // 3) if the above fails (or is not applicable), go to a slow case
-  // (creates a new TLAB, etc.)
+    // Allocate the instance
+    // 1) Try to allocate in the TLAB
+    // 2) if fail and the object is large allocate in the shared Eden
+    // 3) if the above fails (or is not applicable), go to a slow case
+    // (creates a new TLAB, etc.)
 
-  const bool allow_shared_alloc =
-    Universe::heap()->supports_inline_contig_alloc() && !CMSIncrementalMode;
+    const bool allow_shared_alloc = true;
 
-  if (UseTLAB) {
-    __ tlab_allocate(r0, r3, 0, noreg, r1,
-		     allow_shared_alloc ? allocate_shared : slow_case);
+    // Allocation in the shared Eden, if allowed.
+    //
+    // r3: instance size in bytes
+    if (allow_shared_alloc) {
+        __ bind(allocate_shared);
 
-    if (ZeroTLAB) {
-      // the fields have been already cleared
-      __ b(initialize_header);
-    } else {
-      // initialize both the header and fields
-      __ b(initialize_object);
-    }
-  }
-
-  // Allocation in the shared Eden, if allowed.
-  //
-  // r3: instance size in bytes
-  if (allow_shared_alloc) {
-    __ bind(allocate_shared);
-
-    __ eden_allocate(r0, r3, 0, r10, slow_case);
-    __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
-  }
-
-  if (UseTLAB || Universe::heap()->supports_inline_contig_alloc()) {
-    // The object is initialized before the header.  If the object size is
-    // zero, go directly to the header initialization.
-    __ bind(initialize_object);
-    __ sub(r3, r3, sizeof(oopDesc));
-    __ cbz(r3, initialize_header);
-
-    // Initialize object fields
-    {
-      __ add(r2, r0, sizeof(oopDesc));
-      Label loop;
-      __ bind(loop);
-      __ str(zr, Address(__ post(r2, BytesPerLong)));
-      __ sub(r3, r3, BytesPerLong);
-      __ cbnz(r3, loop);
+        __ eden_allocate(r0, r3, 0, r10, slow_case);
+        __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
     }
 
-    // initialize object header only.
-    __ bind(initialize_header);
-    if (UseBiasedLocking) {
-      __ ldr(rscratch1, Address(r4, Klass::prototype_header_offset()));
-    } else {
-      __ mov(rscratch1, (intptr_t)markOopDesc::prototype());
-    }
-    __ str(rscratch1, Address(r0, oopDesc::mark_offset_in_bytes()));
-    __ store_klass_gap(r0, zr);  // zero klass gap for compressed oops
-    __ store_klass(r0, r4);      // store klass last
+    // slow case
+    __ bind(slow_case);
+    __ get_constant_pool(c_rarg1);
+    __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
+    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
+    __ verify_oop(r0);
 
-    {
-      SkipIfEqual skip(_masm, &DTraceAllocProbes, false);
-      // Trigger dtrace event for fastpath
-      __ push(atos); // save the return value
-      __ call_VM_leaf(
-           CAST_FROM_FN_PTR(address, SharedRuntime::dtrace_object_alloc), r0);
-      __ pop(atos); // restore the return value
-
-    }
-    __ b(done);
-  }
-
-  // slow case
-  __ bind(slow_case);
-  __ get_constant_pool(c_rarg1);
-  __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
-  __ verify_oop(r0);
-
-  // continue
-  __ bind(done);
-  // Must prevent reordering of stores for object initialization with stores that publish the new object.
-  __ membar(Assembler::StoreStore);
+    // continue
+    __ bind(done);
+    // Must prevent reordering of stores for object initialization with stores that publish the new object.
+    __ membar(Assembler::StoreStore);
 }
 
 
 void NormalCompileTask::newarray() {
-  transition(itos, atos);
-  __ load_unsigned_byte(c_rarg1, at_bcp(1));
-  __ mov(c_rarg2, r0);
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
-          c_rarg1, c_rarg2);
-  // Must prevent reordering of stores for object initialization with stores that publish the new object.
-  __ membar(Assembler::StoreStore);
+    transition(itos, atos);
+    __ load_unsigned_byte(c_rarg1, at_bcp(1));
+    __ mov(c_rarg2, r0);
+    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
+            c_rarg1, c_rarg2);
+    // Must prevent reordering of stores for object initialization with stores that publish the new object.
+    __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::anewarray() {
-  transition(itos, atos);
-  __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-  __ get_constant_pool(c_rarg1);
-  __ mov(c_rarg3, r0);
-  call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
-          c_rarg1, c_rarg2, c_rarg3);
-  // Must prevent reordering of stores for object initialization with stores that publish the new object.
-  __ membar(Assembler::StoreStore);
+    transition(itos, atos);
+    __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
+    __ get_constant_pool(c_rarg1);
+    __ mov(c_rarg3, r0);
+    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
+            c_rarg1, c_rarg2, c_rarg3);
+    // Must prevent reordering of stores for object initialization with stores that publish the new object.
+    __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::arraylength() {
-  transition(atos, itos);
-  __ null_check(r0, arrayOopDesc::length_offset_in_bytes());
-  __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
+    transition(atos, itos);
+    __ null_check(r0, arrayOopDesc::length_offset_in_bytes());
+    __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
 
 void NormalCompileTask::multianewarray() {
-  transition(vtos, atos);
-  __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
-  // last dim is on top of stack; we want address of first one:
-  // first_addr = last_addr + (ndims - 1) * wordSize
-  __ lea(c_rarg1, Address(esp, r0, Address::uxtw(3)));
-  __ sub(c_rarg1, c_rarg1, wordSize);
-  call_VM(r0,
-          CAST_FROM_FN_PTR(address, InterpreterRuntime::multianewarray),
-          c_rarg1);
-  __ load_unsigned_byte(r1, at_bcp(3));
-  __ lea(esp, Address(esp, r1, Address::uxtw(3)));
+    transition(vtos, atos);
+    __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
+    // last dim is on top of stack; we want address of first one:
+    // first_addr = last_addr + (ndims - 1) * wordSize
+    __ lea(c_rarg1, Address(esp, r0, Address::uxtw(3)));
+    __ sub(c_rarg1, c_rarg1, wordSize);
+    call_VM(r0,
+            CAST_FROM_FN_PTR(address, InterpreterRuntime::multianewarray),
+            c_rarg1);
+    __ load_unsigned_byte(r1, at_bcp(3));
+    __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
 
 void NormalCompileTask::putfield(int byte_no) {
@@ -2745,36 +2531,6 @@ void NormalCompileTask::load_field_cp_cache_entry(Register obj,
 // Correct values of the cache and index registers are preserved.
 void NormalCompileTask::jvmti_post_field_access(Register cache, Register index,
                                             bool is_static, bool has_tos) {
-    // do the JVMTI work here to avoid disturbing the register state below
-    // We use c_rarg registers here because we want to use the register used in
-    // the call to the VM
-    if (JvmtiExport::can_post_field_access()) {
-        // Check to see if a field access watch has been set before we
-        // take the time to call into the VM.
-        Label L1;
-        assert_different_registers(cache, index, r0);
-        __ lea(rscratch1, ExternalAddress((address) JvmtiExport::get_field_access_count_addr()));
-        __ ldrw(r0, Address(rscratch1));
-        __ cbzw(r0, L1);
-
-        __ get_cache_and_index_at_bcp(c_rarg2, c_rarg3, 1);
-        __ lea(c_rarg2, Address(c_rarg2, in_bytes(ConstantPoolCache::base_offset())));
-
-        if (is_static) {
-            __ mov(c_rarg1, zr); // NULL object reference
-        } else {
-            __ ldr(c_rarg1, at_tos()); // get object pointer without popping it
-            __ verify_oop(c_rarg1);
-        }
-        // c_rarg1: object pointer or NULL
-        // c_rarg2: cache entry pointer
-        // c_rarg3: jvalue object on the stack
-        __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-                                           InterpreterRuntime::post_field_access),
-                   c_rarg1, c_rarg2, c_rarg3);
-        __ get_cache_and_index_at_bcp(cache, index, 1);
-        __ bind(L1);
-    }
 }
 
 void NormalCompileTask::pop_and_check_object(Register r)

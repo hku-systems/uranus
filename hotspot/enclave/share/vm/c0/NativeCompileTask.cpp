@@ -10,6 +10,7 @@
 
 /*
 class NativeParameterIterator {
+
 public:
     int _num_int_args;
     int _num_fp_args;
@@ -56,6 +57,7 @@ public:
         }
     }
 
+
     void generate_result_handler() {
         address entry = __ pc();
         switch (_ret) {
@@ -63,12 +65,12 @@ public:
             case T_CHAR   : __ movzwl(rax, rax);       break;
             case T_BYTE   : __ sign_extend_byte(rax);  break;
             case T_SHORT  : __ sign_extend_short(rax); break;
-            case T_INT    : /* nothing to do */        break;
-            case T_LONG   : /* nothing to do */        break;
-            case T_VOID   : /* nothing to do */        break;
-            case T_FLOAT  : /* nothing to do */        break;
-            case T_DOUBLE : /* nothing to do */        break;
-            case T_OBJECT :
+            case T_INT    :         break;
+            case T_LONG   :         break;
+            case T_VOID   :         break;
+            case T_FLOAT  :         break;
+            case T_DOUBLE :         break;
+            //case T_OBJECT :
             case T_ARRAY:
                 // retrieve result from frame
                 // __ movptr(rax, Address(rbp, frame::interpreter_frame_oop_temp_offset*wordSize));
@@ -220,7 +222,8 @@ public:
         _offset += 1;
     }
 };
-*/
+      */
+
 void NativeCompileTask::entry() {
 #ifdef NATIVE
 
