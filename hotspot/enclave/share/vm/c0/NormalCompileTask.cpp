@@ -3520,7 +3520,8 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
  */
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
-    __ jmp(ret_now);
+    _return(ret_now);
+    //__ jmp(ret_now);
     ret_tos = tos;
     tos = udtos;
     will_run = false;
