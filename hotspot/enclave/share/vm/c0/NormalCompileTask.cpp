@@ -1958,7 +1958,7 @@ void NormalCompileTask::_return(TosState state) {
     assert(_desc->calls_vm(),
            "inconsistent calls_vm information"); // call in remove_activation
 
-    if (_desc->bytecode() == Bytecodes::_return_register_finalizer) {
+    if (bs->code() == Bytecodes::_return_register_finalizer) {
         assert(state == vtos, "only valid state");
 
         __ ldr(c_rarg1, aaddress(0));
@@ -1976,7 +1976,7 @@ void NormalCompileTask::_return(TosState state) {
     // Issue a StoreStore barrier after all stores but before return
     // from any constructor for any class with a final field.  We don't
     // know if this is a finalizer, so we always do so.
-    if (_desc->bytecode() == Bytecodes::_return)
+    if (bs->code() == Bytecodes::_return)
         __ membar(MacroAssembler::StoreStore);
 
     // Narrow result if state is itos but result type is smaller.
@@ -3265,7 +3265,7 @@ void NormalCompileTask::instanceof() {
 void NormalCompileTask::gc_point() {
     //movptr change to str
     //rbp to fp for bottom of stack
-    __ str(Address(fp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
+    __ str(Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
@@ -3520,7 +3520,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
  */
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
-    _return(ret_now);
+    _return(ret_tos);
     //__ jmp(ret_now);
     ret_tos = tos;
     tos = udtos;
