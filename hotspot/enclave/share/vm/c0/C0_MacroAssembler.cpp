@@ -37,97 +37,62 @@ void C0_MacroAssembler::addptr(Register dst, int32_t imm32)  {
 */
 void C0_MacroAssembler::initialize_header(Register obj, Register klass, Register len, Register t1, Register t2) {
     //comment out because not used in NormalCompileTask
-    /*
     assert_different_registers(obj, klass, len);
     if (UseBiasedLocking && !len->is_valid()) {
         assert_different_registers(obj, klass, len, t1, t2);
-        movptr(t1, Address(klass, Klass::prototype_header_offset()));
-        movptr(Address(obj, oopDesc::mark_offset_in_bytes()), t1);
+        ldr(t1, Address(klass, Klass::prototype_header_offset()));
     } else {
         // This assumes that all prototype bits fit in an int32_t
-        movptr(Address(obj, oopDesc::mark_offset_in_bytes ()), (int32_t)(intptr_t)markOopDesc::prototype());
+        mov(t1, (int32_t)(intptr_t)markOopDesc::prototype());
     }
-#ifdef _LP64
+    str(t1, Address(obj, oopDesc::mark_offset_in_bytes()));
+
     if (UseCompressedClassPointers) { // Take care not to kill klass
-        movptr(t1, klass);
-        encode_klass_not_null(t1);
-        movl(Address(obj, oopDesc::klass_offset_in_bytes()), t1);
-    } else
-#endif
-    {
-        movptr(Address(obj, oopDesc::klass_offset_in_bytes()), klass);
+        encode_klass_not_null(t1, klass);
+        strw(t1, Address(obj, oopDesc::klass_offset_in_bytes()));
+    } else {
+        str(klass, Address(obj, oopDesc::klass_offset_in_bytes()));
     }
 
     if (len->is_valid()) {
-        movl(Address(obj, arrayOopDesc::length_offset_in_bytes()), len);
+        strw(len, Address(obj, arrayOopDesc::length_offset_in_bytes()));
+    } else if (UseCompressedClassPointers) {
+        store_klass_gap(obj, zr);
     }
-#ifdef _LP64
-    else if (UseCompressedClassPointers) {
-        xorptr(t1, t1);
-        store_klass_gap(obj, t1);
-    }
-#endif
-     */
 }
 
 void C0_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int hdr_size_in_bytes, Register t1) {
     //comment out because not used in NormalCompileTask
-    /*
     Label done;
     assert(obj != len_in_bytes && obj != t1 && t1 != len_in_bytes, "registers must be different");
     assert((hdr_size_in_bytes & (BytesPerWord - 1)) == 0, "header size is not a multiple of BytesPerWord");
     Register index = len_in_bytes;
     // index is positive and ptr sized
-    subptr(index, hdr_size_in_bytes);
-    jcc(Assembler::zero, done);
-    // initialize topmost word, divide index by 2, check if odd and test if zero
+    subs(index, index, hdr_size_in_bytes);
+    br(Assembler::EQ, done);
     // note: for the remaining code to work, index must be a multiple of BytesPerWord
 #ifdef ASSERT
     { Label L;
-    testptr(index, BytesPerWord - 1);
-    jcc(Assembler::zero, L);
+    tst(index, BytesPerWord - 1);
+    br(Assembler::EQ, L);
     stop("index is not a multiple of BytesPerWord");
     bind(L);
   }
 #endif
-    xorptr(t1, t1);    // use _zero reg to clear memory (shorter code)
-    if (UseIncDec) {
-        shrptr(index, 3);  // divide by 8/16 and set carry flag if bit 2 was set
-    } else {
-        shrptr(index, 2);  // use 2 instructions to avoid partial flag stall
-        shrptr(index, 1);
-    }
-#ifndef _LP64
-    // index could have been not a multiple of 8 (i.e., bit 2 was set)
-  { Label even;
-    // note: if index was a multiple of 8, than it cannot
-    //       be 0 now otherwise it must have been 0 before
-    //       => if it is even, we don't need to check for 0 again
-    jcc(Assembler::carryClear, even);
-    // clear topmost word (no jump needed if conditional assignment would work here)
-    movptr(Address(obj, index, Address::times_8, hdr_size_in_bytes - 0*BytesPerWord), t1);
-    // index could be 0 now, need to check again
-    jcc(Assembler::zero, done);
-    bind(even);
-  }
-#endif // !_LP64
-    // initialize remaining object fields: rdx is a multiple of 2 now
-    { Label loop;
-        bind(loop);
-        movptr(Address(obj, index, Address::times_8, hdr_size_in_bytes - 1*BytesPerWord), t1);
-        NOT_LP64(movptr(Address(obj, index, Address::times_8, hdr_size_in_bytes - 2*BytesPerWord), t1);)
-        decrement(index);
-        jcc(Assembler::notZero, loop);
-    }
+
+    // Preserve obj
+    if (hdr_size_in_bytes)
+        add(obj, obj, hdr_size_in_bytes);
+    zero_memory(obj, index, t1);
+    if (hdr_size_in_bytes)
+        sub(obj, obj, hdr_size_in_bytes);
 
     // done
     bind(done);
-     */
 }
 
 void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register var_size_in_bytes, int con_size_in_bytes, Register t1, Register t2) {
     //comment out because not used in NormalCompileTask
-    /*
     assert((con_size_in_bytes & MinObjAlignmentInBytesMask) == 0,
            "con_size_in_bytes is not multiple of alignment");
     const int hdr_size_in_bytes = instanceOopDesc::header_size() * HeapWordSize;
@@ -135,41 +100,56 @@ void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register
     initialize_header(obj, klass, noreg, t1, t2);
 
     // clear rest of allocated space
-    const Register t1_zero = t1;
     const Register index = t2;
-    const int threshold = 6 * BytesPerWord;   // approximate break even point for code size (see comments below)
+    const int threshold = 16 * BytesPerWord;   // approximate break even point for code size (see comments below)
     if (var_size_in_bytes != noreg) {
         mov(index, var_size_in_bytes);
-        initialize_body(obj, index, hdr_size_in_bytes, t1_zero);
+        initialize_body(obj, index, hdr_size_in_bytes, t1);
     } else if (con_size_in_bytes <= threshold) {
         // use explicit null stores
-        // code size = 2 + 3*n bytes (n = number of fields to clear)
-        xorptr(t1_zero, t1_zero); // use t1_zero reg to clear memory (shorter code)
-        for (int i = hdr_size_in_bytes; i < con_size_in_bytes; i += BytesPerWord)
-            movptr(Address(obj, i), t1_zero);
-    } else if (con_size_in_bytes > hdr_size_in_bytes) {
-        // use loop to null out the fields
-        // code size = 16 bytes for even n (n = number of fields to clear)
-        // initialize last object field first if odd number of fields
-        xorptr(t1_zero, t1_zero); // use t1_zero reg to clear memory (shorter code)
-        movptr(index, (con_size_in_bytes - hdr_size_in_bytes) >> 3);
-        // initialize last object field if constant size is odd
-        if (((con_size_in_bytes - hdr_size_in_bytes) & 4) != 0)
-            movptr(Address(obj, con_size_in_bytes - (1*BytesPerWord)), t1_zero);
-        // initialize remaining object fields: rdx is a multiple of 2
-        { Label loop;
-            bind(loop);
-            movptr(Address(obj, index, Address::times_8, hdr_size_in_bytes - (1*BytesPerWord)),
-                   t1_zero);
-            NOT_LP64(movptr(Address(obj, index, Address::times_8, hdr_size_in_bytes - (2*BytesPerWord)),
-                            t1_zero);)
-            decrement(index);
-            jcc(Assembler::notZero, loop);
+        int i = hdr_size_in_bytes;
+        if (i < con_size_in_bytes && (con_size_in_bytes % (2 * BytesPerWord))) {
+            str(zr, Address(obj, i));
+            i += BytesPerWord;
         }
+        for (; i < con_size_in_bytes; i += 2 * BytesPerWord)
+            stp(zr, zr, Address(obj, i));
+    } else if (con_size_in_bytes > hdr_size_in_bytes) {
+        block_comment("zero memory");
+        // use loop to null out the fields
+
+        int words = (con_size_in_bytes - hdr_size_in_bytes) / BytesPerWord;
+        mov(index,  words / 8);
+
+        const int unroll = 8; // Number of str(zr) instructions we'll unroll
+        int remainder = words % unroll;
+        lea(rscratch1, Address(obj, hdr_size_in_bytes + remainder * BytesPerWord));
+
+        Label entry_point, loop;
+        b(entry_point);
+
+        bind(loop);
+        sub(index, index, 1);
+        for (int i = -unroll; i < 0; i++) {
+            if (-i == remainder)
+                bind(entry_point);
+            str(zr, Address(rscratch1, i * wordSize));
+        }
+        if (remainder == 0)
+            bind(entry_point);
+        add(rscratch1, rscratch1, unroll * wordSize);
+        cbnz(index, loop);
+
+    }
+
+    membar(StoreStore);
+
+    if (CURRENT_ENV->dtrace_alloc_probes()) {
+        assert(obj == r0, "must be");
+        far_call(RuntimeAddress(Runtime1::entry_for(Runtime1::dtrace_object_alloc_id)));
     }
 
     verify_oop(obj);
-     */
 }
 
 void C0_MacroAssembler::sgx_bound_check(Register obj, Label &check_fail) {
@@ -179,12 +159,12 @@ void C0_MacroAssembler::sgx_bound_check(Register obj, Label &check_fail) {
     bndcu(bnd0, obj);
 #else
     // last 2 registers to hold argument values
-    cmp(obj, r6);
+    __ cmp(obj, r6);
     // less; jcc to cbz
-    b.lt check_fail;
-    cmp(obj, r7);
+    __ b.lt check_fail;
+    __ cmp(obj, r7);
     //above equal to HS
-    b.gt check_fail;
+    __ b.gt check_fail;
 #endif
 #endif
 }
