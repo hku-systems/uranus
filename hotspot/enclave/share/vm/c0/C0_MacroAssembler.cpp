@@ -8,6 +8,8 @@
 
 
 void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool force_compile, PatchingStub* &stub) {
+    //comment out because not used in NormalCompileTask
+    /*
     lea(r13, Address(rsp, 0));
     movptr(Address(rbp, frame::interpreter_frame_last_sp_offset * wordSize), r13);
     if (entry == (address)-1) {
@@ -23,7 +25,7 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         stub->install();
         movptr(rax, Address(method, Method::enclave_native_function_offset()));
         call(rax);
-    }
+    }*/
 }
 /*
 void C0_MacroAssembler::addptr(Register dst, int32_t imm32)  {
@@ -34,6 +36,8 @@ void C0_MacroAssembler::addptr(Register dst, int32_t imm32)  {
 }
 */
 void C0_MacroAssembler::initialize_header(Register obj, Register klass, Register len, Register t1, Register t2) {
+    //comment out because not used in NormalCompileTask
+    /*
     assert_different_registers(obj, klass, len);
     if (UseBiasedLocking && !len->is_valid()) {
         assert_different_registers(obj, klass, len, t1, t2);
@@ -63,9 +67,12 @@ void C0_MacroAssembler::initialize_header(Register obj, Register klass, Register
         store_klass_gap(obj, t1);
     }
 #endif
+     */
 }
 
 void C0_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int hdr_size_in_bytes, Register t1) {
+    //comment out because not used in NormalCompileTask
+    /*
     Label done;
     assert(obj != len_in_bytes && obj != t1 && t1 != len_in_bytes, "registers must be different");
     assert((hdr_size_in_bytes & (BytesPerWord - 1)) == 0, "header size is not a multiple of BytesPerWord");
@@ -115,9 +122,12 @@ void C0_MacroAssembler::initialize_body(Register obj, Register len_in_bytes, int
 
     // done
     bind(done);
+     */
 }
 
 void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register var_size_in_bytes, int con_size_in_bytes, Register t1, Register t2) {
+    //comment out because not used in NormalCompileTask
+    /*
     assert((con_size_in_bytes & MinObjAlignmentInBytesMask) == 0,
            "con_size_in_bytes is not multiple of alignment");
     const int hdr_size_in_bytes = instanceOopDesc::header_size() * HeapWordSize;
@@ -159,6 +169,7 @@ void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register
     }
 
     verify_oop(obj);
+     */
 }
 
 void C0_MacroAssembler::sgx_bound_check(Register obj, Label &check_fail) {
@@ -167,10 +178,13 @@ void C0_MacroAssembler::sgx_bound_check(Register obj, Label &check_fail) {
     bndcl(bnd0, obj);
     bndcu(bnd0, obj);
 #else
-    cmpptr(obj, r8);
-    jcc(Assembler::less, check_fail);
-    cmpptr(obj, r9);
-    jcc(Assembler::aboveEqual, check_fail);
+    // last 2 registers to hold argument values
+    cmpptr(obj, r6);
+    // less
+    jcc(Assembler::LT, check_fail);
+    cmpptr(obj, r7);
+    //above equal to HS
+    jcc(Assembler::HS, check_fail);
 #endif
 #endif
 }

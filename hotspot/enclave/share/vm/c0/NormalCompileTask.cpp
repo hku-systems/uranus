@@ -224,12 +224,12 @@ static inline Address at_tos_p5() {
 // Condition conversion
 static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
     switch (cc) {
-        case NormalCompileTask::equal        : return Assembler::NE;
-        case NormalCompileTask::not_equal    : return Assembler::EQ;
-        case NormalCompileTask::less         : return Assembler::GE;
-        case NormalCompileTask::less_equal   : return Assembler::GT;
-        case NormalCompileTask::greater      : return Assembler::LE;
-        case NormalCompileTask::greater_equal: return Assembler::LT;
+        case NormalCompileTask::equal        : return Assembler::EQ;
+        case NormalCompileTask::not_equal    : return Assembler::NE;
+        case NormalCompileTask::less         : return Assembler::LT;
+        case NormalCompileTask::less_equal   : return Assembler::LE;
+        case NormalCompileTask::greater      : return Assembler::GT;
+        case NormalCompileTask::greater_equal: return Assembler::GE;
     }
     ShouldNotReachHere();
     return Assembler::EQ;
