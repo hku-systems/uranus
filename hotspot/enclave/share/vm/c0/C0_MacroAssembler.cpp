@@ -179,12 +179,12 @@ void C0_MacroAssembler::sgx_bound_check(Register obj, Label &check_fail) {
     bndcu(bnd0, obj);
 #else
     // last 2 registers to hold argument values
-    cmpptr(obj, r6);
-    // less
-    jcc(Assembler::LT, check_fail);
-    cmpptr(obj, r7);
+    cmp(obj, r6);
+    // less; jcc to cbz
+    b.lt check_fail;
+    cmp(obj, r7);
     //above equal to HS
-    jcc(Assembler::HS, check_fail);
+    b.gt check_fail;
 #endif
 #endif
 }
