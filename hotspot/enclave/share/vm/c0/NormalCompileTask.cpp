@@ -1954,27 +1954,40 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 }
 
 void NormalCompileTask::_return(TosState state) {
-  #ifdef DB_FRAME
-    __ pusha();
-    // movptr change to str
-    __ str(c_rarg1, (intptr_t)method);
-    __ call_VME(CAST_FROM_FN_PTR(address, exit_enclave_frame), false, true);
-    __ popa();
-  #endif
+    transition(state, state);
+    assert(_desc->calls_vm(),
+           "inconsistent calls_vm information"); // call in remove_activation
 
-    if (ret_tos == vtos)
-        __ pop(state);
+    if (_desc->bytecode() == Bytecodes::_return_register_finalizer) {
+        assert(state == vtos, "only valid state");
+
+        __ ldr(c_rarg1, aaddress(0));
+        __ load_klass(r3, c_rarg1);
+        __ ldrw(r3, Address(r3, Klass::access_flags_offset()));
+        __ tst(r3, JVM_ACC_HAS_FINALIZER);
+        Label skip_register_finalizer;
+        __ br(Assembler::EQ, skip_register_finalizer);
+
+        __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::register_finalizer), c_rarg1);
+
+        __ bind(skip_register_finalizer);
+    }
+
+    // Issue a StoreStore barrier after all stores but before return
+    // from any constructor for any class with a final field.  We don't
+    // know if this is a finalizer, so we always do so.
+    if (_desc->bytecode() == Bytecodes::_return)
+        __ membar(MacroAssembler::StoreStore);
 
     // Narrow result if state is itos but result type is smaller.
     // Need to narrow in the return bytecode rather than in generate_return_entry
     // since compiled code callers expect the result to already be narrowed.
+    if (state == itos) {
+        __ narrow(r0);
+    }
 
-    //change below for aarch64
-    __ narrow(r0, state);
-    remove_activation(state, r13, true, true, true);
-
-    __ ret(0);
-    tos = state;
+    __ remove_activation(state);
+    __ ret(lr);
 }
 
 void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
@@ -3251,8 +3264,8 @@ void NormalCompileTask::instanceof() {
 
 void NormalCompileTask::gc_point() {
     //movptr change to str
-    //rbp to ebp
-    __ str(Address(ebp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
+    //rbp to fp for bottom of stack
+    __ str(Address(fp, frame::interpreter_frame_bcx_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
