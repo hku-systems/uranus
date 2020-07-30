@@ -11,7 +11,8 @@
 
 void CompileTask::generate_gc_check(Label &gc_barrier) {
     Label after_gc_barrier;
-    __ movptr(rfp, RuntimeAddress((address)&EnclaveGC::is_gc_waiting));
+    // movptr to str
+    __ str(rfp, RuntimeAddress((address)&EnclaveGC::is_gc_waiting));
     //bitwise and operation with 0
     __ andr(r0, rfp, zr);
     __ cmp(r0, zr);
