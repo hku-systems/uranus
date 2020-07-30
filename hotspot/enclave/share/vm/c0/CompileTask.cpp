@@ -11,9 +11,11 @@
 
 void CompileTask::generate_gc_check(Label &gc_barrier) {
     Label after_gc_barrier;
-    __ movptr(rdx, RuntimeAddress((address)&EnclaveGC::is_gc_waiting));
-    __ testb(rdx, 0);
-    __ jcc(Assembler::zero, after_gc_barrier);
+    __ movptr(rfp, RuntimeAddress((address)&EnclaveGC::is_gc_waiting));
+    //bitwise and operation with 0
+    __ andr(r0, rfp, zr);
+    __ cmp(r0, zr);
+    __ br(Assembler::EQ, after_gc_barrier);
     generate_gc_barrier(gc_barrier);
     __ bind(after_gc_barrier);
 }
@@ -32,33 +34,42 @@ void CompileTask::print_disassembly() {
 
 void CompileTask::generate_fixed_frame(bool native_call) {
     // initialize fixed part of activation frame
-    __ push(rax);        // save return address
-    __ enter();          // save old & set new rbp
-    __ push(r13);        // set sender sp
-    __ push((int)NULL_WORD); // leave last_sp as null
-//    __ movptr(r13, Address(rbx, Method::const_offset()));      // get ConstMethod*
-//    __ lea(r13, Address(r13, ConstMethod::codes_offset())); // get codebase
-//    __ movptr(r13, (intptr_t)method->code_base());
-    __ push(rbx);        // save Method*
-    if (ProfileInterpreter) {
-
-    } else {
-        __ push(0);
-    }
-
-//    __ movptr(rdx, Address(rbx, Method::const_offset()));
-//    __ movptr(rdx, Address(rdx, ConstMethod::constants_offset()));
-//    __ movptr(rdx, Address(rdx, ConstantPool::cache_offset_in_bytes()));
-//    __ movptr(rdx, (intptr_t)method->constants());
-    __ push(rdx); // set constant pool cache
-    __ push(r14); // set locals pointer
     if (native_call) {
-        __ push(0); // no bcp
+        __ sub(esp, sp, 12 *  wordSize);
+        __ mov(rbcp, zr);
+        __ stp(esp, zr, Address(__ pre(sp, -12 * wordSize)));
+        // add 2 zero-initialized slots for native calls
+        __ stp(zr, zr, Address(sp, 10 * wordSize));
     } else {
-        __ push(r13); // set bcp
+        __ sub(esp, sp, 10 *  wordSize);
+        __ ldr(rscratch1, Address(rmethod, Method::const_offset()));      // get ConstMethod
+        __ add(rbcp, rscratch1, in_bytes(ConstMethod::codes_offset())); // get codebase
+        __ stp(esp, rbcp, Address(__ pre(sp, -10 * wordSize)));
     }
-    __ push(0); // reserve word for pointer to expression stack bottom
-    __ movptr(Address(rsp, 0), rsp); // set expression stack bottom
+
+    __ stp(zr, rmethod, Address(sp, 4 * wordSize));        // save Method* (no mdp)
+
+    __ ldr(rcpool, Address(rmethod, Method::const_offset()));
+    __ ldr(rcpool, Address(rcpool, ConstMethod::constants_offset()));
+    __ ldr(rcpool, Address(rcpool, ConstantPool::cache_offset_in_bytes()));
+    __ stp(rlocals, rcpool, Address(sp, 2 * wordSize));
+
+    __ stp(rfp, lr, Address(sp, 8 * wordSize));
+    __ lea(rfp, Address(sp, 8 * wordSize));
+
+    // set sender sp
+    // leave last_sp as null
+    __ stp(zr, r13, Address(sp, 6 * wordSize));
+
+    // Move SP out of the way
+    if (! native_call) {
+        __ ldr(rscratch1, Address(rmethod, Method::const_offset()));
+        __ ldrh(rscratch1, Address(rscratch1, ConstMethod::max_stack_offset()));
+        __ add(rscratch1, rscratch1, frame::interpreter_frame_monitor_size()
+                                     + (EnableInvokeDynamic ? 2 : 0));
+        __ sub(rscratch1, sp, rscratch1, ext::uxtw, 3);
+        __ andr(sp, rscratch1, -16);
+    }
 }
 
 #undef __
