@@ -143,6 +143,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
     OopMap* oop_map = NULL;
     switch (id) {
         {
+            /*
             case forward_exception_id:
             {
                 oop_maps = generate_handle_exception(id, sasm);
@@ -162,7 +163,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_null_pointer_exception), false);
             }
             break;
-
+            */
             case new_instance_id:
             case fast_new_instance_id:
             case fast_new_instance_init_check_id:
@@ -260,6 +261,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
             break;
 
+            /*
             case counter_overflow_id:
             {
                 Register bci = r0, method = r1;
@@ -277,6 +279,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ ret(lr);
             }
             break;
+             */
 
             case new_type_array_id:
             case new_object_array_id:
@@ -426,6 +429,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             }
             break;
 
+            /*
             case register_finalizer_id:
             {
                 __ set_info("register_finalizer", dont_gc_arguments);
@@ -557,7 +561,8 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 restore_live_registers(sasm, save_fpu_registers);
             }
             break;
-
+            */
+            /*
             case deoptimize_id:
             {
                 StubFrame f(sasm, "deoptimize", dont_gc_arguments);
@@ -571,8 +576,18 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ leave();
                 __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
             }
+             */
+            //break;
+            case gc_barrier_id: {
+                {
+                    //
+                    __ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
+                    __ ret(0);
+                }
+            }
             break;
 
+            /*
             case throw_range_check_failed_id:
             { StubFrame f(sasm, "range_check_failed", dont_gc_arguments);
                 oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_range_check_exception), true);
@@ -586,7 +601,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 generate_unwind_exception(sasm);
             }
             break;
-
+             */
             case access_field_patching_id:
             { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
                 // we should set up register map
@@ -615,6 +630,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             }
             break;
 
+            /*
             case handle_exception_nofpu_id:
             case handle_exception_id:
             { StubFrame f(sasm, "handle_exception", dont_gc_arguments);
@@ -641,9 +657,10 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_array_store_exception), true);
             }
             break;
-
+            */
 #if INCLUDE_ALL_GCS
 
+      /*
             case g1_pre_barrier_slow_id:
       {
         StubFrame f(sasm, "g1_pre_barrier", dont_gc_arguments);
@@ -770,8 +787,10 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
       }
       break;
+   */
 #endif
 
+            /*
             case predicate_failed_trap_id:
             {
                 StubFrame f(sasm, "predicate_failed_trap", dont_gc_arguments);
@@ -789,6 +808,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
             }
             break;
+            */
 
 
             default:
