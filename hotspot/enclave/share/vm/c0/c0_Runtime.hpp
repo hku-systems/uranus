@@ -68,7 +68,7 @@ public:
     static address   entry_for(StubID id)           { return blob_for(id)->code_begin(); }
     static const char* name_for (StubID id)         { return _blob_names[id]; }
     static const char* name_for_address(address entry)  { Unimplemented(); return NULL; }
-    static void generate_patching(StubAssembler* sasm, address target);
+    static OopMapSet* generate_patching(StubAssembler* sasm, address target);
 };
 
 

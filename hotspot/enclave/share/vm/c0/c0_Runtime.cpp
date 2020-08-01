@@ -206,7 +206,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                     //} else if (id == fast_new_instance_id) {
                 //    __ set_info("fast new_instance", dont_gc_arguments);
                 } else {
-                    assert(id == fast_new_instance_init_check_id, "bad StubID");
+                    //assert(id == fast_new_instance_init_check_id, "bad StubID");
                     //set_info undefined
                     //__ set_info("fast new_instance init check", dont_gc_arguments);
                 }
@@ -221,12 +221,12 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
                     __ stp(r5, r19, Address(__ pre(sp, -2 * wordSize)));
 
-                    if (id == fast_new_instance_init_check_id) {
+                    //if (id == fast_new_instance_init_check_id) {
                         // make sure the klass is initialized
                         __ ldrb(rscratch1, Address(klass, InstanceKlass::init_state_offset()));
                         __ cmpw(rscratch1, InstanceKlass::fully_initialized);
                         __ br(Assembler::NE, slow_path);
-                    }
+                    //}
 
 #ifdef ASSERT
                     // assert object can be fast path allocated
@@ -621,8 +621,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             //break;
             case gc_barrier_id: {
                 {
-                    //
-                    __ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
+                    //temporarily comment out, need implementation similar to line1021
+                    // /openjdk-sgx/hotspot/enclave_src/cpu/x86/vm/macroAssembler_x86.cpp
+                    //__ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
                     __ ret(lr);
                 }
             }
