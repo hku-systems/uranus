@@ -17,8 +17,8 @@ enum {
     max_array_allocation_length = 0x01000000 // sparc friendly value, requires sethi only
 };
 
-static void save_live_registers(StubAssembler* sasm, int num_rt_args,
-                                   bool save_fpu_registers = true) {
+static OopMap* save_live_registers(StubAssembler* sasm,
+                                bool save_fpu_registers = true) {
     __ block_comment("save_live_registers");
 
     __ push(RegSet::range(r0, r29), sp);         // integer registers except lr & sp
@@ -32,6 +32,34 @@ static void save_live_registers(StubAssembler* sasm, int num_rt_args,
     }
 
     return generate_oop_map(sasm, save_fpu_registers);
+}
+
+static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
+    int frame_size_in_bytes = reg_save_frame_size * BytesPerWord;
+    sasm->set_frame_size(frame_size_in_bytes / BytesPerWord);
+    int frame_size_in_slots = frame_size_in_bytes / sizeof(jint);
+    OopMap* oop_map = new OopMap(frame_size_in_slots, 0);
+
+    for (int i = 0; i < FrameMap::nof_cpu_regs; i++) {
+        Register r = as_Register(i);
+        if (i <= 18 && i != rscratch1->encoding() && i != rscratch2->encoding()) {
+            int sp_offset = cpu_reg_save_offsets[i];
+            oop_map->set_callee_saved(VMRegImpl::stack2reg(sp_offset),
+                                      r->as_VMReg());
+        }
+    }
+
+    if (save_fpu_registers) {
+        for (int i = 0; i < FrameMap::nof_fpu_regs; i++) {
+            FloatRegister r = as_FloatRegister(i);
+            {
+                int sp_offset = fpu_reg_save_offsets[i];
+                oop_map->set_callee_saved(VMRegImpl::stack2reg(sp_offset),
+                                          r->as_VMReg());
+            }
+        }
+    }
+    return oop_map;
 }
 
 
@@ -165,23 +193,26 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             break;
             */
             case new_instance_id:
-            case fast_new_instance_id:
-            case fast_new_instance_init_check_id:
+            //case fast_new_instance_id:
+            //case fast_new_instance_init_check_id:
             {
                 Register klass = r3; // Incoming
                 Register obj   = r0; // Result
 
                 if (id == new_instance_id) {
-                    __ set_info("new_instance", dont_gc_arguments);
-                } else if (id == fast_new_instance_id) {
-                    __ set_info("fast new_instance", dont_gc_arguments);
+                    //set_info undefined
+                    //__ set_info("new_instance", dont_gc_arguments);
+
+                    //} else if (id == fast_new_instance_id) {
+                //    __ set_info("fast new_instance", dont_gc_arguments);
                 } else {
                     assert(id == fast_new_instance_init_check_id, "bad StubID");
-                    __ set_info("fast new_instance init check", dont_gc_arguments);
+                    //set_info undefined
+                    //__ set_info("fast new_instance init check", dont_gc_arguments);
                 }
 
-                if ((id == fast_new_instance_id || id == fast_new_instance_init_check_id) &&
-                    UseTLAB && FastTLABRefill) {
+                //if ((id == fast_new_instance_id || id == fast_new_instance_init_check_id) &&
+                //    UseTLAB && FastTLABRefill) {
                     Label slow_path;
                     Register obj_size = r2;
                     Register t1       = r19;
@@ -244,13 +275,15 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
                     __ bind(slow_path);
                     __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
-                }
+                //}
 
                 __ enter();
                 OopMap* map = save_live_registers(sasm);
-                int call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_instance), klass);
+                //add_gc_map undefined, so call_offset abandon
+                //int call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_instance), klass);
                 oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
+                //add_gc_map undefined
+                //oop_maps->add_gc_map(call_offset, map);
                 restore_live_registers_except_r0(sasm);
                 __ verify_oop(obj);
                 __ leave();
@@ -289,9 +322,11 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 Register obj      = r0; // Result
 
                 if (id == new_type_array_id) {
-                    __ set_info("new_type_array", dont_gc_arguments);
+                    //set_info undefined
+                    //__ set_info("new_type_array", dont_gc_arguments);
                 } else {
-                    __ set_info("new_object_array", dont_gc_arguments);
+                    //set_info undefined
+                    //__ set_info("new_object_array", dont_gc_arguments);
                 }
 
 #ifdef ASSERT
@@ -321,7 +356,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                     assert_different_registers(length, klass, obj, arr_size, t1, t2);
 
                     // check that array length is small enough for fast path.
-                    __ mov(rscratch1, C1_MacroAssembler::max_array_allocation_length);
+                    __ mov(rscratch1, max_array_allocation_length);
                     __ cmpw(length, rscratch1);
                     __ br(Assembler::HI, slow_path);
 
@@ -391,14 +426,18 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ enter();
                 OopMap* map = save_live_registers(sasm);
                 int call_offset;
+                //add_gc_map undefined, so call_offset abandon
+                /*
                 if (id == new_type_array_id) {
                     call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_type_array), klass, length);
                 } else {
                     call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_object_array), klass, length);
                 }
+                 */
 
                 oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
+                //add_gc_map undefined
+                //oop_maps->add_gc_map(call_offset, map);
                 restore_live_registers_except_r0(sasm);
 
                 __ verify_oop(obj);
@@ -418,10 +457,12 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ mov(c_rarg1, r0);
                 __ mov(c_rarg3, r2);
                 __ mov(c_rarg2, r19);
-                int call_offset = __ call_RT(r0, noreg, CAST_FROM_FN_PTR(address, new_multi_array), r1, r2, r3);
+                //add_gc_map undefined, so call_offset abandon
+                //int call_offset = __ call_RT(r0, noreg, CAST_FROM_FN_PTR(address, new_multi_array), r1, r2, r3);
 
                 oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
+                //add_gc_map undefined
+                //oop_maps->add_gc_map(call_offset, map);
                 restore_live_registers_except_r0(sasm);
 
                 // r0,: new multi array
@@ -582,7 +623,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 {
                     //
                     __ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
-                    __ ret(0);
+                    __ ret(lr);
                 }
             }
             break;
@@ -814,7 +855,8 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             default:
             { StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
                 __ mov(r0, (int)id);
-                __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
+                //unimplemented_entry undefined
+                //__ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
                 __ should_not_reach_here();
             }
             break;
@@ -835,6 +877,7 @@ void Runtime0::initialize() {
 }
 
 void Runtime0::initialize_pd() {
+    /*
     int i;
     int sp_offset = 0;
 
@@ -850,17 +893,17 @@ void Runtime0::initialize_pd() {
         cpu_reg_save_offsets[i] = sp_offset;
         sp_offset += 2;   // SP offsets are in halfwords
     }
+     */
 }
 
-void Runtime0::generate_patching(StubAssembler *sasm, address target) {
+OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
     // use the maximum number of runtime-arguments here because it is difficult to
     // distinguish each RT-Call.
     // Note: This number affects also the RT-Call in generate_handle_exception because
     //       the oop-map is shared for all calls.
-    DeoptimizationBlob* deopt_blob = SharedRuntime::deopt_blob();
-    assert(deopt_blob != NULL, "deoptimization blob must have been created");
+    const int num_rt_args = 2;  // thread + dummy
 
-    OopMap* oop_map = save_live_registers(sasm);
+    OopMap* oop_map = save_live_registers(sasm, num_rt_args);;
 
     __ mov(c_rarg0, rthread);
     Label retaddr;
@@ -870,7 +913,8 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
     __ blr(rscratch1);
     __ bind(retaddr);
     OopMapSet* oop_maps = new OopMapSet();
-    oop_maps->add_gc_map(__ offset(), oop_map);
+    //add_gc_map undefined
+    //oop_maps->add_gc_map(__ offset(), oop_map);
     // verify callee-saved register
 #ifdef ASSERT
     { Label L;
@@ -890,11 +934,13 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
         __ cbz(rscratch1, L);
         // exception pending => remove activation and forward to exception handler
 
+        /*
         { Label L1;
             __ cbnz(r0, L1);                                  // have we deoptimized?
             __ far_jump(RuntimeAddress(Runtime1::entry_for(Runtime1::forward_exception_id)));
             __ bind(L1);
         }
+         */
 
         // the deopt blob expects exceptions in the special fields of
         // JavaThread, so copy and clear pending exception.
@@ -930,15 +976,16 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
 
         restore_live_registers(sasm);
 
-        __ leave();
+        //__ leave();
 
         // Forward the exception directly to deopt blob. We can blow no
         // registers and must leave throwing pc on the stack.  A patch may
         // have values live in registers so the entry point with the
         // exception in tls.
-        __ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
 
-        __ bind(L);
+        //__ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
+
+        //__ bind(L);
     }
 
 
@@ -1000,19 +1047,23 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     // impossible, so when we come across an access that needs
     // patching we must deoptimize.
 
+    /*
     if (TracePatching) {
         tty->print_cr("Deoptimizing because patch is needed");
     }
+     */
 
     frame runtime_frame = thread->last_frame();
     frame caller_frame = runtime_frame.sender(&reg_map);
 
     // It's possible the nmethod was invalidated in the last
     // safepoint, but if it's still alive then make it not_entrant.
+    /*
     nmethod* nm = CodeCache::find_nmethod(caller_frame.pc());
     if (nm != NULL) {
         nm->make_not_entrant();
     }
+     */
 
     //Deoptimization::deoptimize_frame(thread, caller_frame.id());
 
