@@ -6,6 +6,68 @@
 #include "C0_MacroAssembler.hpp"
 #include "c0_CodeStubs.hpp"
 
+// Zero words; len is in bytes
+// Destroys all registers except addr
+// len must be a nonzero multiple of wordSize
+inline void zero_memory(Register addr, Register len, Register t1) {
+    assert_different_registers(addr, len, t1, rscratch1, rscratch2);
+
+#ifdef ASSERT
+    { Label L;
+    tst(len, BytesPerWord - 1);
+    br(Assembler::EQ, L);
+    stop("len is not a multiple of BytesPerWord");
+    bind(L);
+  }
+#endif
+
+#ifndef PRODUCT
+    block_comment("zero memory");
+#endif
+
+    Label loop;
+    Label entry;
+
+//  Algorithm:
+//
+//    scratch1 = cnt & 7;
+//    cnt -= scratch1;
+//    p += scratch1;
+//    switch (scratch1) {
+//      do {
+//        cnt -= 8;
+//          p[-8] = 0;
+//        case 7:
+//          p[-7] = 0;
+//        case 6:
+//          p[-6] = 0;
+//          // ...
+//        case 1:
+//          p[-1] = 0;
+//        case 0:
+//          p += 8;
+//      } while (cnt);
+//    }
+
+    const int unroll = 8; // Number of str(zr) instructions we'll unroll
+
+    lsr(len, len, LogBytesPerWord);
+    andr(rscratch1, len, unroll - 1);  // tmp1 = cnt % unroll
+    sub(len, len, rscratch1);      // cnt -= unroll
+    // t1 always points to the end of the region we're about to zero
+    add(t1, addr, rscratch1, Assembler::LSL, LogBytesPerWord);
+    adr(rscratch2, entry);
+    sub(rscratch2, rscratch2, rscratch1, Assembler::LSL, 2);
+    br(rscratch2);
+    bind(loop);
+    sub(len, len, unroll);
+    for (int i = -unroll; i < 0; i++)
+        str(zr, Address(t1, i * wordSize));
+    bind(entry);
+    add(t1, t1, unroll * wordSize);
+    cbnz(len, loop);
+}
+
 
 void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool force_compile, PatchingStub* &stub) {
     //comment out because not used in NormalCompileTask
@@ -146,7 +208,7 @@ void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register
 
     if (CURRENT_ENV->dtrace_alloc_probes()) {
         assert(obj == r0, "must be");
-        far_call(RuntimeAddress(Runtime1::entry_for(Runtime1::dtrace_object_alloc_id)));
+        far_call(RuntimeAddress(Runtime0::entry_for(Runtime0::dtrace_object_alloc_id)));
     }
 
     verify_oop(obj);
