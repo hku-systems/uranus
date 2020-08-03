@@ -17,28 +17,12 @@ enum {
     max_array_allocation_length = 0x01000000 // sparc friendly value, requires sethi only
 };
 
-static OopMap* save_live_registers(StubAssembler* sasm,
-                                bool save_fpu_registers = true) {
-    __ block_comment("save_live_registers");
-
-    __ push(RegSet::range(r0, r29), sp);         // integer registers except lr & sp
-
-    if (save_fpu_registers) {
-        for (int i = 30; i >= 0; i -= 2)
-            __ stpd(as_FloatRegister(i), as_FloatRegister(i+1),
-                    Address(__ pre(sp, -2 * wordSize)));
-    } else {
-        __ add(sp, sp, -32 * wordSize);
-    }
-
-    return generate_oop_map(sasm, save_fpu_registers);
-}
-
 static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
-    int frame_size_in_bytes = reg_save_frame_size * BytesPerWord;
-    sasm->set_frame_size(frame_size_in_bytes / BytesPerWord);
+    // reg_save_frame_size =
+    int frame_size_in_bytes = (32 /* float */ + 32 /* integer */) * BytesPerWord;
+    //sasm->set_frame_size(frame_size_in_bytes / BytesPerWord);
     int frame_size_in_slots = frame_size_in_bytes / sizeof(jint);
-    OopMap* oop_map = new OopMap(frame_size_in_slots, 0);
+    OopMap* oop_map = new OopMap(frame_size_in_slots);
 
     /*
     for (int i = 0; i < FrameMap::nof_cpu_regs; i++) {
@@ -64,6 +48,22 @@ static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
     return oop_map;
 }
 
+static OopMap* save_live_registers(StubAssembler* sasm,
+                                bool save_fpu_registers = true) {
+    __ block_comment("save_live_registers");
+
+    __ push(RegSet::range(r0, r29), sp);         // integer registers except lr & sp
+
+    if (save_fpu_registers) {
+        for (int i = 30; i >= 0; i -= 2)
+            __ stpd(as_FloatRegister(i), as_FloatRegister(i+1),
+                    Address(__ pre(sp, -2 * wordSize)));
+    } else {
+        __ add(sp, sp, -32 * wordSize);
+    }
+
+    return generate_oop_map(sasm, save_fpu_registers);
+}
 
 static void restore_fpu(StubAssembler* sasm, bool restore_fpu_registers = true) {
 
@@ -117,7 +117,7 @@ public:
 
     ~StubFrame() {
        _sasm->leave();
-       _sasm->ret();
+       //_sasm->ret(0);
     }
 };
 
@@ -865,7 +865,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             break;
         }
     }
-    return oop_maps;
+    //return oop_maps;
 }
 
 void Runtime0::initialize() {
