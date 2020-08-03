@@ -40,6 +40,7 @@ static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
     int frame_size_in_slots = frame_size_in_bytes / sizeof(jint);
     OopMap* oop_map = new OopMap(frame_size_in_slots, 0);
 
+    /*
     for (int i = 0; i < FrameMap::nof_cpu_regs; i++) {
         Register r = as_Register(i);
         if (i <= 18 && i != rscratch1->encoding() && i != rscratch2->encoding()) {
@@ -59,6 +60,7 @@ static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
             }
         }
     }
+     */
     return oop_map;
 }
 
@@ -115,7 +117,7 @@ public:
 
     ~StubFrame() {
        _sasm->leave();
-       _sasm->ret(0);
+       _sasm->ret();
     }
 };
 
@@ -951,7 +953,7 @@ OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
         __ str(zr, Address(rthread, Thread::pending_exception_offset()));
 
         // check that there is really a valid exception
-        __ verify_not_null_oop(r0);
+        //__ verify_not_null_oop(r0);
 
         // load throwing pc: this is the return address of the stub
         __ mov(r3, lr);
@@ -1001,7 +1003,7 @@ OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
     // registers, pop all of our frame but the return address and jump to the deopt blob
     restore_live_registers(sasm);
     __ leave();
-    __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
+    //__ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
 
     __ bind(cont);
     restore_live_registers(sasm);

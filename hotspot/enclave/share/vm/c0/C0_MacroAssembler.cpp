@@ -206,10 +206,12 @@ void C0_MacroAssembler::initialize_object(Register obj, Register klass, Register
 
     membar(StoreStore);
 
+    /*
     if (CURRENT_ENV->dtrace_alloc_probes()) {
         assert(obj == r0, "must be");
         far_call(RuntimeAddress(Runtime0::entry_for(Runtime0::dtrace_object_alloc_id)));
     }
+     */
 
     verify_oop(obj);
 }
