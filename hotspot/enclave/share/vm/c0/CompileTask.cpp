@@ -24,7 +24,7 @@ void CompileTask::generate_gc_check(Label &gc_barrier) {
 void CompileTask::generate_gc_barrier(Label &gc_barrier_entry) {
     __ bind(gc_barrier_entry);
     address gc_barrier = Runtime0::entry_for(Runtime0::gc_barrier_id);
-    __ call(RuntimeAddress(gc_barrier));
+    __ far_call(RuntimeAddress(gc_barrier));
 }
 
 void CompileTask::print_disassembly() {

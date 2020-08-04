@@ -17,38 +17,7 @@ enum {
     max_array_allocation_length = 0x01000000 // sparc friendly value, requires sethi only
 };
 
-static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
-    // reg_save_frame_size =
-    int frame_size_in_bytes = (32 /* float */ + 32 /* integer */) * BytesPerWord;
-    //sasm->set_frame_size(frame_size_in_bytes / BytesPerWord);
-    int frame_size_in_slots = frame_size_in_bytes / sizeof(jint);
-    OopMap* oop_map = new OopMap(frame_size_in_slots, 0);
-
-    /*
-    for (int i = 0; i < FrameMap::nof_cpu_regs; i++) {
-        Register r = as_Register(i);
-        if (i <= 18 && i != rscratch1->encoding() && i != rscratch2->encoding()) {
-            int sp_offset = cpu_reg_save_offsets[i];
-            oop_map->set_callee_saved(VMRegImpl::stack2reg(sp_offset),
-                                      r->as_VMReg());
-        }
-    }
-
-    if (save_fpu_registers) {
-        for (int i = 0; i < FrameMap::nof_fpu_regs; i++) {
-            FloatRegister r = as_FloatRegister(i);
-            {
-                int sp_offset = fpu_reg_save_offsets[i];
-                oop_map->set_callee_saved(VMRegImpl::stack2reg(sp_offset),
-                                          r->as_VMReg());
-            }
-        }
-    }
-     */
-    return oop_map;
-}
-
-static OopMap* save_live_registers(StubAssembler* sasm,
+static void save_live_registers(StubAssembler* sasm,
                                 bool save_fpu_registers = true) {
     __ block_comment("save_live_registers");
 
@@ -62,7 +31,6 @@ static OopMap* save_live_registers(StubAssembler* sasm,
         __ add(sp, sp, -32 * wordSize);
     }
 
-    return generate_oop_map(sasm, save_fpu_registers);
 }
 
 static void restore_fpu(StubAssembler* sasm, bool restore_fpu_registers = true) {
@@ -280,7 +248,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 //}
 
                 __ enter();
-                OopMap* map = save_live_registers(sasm);
+                //OopMap* map = save_live_registers(sasm);
                 //add_gc_map undefined, so call_offset abandon
                 //int call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_instance), klass);
                 oop_maps = new OopMapSet();
@@ -426,7 +394,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 }
 
                 __ enter();
-                OopMap* map = save_live_registers(sasm);
+                //OopMap* map = save_live_registers(sasm);
                 int call_offset;
                 //add_gc_map undefined, so call_offset abandon
                 /*
@@ -455,7 +423,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 // r0,: klass
                 // r19,: rank
                 // r2: address of 1st dimension
-                OopMap* map = save_live_registers(sasm);
+                //OopMap* map = save_live_registers(sasm);
                 __ mov(c_rarg1, r0);
                 __ mov(c_rarg3, r2);
                 __ mov(c_rarg2, r19);
@@ -906,7 +874,9 @@ OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
     //       the oop-map is shared for all calls.
     const int num_rt_args = 2;  // thread + dummy
 
-    OopMap* oop_map = save_live_registers(sasm, num_rt_args);;
+    //OopMap* oop_map = save_live_registers(sasm, num_rt_args);;
+
+    save_live_registers(sasm, num_rt_args);
 
     __ mov(c_rarg0, rthread);
     Label retaddr;

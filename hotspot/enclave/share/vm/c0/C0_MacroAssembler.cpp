@@ -51,21 +51,21 @@ inline void zero_memory(Register addr, Register len, Register t1) {
 
     const int unroll = 8; // Number of str(zr) instructions we'll unroll
 
-    __ lsr(len, len, LogBytesPerWord);
-    __ andr(rscratch1, len, unroll - 1);  // tmp1 = cnt % unroll
-    __ sub(len, len, rscratch1);      // cnt -= unroll
+    lsr(len, len, LogBytesPerWord);
+    andr(rscratch1, len, unroll - 1);  // tmp1 = cnt % unroll
+    sub(len, len, rscratch1);      // cnt -= unroll
     // t1 always points to the end of the region we're about to zero
-    __ add(t1, addr, rscratch1, Assembler::LSL, LogBytesPerWord);
-    __ adr(rscratch2, entry);
-    __ sub(rscratch2, rscratch2, rscratch1, Assembler::LSL, 2);
-    __ br(rscratch2);
-    __ bind(loop);
-    __ sub(len, len, unroll);
+    add(t1, addr, rscratch1, Assembler::LSL, LogBytesPerWord);
+    adr(rscratch2, entry);
+    sub(rscratch2, rscratch2, rscratch1, Assembler::LSL, 2);
+    br(rscratch2);
+    bind(loop);
+    sub(len, len, unroll);
     for (int i = -unroll; i < 0; i++)
-        __ str(zr, Address(t1, i * wordSize));
-    __ bind(entry);
-    __ add(t1, t1, unroll * wordSize);
-    __ cbnz(len, loop);
+        str(zr, Address(t1, i * wordSize));
+    bind(entry);
+    add(t1, t1, unroll * wordSize);
+    cbnz(len, loop);
 }
 
 
