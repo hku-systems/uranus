@@ -3524,7 +3524,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
 void NormalCompileTask::_jmp_return() {
     _return(ret_tos);
     //jmp change to far_call
-    __ far_call(ret_now);
+    MacroAssembler::far_jump(ret_now);
     ret_tos = tos;
     tos = udtos;
     will_run = false;

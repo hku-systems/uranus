@@ -102,13 +102,13 @@ void PatchingStub::emit() {
     }
 
     //call to far_call
-    __ far_call(RuntimeAddress(target));
+    MacroAssembler::far_call(RuntimeAddress(target));
     if (_id == compile_method_id) {
         //jmp to far_call
-        __ far_call(_patch_site_continuation);
+        MacroAssembler::far_call(_patch_site_continuation);
     } else {
         //jmp to far_call
-        __ far_call(_patch_site_entry);
+        MacroAssembler::far_call(_patch_site_entry);
     }
 }
 
