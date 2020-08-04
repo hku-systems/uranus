@@ -104,11 +104,11 @@ void PatchingStub::emit() {
     //call to far_call
     __ far_call(RuntimeAddress(target));
     if (_id == compile_method_id) {
-        //jmp to far_jump
-        __ far_jump(_patch_site_continuation);
+        //jmp to far_call
+        __ far_call(_patch_site_continuation);
     } else {
-        //jmp to far_jump
-        __ far_jump(_patch_site_entry);
+        //jmp to far_call
+        __ far_call(_patch_site_entry);
     }
 }
 

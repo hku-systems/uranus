@@ -67,6 +67,7 @@ public:
 
     void start_expression_stack() { start_expression = true; }
     void end_expression_stack() { start_expression = false; }
+    void zero_memory(Register addr, Register len, Register t1);
     void jump_to_compiled(Register method, address calladdr, bool force_compile, PatchingStub* &);
     void initialize_header(Register obj, Register klass, Register len, Register t1, Register t2);
     void initialize_body(Register obj, Register len_in_bytes, int hdr_size_in_bytes, Register t1);

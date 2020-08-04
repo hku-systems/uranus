@@ -9,7 +9,7 @@
 // Zero words; len is in bytes
 // Destroys all registers except addr
 // len must be a nonzero multiple of wordSize
-inline void zero_memory(Register addr, Register len, Register t1) {
+void C0_MacroAssembler::zero_memory(Register addr, Register len, Register t1) {
     assert_different_registers(addr, len, t1, rscratch1, rscratch2);
 
 #ifdef ASSERT
