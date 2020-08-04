@@ -18,6 +18,6 @@ Disassembler::Disassembler(void *addr, int len){
 
 void Disassembler::print_asm() {
     while (ud_disassemble(ud_obj)) {
-        printf("\t%lx: %s\n", ud_insn_ptr(ud_obj), ud_insn_asm(ud_obj));
+        //printf("\t%lx: %s\n", ud_insn_ptr(ud_obj), ud_insn_asm(ud_obj));
     }
 }
