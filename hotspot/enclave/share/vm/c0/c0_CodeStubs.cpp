@@ -101,14 +101,14 @@ void PatchingStub::emit() {
         default: ShouldNotReachHere();
     }
 
-    //call to far_call
-    MacroAssembler::far_call(RuntimeAddress(target));
+    //call to b
+    __ b(RuntimeAddress(target));
     if (_id == compile_method_id) {
-        //jmp to far_call
-        MacroAssembler::far_call(_patch_site_continuation);
+        //jmp to b
+        __ b(_patch_site_continuation);
     } else {
-        //jmp to far_call
-        MacroAssembler::far_call(_patch_site_entry);
+        //jmp to b
+        __ b(_patch_site_entry);
     }
 }
 
