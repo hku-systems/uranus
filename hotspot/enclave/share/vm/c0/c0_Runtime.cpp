@@ -6,7 +6,6 @@
 #include "precompiled.hpp"
 #include <interpreter/interpreterRuntime.hpp>
 #include <classfile/symbolTable.hpp>
-#include <compiler/oopMap.hpp>
 #include "c0_Runtime.hpp"
 #include "c0_CodeStubs.hpp"
 #include "Disassembler.hpp"
