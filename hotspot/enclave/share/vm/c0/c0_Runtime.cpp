@@ -6,9 +6,21 @@
 #include "precompiled.hpp"
 #include <interpreter/interpreterRuntime.hpp>
 #include <classfile/symbolTable.hpp>
+#include <compiler/oopMap.hpp>
 #include "c0_Runtime.hpp"
 #include "c0_CodeStubs.hpp"
 #include "Disassembler.hpp"
+
+#include "nativeInst_aarch64.hpp"
+#include "oops/compiledICHolder.hpp"
+#include "oops/oop.inline.hpp"
+#include "prims/jvmtiExport.hpp"
+#include "register_aarch64.hpp"
+#include "runtime/sharedRuntime.hpp"
+#include "runtime/signature.hpp"
+#include "runtime/vframe.hpp"
+#include "runtime/vframeArray.hpp"
+#include "vmreg_aarch64.inline.hpp"
 
 #include "MetadataAccessor.hpp"
 #define __ sasm->
@@ -22,7 +34,7 @@ static OopMap* generate_oop_map(StubAssembler* sasm, bool save_fpu_registers) {
     int frame_size_in_bytes = (32 /* float */ + 32 /* integer */) * BytesPerWord;
     //sasm->set_frame_size(frame_size_in_bytes / BytesPerWord);
     int frame_size_in_slots = frame_size_in_bytes / sizeof(jint);
-    OopMap* oop_map = new OopMap(frame_size_in_slots);
+    OopMap* oop_map = new OopMap(frame_size_in_slots, 0);
 
     /*
     for (int i = 0; i < FrameMap::nof_cpu_regs; i++) {

@@ -315,9 +315,9 @@ int NormalCompileTask::compile(int size) {
     char* start_heap = (char*)get_enclave_heap();
     char* end_heap = start_heap + get_enclave_heap_size();
     // last 2 registers to hold argument values
-    // movptr change to str
-    __ str(r6, (intptr_t)start_heap);
-    __ str(r7, (intptr_t)end_heap);
+    // movptr change to movl
+    __ movl(r6, (intptr_t)start_heap);
+    __ movl(r7, (intptr_t)end_heap);
 #endif
 #endif
 
@@ -588,9 +588,9 @@ int NormalCompileTask::compile(int size) {
     if (has_interface) {
       __ bind(no_such_interface);
       //abort
-      // movptr change to str
-      __ str(r0, Address(r0, -1));
-      __ str(r0, Address(r0, 0));
+      // movptr change to movl
+      __ movl(r0, Address(r0, -1));
+      __ movl(r0, Address(r0, 0));
     }
 
     __ flush();
@@ -1877,8 +1877,8 @@ void NormalCompileTask::entry() {
     if (is_sgx_interface(method) || strncmp(method->name()->as_C_string(), "sgx_hook", 8) == 0) {
         for (int i = 0;i < size_parameters;i++)
         {
-            // movptr change to str, times8 change to lsl(3)
-            __ str(r15, Address(rlocals, size_parameters - i, Address::lsl(3)));
+            // movptr change to movl, times8 change to lsl(3)
+            __ movl(r15, Address(rlocals, size_parameters - i, Address::lsl(3)));
             __ push(r15);
         }
     }
@@ -1898,7 +1898,7 @@ void NormalCompileTask::entry() {
     for (int i = 0;i < addtional_locals;i++)
     {
         // for r3, hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp line 1109
-        __ str(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
+        __ movl(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
     }
 
     // initialize fixed part of activation frame
@@ -3263,9 +3263,9 @@ void NormalCompileTask::instanceof() {
 }
 
 void NormalCompileTask::gc_point() {
-    //movptr change to str
+    //movptr change to movl
     //rbp to fp for bottom of stack
-    __ str(Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
+    __ movl(Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
@@ -3484,12 +3484,12 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
 
 
     // remove activation
-    // movptr change to str
+    // movptr change to movl
     // get sender sp
 
     // from hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
     // line 178, 549
-    __ str(esp,
+    __ movl(esp,
            Address(sp, frame::interpreter_frame_sender_sp_offset * wordSize));
     __ leave();                           // remove frame anchor
     __ pop(ret_addr);                     // get return address
