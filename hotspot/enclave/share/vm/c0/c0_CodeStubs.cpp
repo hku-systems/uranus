@@ -101,11 +101,14 @@ void PatchingStub::emit() {
         default: ShouldNotReachHere();
     }
 
-    __ call(RuntimeAddress(target));
+    //call to far_call
+    __ far_call(RuntimeAddress(target));
     if (_id == compile_method_id) {
-        __ jmp(_patch_site_continuation);
+        //jmp to far_jump
+        __ far_jump(_patch_site_continuation);
     } else {
-        __ jmp(_patch_site_entry);
+        //jmp to far_jump
+        __ far_jump(_patch_site_entry);
     }
 }
 
