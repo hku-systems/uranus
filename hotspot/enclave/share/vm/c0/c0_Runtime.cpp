@@ -10,17 +10,6 @@
 #include "c0_CodeStubs.hpp"
 #include "Disassembler.hpp"
 
-#include "nativeInst_aarch64.hpp"
-#include "oops/compiledICHolder.hpp"
-#include "oops/oop.inline.hpp"
-#include "prims/jvmtiExport.hpp"
-#include "register_aarch64.hpp"
-#include "runtime/sharedRuntime.hpp"
-#include "runtime/signature.hpp"
-#include "runtime/vframe.hpp"
-#include "runtime/vframeArray.hpp"
-#include "vmreg_aarch64.inline.hpp"
-
 #include "MetadataAccessor.hpp"
 #define __ sasm->
 
