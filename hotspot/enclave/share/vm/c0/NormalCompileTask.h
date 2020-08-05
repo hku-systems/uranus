@@ -72,7 +72,7 @@ public:
         delete bs;
     }
 
-    static void do_oop_store(InterpreterMacroAssembler* _masm,
+    void do_oop_store(InterpreterMacroAssembler* _masm,
                       Address obj,
                       Register val,
                       BarrierSet::Name barrier,
