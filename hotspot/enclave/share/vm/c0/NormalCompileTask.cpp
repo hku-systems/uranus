@@ -290,6 +290,29 @@ static jlong* double_quadword(jlong *adr, jlong lo, jlong hi) {
     return operand;
 }
 
+// Miscelaneous helper routines
+// Store an oop (or NULL) at the Address described by obj.
+// If val == noreg this means store a NULL
+static void do_oop_store(InterpreterMacroAssembler* _masm,
+                         Address obj,
+                         Register val,
+                         BarrierSet::Name barrier,
+                         bool precise) {
+    assert(val == noreg || val == r0, "parameter is just for looks");
+    switch (barrier) {
+        case BarrierSet::Other:
+            if (val == noreg) {
+                __ store_heap_oop_null(obj);
+            } else {
+                __ store_heap_oop(obj, val);
+            }
+            break;
+        default      :
+            ShouldNotReachHere();
+
+    }
+}
+
 // Buffer for 128-bits masks used by SSE instructions.
 static jlong float_signflip_pool[2*2];
 static jlong double_signflip_pool[2*2];
@@ -774,6 +797,13 @@ void NormalCompileTask::ldc2_w() {
 
   __ bind(Done);
 }
+
+void NormalCompileTask::locals_index(Register reg, int offset)
+{
+    __ ldrb(reg, at_bcp(offset));
+    __ neg(reg, reg);
+}
+
 void NormalCompileTask::iload() {
   transition(vtos, itos);
   if (RewriteFrequentPairs) {
