@@ -16,7 +16,7 @@
  *
  */
 
-__Named_exception::__Named_exception(const string& __str) {
+inline __Named_exception::__Named_exception(const string& __str) {
   size_t __size = strlen(_STLP_PRIV __get_c_string(__str)) + 1;
   if (__size > _S_bufsize) {
     _M_name = __STATIC_CAST(char*, malloc(__size * sizeof(char)));
@@ -39,7 +39,7 @@ __Named_exception::__Named_exception(const string& __str) {
 #endif
 }
 
-__Named_exception::__Named_exception(const __Named_exception& __x) {
+inline __Named_exception::__Named_exception(const __Named_exception& __x) {
   size_t __size = strlen(__x._M_name) + 1;
   if (__size > _S_bufsize) {
     _M_name = __STATIC_CAST(char*, malloc(__size * sizeof(char)));
@@ -62,7 +62,7 @@ __Named_exception::__Named_exception(const __Named_exception& __x) {
 #endif
 }
 
-__Named_exception& __Named_exception::operator = (const __Named_exception& __x) {
+inline __Named_exception& __Named_exception::operator = (const __Named_exception& __x) {
   size_t __size = strlen(__x._M_name) + 1;
   size_t __buf_size = _M_name != _M_static_name ? *(__REINTERPRET_CAST(size_t*, &_M_static_name[0])) : _S_bufsize;
   if (__size > __buf_size) {
@@ -86,10 +86,10 @@ __Named_exception& __Named_exception::operator = (const __Named_exception& __x) 
   return *this;
 }
 
-__Named_exception::~__Named_exception() _STLP_NOTHROW_INHERENTLY {
+inline __Named_exception::~__Named_exception() _STLP_NOTHROW_INHERENTLY {
   if (_M_name != _M_static_name)
     free(_M_name);
 }
 
-const char* __Named_exception::what() const _STLP_NOTHROW_INHERENTLY
+inline const char* __Named_exception::what() const _STLP_NOTHROW_INHERENTLY
 { return _M_name; }
