@@ -19,11 +19,9 @@
 #ifndef _STLP_INTERNAL_STDEXCEPT
 #define _STLP_INTERNAL_STDEXCEPT
 
-//#ifndef _STLP_INTERNAL_STDEXCEPT_BASE
-//#  include <stl/_stdexcept_base.h>
-//#endif
-
-#include <stl/_stdexcept_base.h>
+#ifndef _STLP_INTERNAL_STDEXCEPT_BASE
+#  include <stl/_stdexcept_base.h>
+#endif
 
 #if !defined (_STLP_USE_NATIVE_STDEXCEPT) || defined (_STLP_USE_OWN_NAMESPACE)
 

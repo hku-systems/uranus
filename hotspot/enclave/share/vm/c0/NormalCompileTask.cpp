@@ -696,7 +696,11 @@ void NormalCompileTask::ldc(bool wide) {
   __ get_cpool_and_tags(r2, r0);
 
   const int base_offset = ConstantPool::header_size() * wordSize;
-  const int tags_offset = Array<u1>::base_offset_in_bytes();
+
+  //can not use c++ 11 so comment out
+  //const int tags_offset = Array<u1>::base_offset_in_bytes();
+  const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_DOUBLE);
+
 
   // get type
   __ add(r3, r1, tags_offset);
@@ -757,7 +761,9 @@ void NormalCompileTask::ldc2_w() {
 
   __ get_cpool_and_tags(r1, r2);
   const int base_offset = ConstantPool::header_size() * wordSize;
-  const int tags_offset = Array<u1>::base_offset_in_bytes();
+  //can not use c++ 11 so comment out
+  //const int tags_offset = Array<u1>::base_offset_in_bytes();
+  const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_DOUBLE);
 
   // get type
   __ lea(r2, Address(r2, r0, Address::lsl(0)));
@@ -777,6 +783,7 @@ void NormalCompileTask::ldc2_w() {
   __ push_l();
 
   __ bind(Done);
+
 }
 
 void NormalCompileTask::locals_index(Register reg, int offset)
@@ -2054,7 +2061,12 @@ void NormalCompileTask::_new() {
     // Make sure the class we're about to instantiate has been resolved.
     // This is done before loading InstanceKlass to be consistent with the order
     // how Constant Pool is updated (see ConstantPool::klass_at_put)
-    const int tags_offset = Array<u1>::base_offset_in_bytes();
+
+    // can not use c++ 11 so comment out
+    //const int tags_offset = Array<u1>::base_offset_in_bytes();
+    const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_OBJECT);
+
+
     __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
     __ lea(rscratch1, Address(rscratch1, tags_offset));
     __ ldarb(rscratch1, rscratch1);
@@ -3171,7 +3183,10 @@ void NormalCompileTask::checkcast() {
   __ get_cpool_and_tags(r2, r3); // r2=cpool, r3=tags array
   __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
   // See if bytecode has already been quicked
-  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+  //can not use c++ 11 so comment out
+  //__ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+  __ add(rscratch1, r3, arrayOopDesc::base_offset_in_bytes(T_BYTE));
+
   __ lea(r1, Address(rscratch1, r19));
   __ ldarb(r1, r1);
   __ cmp(r1, JVM_CONSTANT_Class);
@@ -3226,7 +3241,11 @@ void NormalCompileTask::instanceof() {
   __ get_cpool_and_tags(r2, r3); // r2=cpool, r3=tags array
   __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
   // See if bytecode has already been quicked
-  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+
+    //can not use c++ 11 so comment out
+    //__ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+  __ add(rscratch1, r3, arrayOopDesc::base_offset_in_bytes(T_BYTE));
+
   __ lea(r1, Address(rscratch1, r19));
   __ ldarb(r1, r1);
   __ cmp(r1, JVM_CONSTANT_Class);
