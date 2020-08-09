@@ -260,8 +260,7 @@ static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
 
 // Note: 'double' and 'long long' have 32-bits alignment on x86.
 
-/*
- * temp comment out because of c++ 11 bug
+
 static jlong* double_quadword(jlong *adr, jlong lo, jlong hi) {
     // Use the expression (adr)&(~0xF) to provide 128-bits aligned address
     // of 128-bits operands for SSE instructions.
@@ -282,7 +281,8 @@ static jlong double_signflip_pool[2*2];
 // Miscelaneous helper routines
 // Store an oop (or NULL) at the Address described by obj.
 // If val == noreg this means store a NULL
-
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
                                      Address obj,
                                      Register val,
