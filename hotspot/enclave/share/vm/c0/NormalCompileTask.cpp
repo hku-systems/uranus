@@ -48,6 +48,8 @@ char* NormalCompileTask::break_klass = "org/apache/spark/util/collection/AppendO
 extern int is_sgx_interface(const Method* m);
 
 extern Klass* resolve_field_return_klass(methodHandle caller, int bci, TRAPS);
+/*
+ * temp comment out because of c++ 11 bug
 
 static void error_backtrace(JavaThread* thread) {
   JavaThread* THREAD = thread;
@@ -258,7 +260,10 @@ static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
 //    return Address(rsp,  Interpreter::expr_offset_in_bytes(3),		vtos, itos);
 //}
 
+
 // Note: 'double' and 'long long' have 32-bits alignment on x86.
+
+
 static jlong* double_quadword(jlong *adr, jlong lo, jlong hi) {
     // Use the expression (adr)&(~0xF) to provide 128-bits aligned address
     // of 128-bits operands for SSE instructions.
@@ -271,6 +276,7 @@ static jlong* double_quadword(jlong *adr, jlong lo, jlong hi) {
 
 
 
+
 // Buffer for 128-bits masks used by SSE instructions.
 static jlong float_signflip_pool[2*2];
 static jlong double_signflip_pool[2*2];
@@ -278,6 +284,7 @@ static jlong double_signflip_pool[2*2];
 // Miscelaneous helper routines
 // Store an oop (or NULL) at the Address described by obj.
 // If val == noreg this means store a NULL
+
 void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
                                      Address obj,
                                      Register val,
@@ -297,6 +304,7 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
 
     }
 }
+ */
 
 int NormalCompileTask::compile(int size) {
     if (size == 0)
