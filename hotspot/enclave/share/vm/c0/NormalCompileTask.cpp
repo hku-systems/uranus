@@ -697,9 +697,9 @@ void NormalCompileTask::ldc(bool wide) {
 
   const int base_offset = ConstantPool::header_size() * wordSize;
 
-  //can not use c++ 11 so comment out
-  //const int tags_offset = Array<u1>::base_offset_in_bytes();
-  const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_DOUBLE);
+
+  const int tags_offset = Array<u1>::base_offset_in_bytes();
+
 
 
   // get type
@@ -761,9 +761,9 @@ void NormalCompileTask::ldc2_w() {
 
   __ get_cpool_and_tags(r1, r2);
   const int base_offset = ConstantPool::header_size() * wordSize;
-  //can not use c++ 11 so comment out
-  //const int tags_offset = Array<u1>::base_offset_in_bytes();
-  const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_DOUBLE);
+
+  const int tags_offset = Array<u1>::base_offset_in_bytes();
+
 
   // get type
   __ lea(r2, Address(r2, r0, Address::lsl(0)));
@@ -2062,9 +2062,9 @@ void NormalCompileTask::_new() {
     // This is done before loading InstanceKlass to be consistent with the order
     // how Constant Pool is updated (see ConstantPool::klass_at_put)
 
-    // can not use c++ 11 so comment out
-    //const int tags_offset = Array<u1>::base_offset_in_bytes();
-    const int tags_offset = arrayOopDesc::base_offset_in_bytes(T_OBJECT);
+
+    const int tags_offset = Array<u1>::base_offset_in_bytes();
+
 
 
     __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
@@ -3183,9 +3183,9 @@ void NormalCompileTask::checkcast() {
   __ get_cpool_and_tags(r2, r3); // r2=cpool, r3=tags array
   __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
   // See if bytecode has already been quicked
-  //can not use c++ 11 so comment out
-  //__ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
-  __ add(rscratch1, r3, arrayOopDesc::base_offset_in_bytes(T_BYTE));
+
+  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+
 
   __ lea(r1, Address(rscratch1, r19));
   __ ldarb(r1, r1);
@@ -3242,9 +3242,9 @@ void NormalCompileTask::instanceof() {
   __ get_unsigned_2_byte_index_at_bcp(r19, 1); // r19=index
   // See if bytecode has already been quicked
 
-    //can not use c++ 11 so comment out
-    //__ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
-  __ add(rscratch1, r3, arrayOopDesc::base_offset_in_bytes(T_BYTE));
+
+  __ add(rscratch1, r3, Array<u1>::base_offset_in_bytes());
+
 
   __ lea(r1, Address(rscratch1, r19));
   __ ldarb(r1, r1);
