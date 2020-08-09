@@ -346,6 +346,7 @@ int NormalCompileTask::compile(int size) {
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
         switch (code) {
+            /*
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
             case Bytecodes::_aconst_null:	gen(aconst_null(),  vtos, atos);
             case Bytecodes::_iconst_0:      gen(iconst(0),      vtos, itos);
@@ -550,6 +551,7 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_ifnonnull:     gen(if_nullcmp(not_equal),  atos, vtos);
             case Bytecodes::_goto_w:        gen(goto_w(),           vtos, vtos);
             case Bytecodes::_jsr_w:         gen(jsr_w(),            vtos, vtos);
+            */
             case Bytecodes::_breakpoint:
                 Unimplemented();
                 break;
@@ -625,7 +627,8 @@ int NormalCompileTask::compile(int size) {
 //        }
 //    }
 }
-
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::nop() {
     transition(vtos, vtos);
 }
@@ -684,8 +687,7 @@ void NormalCompileTask::sipush() {
   __ revw(r0, r0);
   __ asrw(r0, r0, 16);
 }
-/*
- * temp comment out because of c++ 11 bug
+
 
 void NormalCompileTask::ldc(bool wide) {
   transition(vtos, vtos);
@@ -756,10 +758,7 @@ void NormalCompileTask::ldc(bool wide) {
   __ push_i(r0);
   __ bind(Done);    
 }
- */
 
-/*
- * temp comment out because of c++ 11 bug
 void NormalCompileTask::ldc2_w() {
   transition(vtos, vtos);
   Label Long, Done;
@@ -791,7 +790,7 @@ void NormalCompileTask::ldc2_w() {
   __ bind(Done);
 
 }
-*/
+
 void NormalCompileTask::locals_index(Register reg, int offset)
 {
     __ ldrb(reg, at_bcp(offset));
@@ -1098,8 +1097,7 @@ void NormalCompileTask::astore(int n){
   __ pop_ptr(r0);
   __ str(r0, iaddress(n));
 }
-/*
- * temp comment out because of c++ 11 bug
+
 
 void NormalCompileTask::iastore() {
   transition(itos, vtos);
@@ -1247,7 +1245,7 @@ void NormalCompileTask::castore() {
 void NormalCompileTask::sastore() {
     castore();
 }
- */
+
 void NormalCompileTask::pop() {
   transition(vtos, vtos);
   __ add(esp, esp, Interpreter::stackElementSize);
@@ -1439,7 +1437,7 @@ void NormalCompileTask::irem(){
   __ bind(no_div0);
   __ pop_i(r1);
   // r0 <== r1 irem r0
-  __ corrected_idivl(r0, r1, r0, /* want_remainder */ true);
+  __ corrected_idivl(r0, r1, r0, true);
 }
 void NormalCompileTask::lrem(){
   transition(ltos, ltos);
@@ -1451,7 +1449,7 @@ void NormalCompileTask::lrem(){
   __ bind(no_div0);
   __ pop_l(r1);
   // r0 <== r1 lrem r0
-  __ corrected_idivq(r0, r1, r0, /* want_remainder */ true);
+  __ corrected_idivq(r0, r1, r0,  true);
 }
 void NormalCompileTask::ineg(){
   transition(itos, itos);
@@ -1841,7 +1839,7 @@ void NormalCompileTask::ldiv(){
   __ bind(no_div0);
   __ pop_l(r1);
   // r0 <== r1 ldiv r0
-  __ corrected_idivq(r0, r1, r0, /* want_remainder */ false);
+  __ corrected_idivq(r0, r1, r0, false);
 }
 void NormalCompileTask::idiv(){
   transition(itos, itos);
@@ -1853,7 +1851,7 @@ void NormalCompileTask::idiv(){
   __ bind(no_div0);
   __ pop_i(r1);
   // r0 <== r1 idiv r0
-  __ corrected_idivl(r0, r1, r0, /* want_remainder */ false);
+  __ corrected_idivl(r0, r1, r0, false);
 }
 
 void NormalCompileTask::entry() {
@@ -2057,8 +2055,7 @@ void NormalCompileTask::index_check(Register array, Register index) {
 //-----------------------------------------------------------------------------
 // Allocation
 
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::_new() {
     transition(vtos, atos);
 
@@ -2132,10 +2129,7 @@ void NormalCompileTask::_new() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
-*/
 
-/*
- * temp comment out because of c++ 11 bug
 void NormalCompileTask::newarray() {
     transition(itos, atos);
     __ load_unsigned_byte(c_rarg1, at_bcp(1));
@@ -2145,9 +2139,7 @@ void NormalCompileTask::newarray() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
-*/
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::anewarray() {
     transition(itos, atos);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
@@ -2158,19 +2150,13 @@ void NormalCompileTask::anewarray() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
-*/
 
-/*
- * temp comment out because of c++ 11 bug
 void NormalCompileTask::arraylength() {
     transition(atos, itos);
     __ null_check(r0, arrayOopDesc::length_offset_in_bytes());
     __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
-*/
 
-/*
- * temp comment out because of c++ 11 bug
 void NormalCompileTask::multianewarray() {
     transition(vtos, atos);
     __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
@@ -2184,7 +2170,7 @@ void NormalCompileTask::multianewarray() {
     __ load_unsigned_byte(r1, at_bcp(3));
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
-*/
+
 
 void NormalCompileTask::putfield(int byte_no) {
     putfield_or_static(byte_no, false);
@@ -2760,7 +2746,7 @@ void NormalCompileTask::invokeinterface(int byte_no) {
     //                            // outputs: scan temp. reg, scan temp. reg
     //                            rscratch2, r13,
     //                            no_such_interface,
-    //                            /*return_method=*/false);
+    //                            false);
 
     // // profile this call
     // __ profile_virtual_call(r3, r13, r19);
@@ -2938,7 +2924,7 @@ void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
                                                Register itable_index,
                                                Register flags,
                                                bool is_invokevirtual,
-                                               bool is_invokevfinal, /*unused*/
+                                               bool is_invokevfinal,
                                                bool is_invokedynamic) {
     // setup registers
     const Register cache = rscratch2;
@@ -2971,7 +2957,7 @@ void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
 }
 
 void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
-                                   Register temp_reg, bool load_bc_into_bc_reg/*=true*/,
+                                   Register temp_reg, bool load_bc_into_bc_reg,
                                    int byte_no)
 {
     if (!RewriteBytecodes)  return;
@@ -3027,7 +3013,7 @@ void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
 }
 
 // Comment out because not used
-/*
+
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
 
@@ -3196,7 +3182,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         append_stub(patch_compile);
     }
 }
-*/
+
 void NormalCompileTask::checkcast() {
   transition(atos, atos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
@@ -3254,8 +3240,7 @@ void NormalCompileTask::checkcast() {
   }
   __ bind(done);
 }
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::instanceof() {
   transition(atos, itos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
@@ -3315,7 +3300,7 @@ void NormalCompileTask::instanceof() {
   // r0 = 0: obj == NULL or  obj is not an instanceof the specified klass
   // r0 = 1: obj != NULL and obj is     an instanceof the specified klass
 }
-*/
+
 //need to add to _new, invoke, etc according to /openjdk-sgx/hotspot/enclave_src/share/vm/c0/NormalCompileTask.cpp
 void NormalCompileTask::gc_point() {
     // temporarily comment out
@@ -3552,7 +3537,8 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
     __ mov(sp, esp);                     // set sp to sender sp
     __ push(ret_addr);
 }
-/*
+//comment out
+
 void NormalCompileTask::narrow(Register result, TosState tos) {
     switch (tos) {
         case ztos:  __ andl(result, (int32_t)0x1);    break;
@@ -3573,7 +3559,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
         default:                break;
     }
 }
- */
+
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
     _return(ret_tos);
@@ -3643,7 +3629,7 @@ void NormalCompileTask::athrow() {
 // [frame data   ] <--- monitor block bot
 // ...
 // [saved rbp    ] <--- rbp
-/*
+//comment out
 void NormalCompileTask::monitorenter() {
   transition(atos, vtos);
 
@@ -3745,8 +3731,7 @@ void NormalCompileTask::monitorenter() {
   // next instruction.
   __ dispatch_next(vtos);
 }
-*/
-/*
+//comment out
 void NormalCompileTask::monitorexit() {
   transition(atos, vtos);
 
@@ -3801,7 +3786,7 @@ void NormalCompileTask::monitorexit() {
   __ unlock_object(c_rarg1);
   __ pop_ptr(r0); // discard object
 }
-*/
+
 inline bool is_jump_code(Bytecodes::Code code) {
     return ((code >= Bytecodes::_lcmp && code <= Bytecodes::_lookupswitch)
             || (code >= Bytecodes::_ifnull && code <= Bytecodes::_breakpoint));
@@ -3817,7 +3802,7 @@ inline bool is_klass_code(Bytecodes::Code code) {
 
 //Comment out because it is in x86 format
 // fast_compile compile method less than 6 instructions (typically setter and getter)
-/*
+
 int NormalCompileTask::fast_compile() {
     int ins_count = 0;
     int depth = 0;
