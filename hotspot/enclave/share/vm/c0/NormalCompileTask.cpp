@@ -320,7 +320,8 @@ int NormalCompileTask::compile(int size) {
 
     bs->set_next_bci(0);
 
-    entry();
+    //temp comment out for c++ 11 bug
+    //entry();
 
 #ifdef ENCLAVE_BOUND_CHECK
 #ifndef ENCLAVE_MPX
@@ -348,7 +349,8 @@ int NormalCompileTask::compile(int size) {
             //Temporarily comment because it is for debug in macroAssembler
         }
 
-        adjust_tos();
+        //temp comment out for c++ 11 bug
+        //adjust_tos();
 
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
@@ -572,13 +574,17 @@ int NormalCompileTask::compile(int size) {
 
     TosState ret_tos = MetadataAccessor::basicType2tosState(method->result_type());
     __ bind(ret_now);
-    _return(ret_tos);
+
+    //temp comment out for c++ 11 bug
+    //_return(ret_tos);
+
     for (std::vector<std::pair<int, address> >::iterator it = patch_address.begin();
             it != patch_address.end();++it) {
         int bci = it->first;
         address jmp_addr = bci_ptr_map[bci];
         if (jmp_addr == NULL) ShouldNotReachHere();
-        patch_jmp(it->second, jmp_addr);
+        //temp comment out for c++ 11 bug
+        //patch_jmp(it->second, jmp_addr);
     }
 
     // patch the dispatch table for tabledispatch
@@ -635,6 +641,7 @@ int NormalCompileTask::compile(int size) {
 //        }
 //    }
 }
+
 /*
  * temp comment out because of c++ 11 bug
 void NormalCompileTask::nop() {
