@@ -45,8 +45,7 @@ char* NormalCompileTask::break_klass = "org/apache/spark/util/collection/AppendO
 extern int is_sgx_interface(const Method* m);
 
 extern Klass* resolve_field_return_klass(methodHandle caller, int bci, TRAPS);
-/*
- * temp comment out because of c++ 11 bug
+
 
 static void error_backtrace(JavaThread* thread) {
   JavaThread* THREAD = thread;
@@ -146,6 +145,8 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     }                                               \
     break;                                          \
     }
+/*
+ * temp comment out because of c++ 11 bug
 // rlocals points to first parameter
 static inline Address iaddress(int n) {
     return Address(rlocals, Interpreter::local_offset_in_bytes(n));
@@ -303,6 +304,7 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
 }
  */
 
+//above have cause for c++ 11 bug
 //for pure virtual function
 void NormalCompileTask::entry() {}
 
