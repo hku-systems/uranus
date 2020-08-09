@@ -19,20 +19,17 @@
 #include "Disassembler.hpp"
 #include "MetadataAccessor.hpp"
 #include "c0_Runtime.hpp"
-
+//add more include
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
 #include "interpreter/templateTable.hpp"
-
 #include "oops/method.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/oop.inline.hpp"
-
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
-
 #include "interpreter/bytecodes.hpp"
-
+//end add more include
 #include <interpreter/interpreterRuntime.hpp>
 #define __ _masm->
 #define transition(from, to)
@@ -305,6 +302,9 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
     }
 }
  */
+
+//for pure virtual function
+void NormalCompileTask::entry() {}
 
 int NormalCompileTask::compile(int size) {
     if (size == 0)
