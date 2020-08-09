@@ -364,9 +364,9 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_dconst_1:		gen(dconst(1),		vtos, dtos);
             case Bytecodes::_bipush:		gen(bipush(),		vtos, itos);
             case Bytecodes::_sipush:		gen(sipush(),		vtos, itos);
-            case Bytecodes::_ldc:			gen(ldc(false),		vtos, vtos);
-            case Bytecodes::_ldc_w:			gen(ldc(true),		vtos, vtos);
-            case Bytecodes::_ldc2_w:		gen(ldc2_w(),		vtos, vtos);
+            //case Bytecodes::_ldc:			gen(ldc(false),		vtos, vtos);
+            //case Bytecodes::_ldc_w:			gen(ldc(true),		vtos, vtos);
+            //case Bytecodes::_ldc2_w:		gen(ldc2_w(),		vtos, vtos);
             case Bytecodes::_iload:			gen(iload(),		vtos, itos);
             case Bytecodes::_lload:			gen(lload(),		vtos, ltos);
             case Bytecodes::_fload:			gen(fload(),		vtos, ftos);
@@ -533,19 +533,19 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_invokestatic:  gen(invokestatic(f1_byte),  vtos, vtos);
             case Bytecodes::_invokeinterface:gen(invokeinterface(f1_byte), vtos, vtos);
             case Bytecodes::_invokedynamic: gen(invokedynamic(f1_byte), vtos, vtos);
-            case Bytecodes::_new:           gen(_new(),             vtos, atos);
-            case Bytecodes::_newarray:      gen(newarray(),         itos, atos);
-            case Bytecodes::_anewarray:     gen(anewarray(),        itos, atos);
-            case Bytecodes::_arraylength:   gen(arraylength(),      atos, itos);
+            //case Bytecodes::_new:           gen(_new(),             vtos, atos);
+            //case Bytecodes::_newarray:      gen(newarray(),         itos, atos);
+            //case Bytecodes::_anewarray:     gen(anewarray(),        itos, atos);
+            //case Bytecodes::_arraylength:   gen(arraylength(),      atos, itos);
             case Bytecodes::_athrow:        gen(athrow(),           atos, vtos);
             case Bytecodes::_checkcast:     gen(checkcast(),        atos, atos);
-            case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
+            //case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
             //case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
             //case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
             case Bytecodes::_wide:
                 Unimplemented();
                 break;
-            case Bytecodes::_multianewarray:gen(multianewarray(),   vtos, atos);
+            //case Bytecodes::_multianewarray:gen(multianewarray(),   vtos, atos);
             case Bytecodes::_ifnull:        gen(if_nullcmp(equal),  atos, vtos);
             case Bytecodes::_ifnonnull:     gen(if_nullcmp(not_equal),  atos, vtos);
             case Bytecodes::_goto_w:        gen(goto_w(),           vtos, vtos);
@@ -684,6 +684,9 @@ void NormalCompileTask::sipush() {
   __ revw(r0, r0);
   __ asrw(r0, r0, 16);
 }
+/*
+ * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::ldc(bool wide) {
   transition(vtos, vtos);
   Label call_ldc, notFloat, notClass, Done;
@@ -753,7 +756,10 @@ void NormalCompileTask::ldc(bool wide) {
   __ push_i(r0);
   __ bind(Done);    
 }
+ */
 
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::ldc2_w() {
   transition(vtos, vtos);
   Label Long, Done;
@@ -785,7 +791,7 @@ void NormalCompileTask::ldc2_w() {
   __ bind(Done);
 
 }
-
+*/
 void NormalCompileTask::locals_index(Register reg, int offset)
 {
     __ ldrb(reg, at_bcp(offset));
@@ -2047,6 +2053,8 @@ void NormalCompileTask::index_check(Register array, Register index) {
 //-----------------------------------------------------------------------------
 // Allocation
 
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::_new() {
     transition(vtos, atos);
 
@@ -2120,8 +2128,10 @@ void NormalCompileTask::_new() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
+*/
 
-
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::newarray() {
     transition(itos, atos);
     __ load_unsigned_byte(c_rarg1, at_bcp(1));
@@ -2131,7 +2141,9 @@ void NormalCompileTask::newarray() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
-
+*/
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::anewarray() {
     transition(itos, atos);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
@@ -2142,13 +2154,19 @@ void NormalCompileTask::anewarray() {
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
+*/
 
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::arraylength() {
     transition(atos, itos);
     __ null_check(r0, arrayOopDesc::length_offset_in_bytes());
     __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
+*/
 
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::multianewarray() {
     transition(vtos, atos);
     __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
@@ -2162,6 +2180,7 @@ void NormalCompileTask::multianewarray() {
     __ load_unsigned_byte(r1, at_bcp(3));
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
+*/
 
 void NormalCompileTask::putfield(int byte_no) {
     putfield_or_static(byte_no, false);
@@ -3231,7 +3250,8 @@ void NormalCompileTask::checkcast() {
   }
   __ bind(done);
 }
-
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::instanceof() {
   transition(atos, itos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
@@ -3291,7 +3311,7 @@ void NormalCompileTask::instanceof() {
   // r0 = 0: obj == NULL or  obj is not an instanceof the specified klass
   // r0 = 1: obj != NULL and obj is     an instanceof the specified klass
 }
-
+*/
 //need to add to _new, invoke, etc according to /openjdk-sgx/hotspot/enclave_src/share/vm/c0/NormalCompileTask.cpp
 void NormalCompileTask::gc_point() {
     // temporarily comment out
