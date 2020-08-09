@@ -145,8 +145,7 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     }                                               \
     break;                                          \
     }
-/*
- * temp comment out because of c++ 11 bug
+
 // rlocals points to first parameter
 static inline Address iaddress(int n) {
     return Address(rlocals, Interpreter::local_offset_in_bytes(n));
@@ -261,7 +260,8 @@ static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
 
 // Note: 'double' and 'long long' have 32-bits alignment on x86.
 
-
+/*
+ * temp comment out because of c++ 11 bug
 static jlong* double_quadword(jlong *adr, jlong lo, jlong hi) {
     // Use the expression (adr)&(~0xF) to provide 128-bits aligned address
     // of 128-bits operands for SSE instructions.
