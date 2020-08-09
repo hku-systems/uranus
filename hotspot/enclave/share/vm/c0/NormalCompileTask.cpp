@@ -425,14 +425,14 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_astore_1:		gen(astore(1),		atos, vtos);
             case Bytecodes::_astore_2:		gen(astore(2),		atos, vtos);
             case Bytecodes::_astore_3:		gen(astore(3),		atos, vtos);
-            case Bytecodes::_iastore:		gen(iastore(),		itos, vtos);
-            case Bytecodes::_lastore:		gen(lastore(),		ltos, vtos);
-            case Bytecodes::_fastore:		gen(fastore(),		ftos, vtos);
-            case Bytecodes::_dastore:		gen(dastore(),		dtos, vtos);
-            case Bytecodes::_aastore:		gen(aastore(),		vtos, vtos);
-            case Bytecodes::_bastore:		gen(bastore(),		btos, vtos);
-            case Bytecodes::_castore:		gen(castore(),		ctos, vtos);
-            case Bytecodes::_sastore:		gen(sastore(),		stos, vtos);
+            //case Bytecodes::_iastore:		gen(iastore(),		itos, vtos);
+            //case Bytecodes::_lastore:		gen(lastore(),		ltos, vtos);
+            //case Bytecodes::_fastore:		gen(fastore(),		ftos, vtos);
+            //case Bytecodes::_dastore:		gen(dastore(),		dtos, vtos);
+            //case Bytecodes::_aastore:		gen(aastore(),		vtos, vtos);
+            //case Bytecodes::_bastore:		gen(bastore(),		btos, vtos);
+            //case Bytecodes::_castore:		gen(castore(),		ctos, vtos);
+            //case Bytecodes::_sastore:		gen(sastore(),		stos, vtos);
             case Bytecodes::_pop:			gen(pop(),		    vtos, vtos);
             case Bytecodes::_pop2:			gen(pop2(),		    vtos, vtos);
             case Bytecodes::_dup:			gen(dup(),		    vtos, vtos);
@@ -1098,6 +1098,9 @@ void NormalCompileTask::astore(int n){
   __ pop_ptr(r0);
   __ str(r0, iaddress(n));
 }
+/*
+ * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::iastore() {
   transition(itos, vtos);
   __ pop_i(r1);
@@ -1244,6 +1247,7 @@ void NormalCompileTask::castore() {
 void NormalCompileTask::sastore() {
     castore();
 }
+ */
 void NormalCompileTask::pop() {
   transition(vtos, vtos);
   __ add(esp, esp, Interpreter::stackElementSize);
