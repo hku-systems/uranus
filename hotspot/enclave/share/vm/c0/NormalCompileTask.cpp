@@ -1437,8 +1437,7 @@ void NormalCompileTask::dop2(Operation op){
     break;
   }
 }
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::irem(){
   transition(itos, itos);
   // explicitly check for div0
@@ -1627,6 +1626,8 @@ void NormalCompileTask::convert(){
     ShouldNotReachHere();
   }
 }
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::lcmp(){
   transition(ltos, itos);
   Label done;
