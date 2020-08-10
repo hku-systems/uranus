@@ -38,6 +38,17 @@ sudo cp ~/qemu-user-static/bin/qemu-aarch64-static temp/usr/bin/
 
 最後根據 docker file
 
+# Use javac and java to run environment test
+
+javac command under openjdk-arch-sgx/ev_test:
+
+ ~/openjdk-arch-sgx/build/linux-aarch64-normal-server-release/images/j2sdk-image/bin/javac -d . -cp ~/openjdk-arch-sgx/build/linux-aarch64-normal-server-release/images/j2sdk-image/jre/lib/rt.jar TestSuit.java
+
+java command under openjdk-arch-sgx/ev_test:
+
+~/openjdk-arch-sgx/build/linux-aarch64-normal-server-release/images/j2sdk-image/bin/java -ea TestSuit
+
+
 For loop program needed bytecodes
 
        0: aload_0
