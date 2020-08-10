@@ -3195,7 +3195,9 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 }
 */
 
+//below have c++ 11 error
 
+/*
 void NormalCompileTask::checkcast() {
   transition(atos, atos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
@@ -3328,6 +3330,7 @@ void NormalCompileTask::lookupswitch() {
   __ stop("lookupswitch bytecode should have been rewritten");
 }
 
+*/
 void NormalCompileTask::tableswitch() {
   Label default_case, continue_execution;
   transition(itos, vtos);
@@ -3585,6 +3588,7 @@ void NormalCompileTask::_jmp_return() {
     will_run = false;
 }
 
+//above have c++ 11 error
 void NormalCompileTask::adjust_tos() {
     TosState pre_state = tos;
     TosState find_state;
