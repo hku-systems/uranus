@@ -2182,7 +2182,7 @@ void NormalCompileTask::multianewarray() {
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
 
-/*
+
 void NormalCompileTask::putfield(int byte_no) {
     putfield_or_static(byte_no, false);
 }
@@ -2649,7 +2649,7 @@ void NormalCompileTask::jsr_w() { Unimplemented(); }
 void NormalCompileTask::goto_w() {
     branch(false, true);
 }
-
+/*
 void NormalCompileTask::invokevirtual_helper(Register index,
                                          Register recv,
                                          Register flags)
