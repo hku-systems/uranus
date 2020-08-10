@@ -1255,8 +1255,7 @@ void NormalCompileTask::castore() {
 void NormalCompileTask::sastore() {
     castore();
 }
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::pop() {
   transition(vtos, vtos);
   __ add(esp, esp, Interpreter::stackElementSize);
@@ -1438,6 +1437,8 @@ void NormalCompileTask::dop2(Operation op){
     break;
   }
 }
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::irem(){
   transition(itos, itos);
   // explicitly check for div0
