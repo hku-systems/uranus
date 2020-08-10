@@ -302,11 +302,6 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
     }
 }
 
-
-//above have cause for c++ 11 bug
-//for pure virtual function
-void NormalCompileTask::entry() {}
-
 int NormalCompileTask::compile(int size) {
     if (size == 0)
         size = 10240;
@@ -321,8 +316,8 @@ int NormalCompileTask::compile(int size) {
 
     bs->set_next_bci(0);
 
-    //temp comment out for c++ 11 bug
-    //entry();
+
+    entry();
 
 #ifdef ENCLAVE_BOUND_CHECK
 #ifndef ENCLAVE_MPX
@@ -1869,7 +1864,7 @@ void NormalCompileTask::idiv(){
   // r0 <== r1 idiv r0
   __ corrected_idivl(r0, r1, r0, false);
 }
-
+*/
 void NormalCompileTask::entry() {
     // determine code generation flags
 
@@ -1965,7 +1960,7 @@ void NormalCompileTask::entry() {
 //    __ movbool(do_not_unlock_if_synchronized, false);
 
 }
-
+/*
 // address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
