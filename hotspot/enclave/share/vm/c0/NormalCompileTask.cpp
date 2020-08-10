@@ -345,8 +345,7 @@ int NormalCompileTask::compile(int size) {
             //Temporarily comment because it is for debug in macroAssembler
         }
 
-        //temp comment out for c++ 11 bug
-        //adjust_tos();
+        adjust_tos();
 
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
@@ -571,8 +570,8 @@ int NormalCompileTask::compile(int size) {
     TosState ret_tos = MetadataAccessor::basicType2tosState(method->result_type());
     __ bind(ret_now);
 
-    //temp comment out for c++ 11 bug
-    //_return(ret_tos);
+
+    _return(ret_tos);
 
     for (std::vector<std::pair<int, address> >::iterator it = patch_address.begin();
             it != patch_address.end();++it) {
@@ -1989,7 +1988,7 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
     // the parameters plus the ret address
     __ current_entry->clear_bit_prev(parameter_size + 1);
 }
-
+*/
 void NormalCompileTask::_return(TosState state) {
     transition(state, state);
     assert(_desc->calls_vm(),
@@ -2026,7 +2025,7 @@ void NormalCompileTask::_return(TosState state) {
     __ remove_activation(state);
     __ ret(lr);
 }
-
+/*
 void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
     if (inst_addr[0] == (unsigned char) 0x0F) {
         // condition jmp
@@ -3580,7 +3579,7 @@ void NormalCompileTask::_jmp_return() {
     tos = udtos;
     will_run = false;
 }
-
+*/
 void NormalCompileTask::adjust_tos() {
     TosState pre_state = tos;
     TosState find_state;
@@ -3613,7 +3612,7 @@ void NormalCompileTask::adjust_tos() {
       tos = vtos;
     }
 }
-
+/*
 //-----------------------------------------------------------------------------
 // Exceptions
 
