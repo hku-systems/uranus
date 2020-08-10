@@ -636,8 +636,7 @@ int NormalCompileTask::compile(int size) {
 //    }
 }
 
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::nop() {
     transition(vtos, vtos);
 }
@@ -696,7 +695,8 @@ void NormalCompileTask::sipush() {
   __ revw(r0, r0);
   __ asrw(r0, r0, 16);
 }
-
+/*
+ * temp comment out because of c++ 11 bug
 
 void NormalCompileTask::ldc(bool wide) {
   transition(vtos, vtos);
