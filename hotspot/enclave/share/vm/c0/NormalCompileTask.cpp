@@ -2039,7 +2039,7 @@ void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
         NativeGeneralJump::insert_unconditional(inst_addr, jmp_addr);
     }
 }
-/*
+
 void NormalCompileTask::index_check(Register array, Register index) {
     // destroys r1, rscratch1
     // check array
@@ -2061,11 +2061,10 @@ void NormalCompileTask::index_check(Register array, Register index) {
     __ br(rscratch1);
     __ bind(ok);
 }
-//void NormalCompileTask::locals_index(Register reg, int offset) { Unimplemented(); }
 
 //-----------------------------------------------------------------------------
 // Allocation
-
+/*
 
 void NormalCompileTask::_new() {
     transition(vtos, atos);
@@ -2966,7 +2965,7 @@ void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
     }
     __ ldrw(flags, Address(cache, flags_offset));
 }
-
+*/
 void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
                                    Register temp_reg, bool load_bc_into_bc_reg,
                                    int byte_no)
@@ -3022,7 +3021,7 @@ void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
     __ strb(bc_reg, at_bcp(0));
     __ bind(L_patch_done);
 }
-
+/*
 // Comment out because not used
 
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
