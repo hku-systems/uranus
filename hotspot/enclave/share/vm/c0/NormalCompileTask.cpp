@@ -3195,7 +3195,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 }
 */
 
-/*
+
 void NormalCompileTask::checkcast() {
   transition(atos, atos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
@@ -3552,6 +3552,7 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
 }
 //comment out
 
+/*
 void NormalCompileTask::narrow(Register result, TosState tos) {
     switch (tos) {
         case ztos:  __ andl(result, (int32_t)0x1);    break;
@@ -3572,6 +3573,7 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
         default:                break;
     }
 }
+ */
 
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
@@ -3582,7 +3584,7 @@ void NormalCompileTask::_jmp_return() {
     tos = udtos;
     will_run = false;
 }
-*/
+
 void NormalCompileTask::adjust_tos() {
     TosState pre_state = tos;
     TosState find_state;
