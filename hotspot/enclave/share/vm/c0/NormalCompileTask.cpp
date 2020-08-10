@@ -3332,9 +3332,7 @@ void NormalCompileTask::lookupswitch() {
 
 
 
-//below have c++ 11 error
 
-/*
 
 void NormalCompileTask::tableswitch() {
   Label default_case, continue_execution;
@@ -3369,6 +3367,10 @@ void NormalCompileTask::tableswitch() {
   __ ldrw(r3, Address(r1, 0));
   __ b(continue_execution);
 }
+
+//below have c++ 11 error
+
+/*
 
 void NormalCompileTask::jump_target(int target, Condition cc) {
 
@@ -3424,7 +3426,7 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
 }
 
 */
-
+//above have c++ 11 error
 void NormalCompileTask::remove_activation(TosState state, Register ret_addr, bool throw_monitor_exception,
                                           bool install_monitor_exception, bool notify_jvmdi) {
     // Note: Registers rdx xmm0 may be in use for the
@@ -3595,7 +3597,7 @@ void NormalCompileTask::_jmp_return() {
     will_run = false;
 }
 
-//above have c++ 11 error
+
 void NormalCompileTask::adjust_tos() {
     TosState pre_state = tos;
     TosState find_state;
