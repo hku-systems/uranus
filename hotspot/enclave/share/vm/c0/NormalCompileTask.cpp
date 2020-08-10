@@ -1961,7 +1961,7 @@ void NormalCompileTask::entry() {
 //    __ movbool(do_not_unlock_if_synchronized, false);
 
 }
-/*
+
 // address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
@@ -1990,7 +1990,7 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
     // the parameters plus the ret address
     __ current_entry->clear_bit_prev(parameter_size + 1);
 }
-*/
+
 void NormalCompileTask::_return(TosState state) {
     transition(state, state);
     assert(_desc->calls_vm(),
@@ -2065,7 +2065,7 @@ void NormalCompileTask::index_check(Register array, Register index) {
 
 //-----------------------------------------------------------------------------
 // Allocation
-/*
+
 
 void NormalCompileTask::_new() {
     transition(vtos, atos);
@@ -2182,7 +2182,7 @@ void NormalCompileTask::multianewarray() {
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
 
-
+/*
 void NormalCompileTask::putfield(int byte_no) {
     putfield_or_static(byte_no, false);
 }
