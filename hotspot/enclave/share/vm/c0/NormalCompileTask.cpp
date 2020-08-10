@@ -2649,7 +2649,7 @@ void NormalCompileTask::jsr_w() { Unimplemented(); }
 void NormalCompileTask::goto_w() {
     branch(false, true);
 }
-/*
+
 void NormalCompileTask::invokevirtual_helper(Register index,
                                          Register recv,
                                          Register flags)
@@ -2966,7 +2966,7 @@ void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
     }
     __ ldrw(flags, Address(cache, flags_offset));
 }
-*/
+
 void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
                                    Register temp_reg, bool load_bc_into_bc_reg,
                                    int byte_no)
@@ -3193,7 +3193,9 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         append_stub(patch_compile);
     }
 }
+*/
 
+/*
 void NormalCompileTask::checkcast() {
   transition(atos, atos);
   Label done, is_null, ok_is_subtype, quicked, resolved;
