@@ -351,7 +351,7 @@ int NormalCompileTask::compile(int size) {
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
         switch (code) {
-            /*
+
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
             case Bytecodes::_aconst_null:	gen(aconst_null(),  vtos, atos);
             case Bytecodes::_iconst_0:      gen(iconst(0),      vtos, itos);
@@ -556,7 +556,7 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_ifnonnull:     gen(if_nullcmp(not_equal),  atos, vtos);
             case Bytecodes::_goto_w:        gen(goto_w(),           vtos, vtos);
             case Bytecodes::_jsr_w:         gen(jsr_w(),            vtos, vtos);
-            */
+
             case Bytecodes::_breakpoint:
                 Unimplemented();
                 break;
