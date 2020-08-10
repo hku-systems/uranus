@@ -370,9 +370,9 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_dconst_1:		gen(dconst(1),		vtos, dtos);
             case Bytecodes::_bipush:		gen(bipush(),		vtos, itos);
             case Bytecodes::_sipush:		gen(sipush(),		vtos, itos);
-            //case Bytecodes::_ldc:			gen(ldc(false),		vtos, vtos);
-            //case Bytecodes::_ldc_w:			gen(ldc(true),		vtos, vtos);
-            //case Bytecodes::_ldc2_w:		gen(ldc2_w(),		vtos, vtos);
+            case Bytecodes::_ldc:			gen(ldc(false),		vtos, vtos);
+            case Bytecodes::_ldc_w:			gen(ldc(true),		vtos, vtos);
+            case Bytecodes::_ldc2_w:		gen(ldc2_w(),		vtos, vtos);
             case Bytecodes::_iload:			gen(iload(),		vtos, itos);
             case Bytecodes::_lload:			gen(lload(),		vtos, ltos);
             case Bytecodes::_fload:			gen(fload(),		vtos, ftos);
@@ -431,14 +431,14 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_astore_1:		gen(astore(1),		atos, vtos);
             case Bytecodes::_astore_2:		gen(astore(2),		atos, vtos);
             case Bytecodes::_astore_3:		gen(astore(3),		atos, vtos);
-            //case Bytecodes::_iastore:		gen(iastore(),		itos, vtos);
-            //case Bytecodes::_lastore:		gen(lastore(),		ltos, vtos);
-            //case Bytecodes::_fastore:		gen(fastore(),		ftos, vtos);
-            //case Bytecodes::_dastore:		gen(dastore(),		dtos, vtos);
-            //case Bytecodes::_aastore:		gen(aastore(),		vtos, vtos);
-            //case Bytecodes::_bastore:		gen(bastore(),		btos, vtos);
-            //case Bytecodes::_castore:		gen(castore(),		ctos, vtos);
-            //case Bytecodes::_sastore:		gen(sastore(),		stos, vtos);
+            case Bytecodes::_iastore:		gen(iastore(),		itos, vtos);
+            case Bytecodes::_lastore:		gen(lastore(),		ltos, vtos);
+            case Bytecodes::_fastore:		gen(fastore(),		ftos, vtos);
+            case Bytecodes::_dastore:		gen(dastore(),		dtos, vtos);
+            case Bytecodes::_aastore:		gen(aastore(),		vtos, vtos);
+            case Bytecodes::_bastore:		gen(bastore(),		btos, vtos);
+            case Bytecodes::_castore:		gen(castore(),		ctos, vtos);
+            case Bytecodes::_sastore:		gen(sastore(),		stos, vtos);
             case Bytecodes::_pop:			gen(pop(),		    vtos, vtos);
             case Bytecodes::_pop2:			gen(pop2(),		    vtos, vtos);
             case Bytecodes::_dup:			gen(dup(),		    vtos, vtos);
@@ -539,19 +539,19 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_invokestatic:  gen(invokestatic(f1_byte),  vtos, vtos);
             case Bytecodes::_invokeinterface:gen(invokeinterface(f1_byte), vtos, vtos);
             case Bytecodes::_invokedynamic: gen(invokedynamic(f1_byte), vtos, vtos);
-            //case Bytecodes::_new:           gen(_new(),             vtos, atos);
-            //case Bytecodes::_newarray:      gen(newarray(),         itos, atos);
-            //case Bytecodes::_anewarray:     gen(anewarray(),        itos, atos);
-            //case Bytecodes::_arraylength:   gen(arraylength(),      atos, itos);
+            case Bytecodes::_new:           gen(_new(),             vtos, atos);
+            case Bytecodes::_newarray:      gen(newarray(),         itos, atos);
+            case Bytecodes::_anewarray:     gen(anewarray(),        itos, atos);
+            case Bytecodes::_arraylength:   gen(arraylength(),      atos, itos);
             case Bytecodes::_athrow:        gen(athrow(),           atos, vtos);
             case Bytecodes::_checkcast:     gen(checkcast(),        atos, atos);
-            //case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
+            case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
             //case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
             //case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
             case Bytecodes::_wide:
                 Unimplemented();
                 break;
-            //case Bytecodes::_multianewarray:gen(multianewarray(),   vtos, atos);
+            case Bytecodes::_multianewarray:gen(multianewarray(),   vtos, atos);
             case Bytecodes::_ifnull:        gen(if_nullcmp(equal),  atos, vtos);
             case Bytecodes::_ifnonnull:     gen(if_nullcmp(not_equal),  atos, vtos);
             case Bytecodes::_goto_w:        gen(goto_w(),           vtos, vtos);
@@ -695,8 +695,6 @@ void NormalCompileTask::sipush() {
   __ revw(r0, r0);
   __ asrw(r0, r0, 16);
 }
-/*
- * temp comment out because of c++ 11 bug
 
 void NormalCompileTask::ldc(bool wide) {
   transition(vtos, vtos);
@@ -1053,6 +1051,10 @@ void NormalCompileTask::saload() {
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
+
+/*
+ * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::istore(){
   transition(itos, vtos);
   locals_index(r1);
