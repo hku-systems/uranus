@@ -578,8 +578,7 @@ int NormalCompileTask::compile(int size) {
         int bci = it->first;
         address jmp_addr = bci_ptr_map[bci];
         if (jmp_addr == NULL) ShouldNotReachHere();
-        //temp comment out for c++ 11 bug
-        //patch_jmp(it->second, jmp_addr);
+        patch_jmp(it->second, jmp_addr);
     }
 
     // patch the dispatch table for tabledispatch
@@ -2025,7 +2024,7 @@ void NormalCompileTask::_return(TosState state) {
     __ remove_activation(state);
     __ ret(lr);
 }
-/*
+
 void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
     if (inst_addr[0] == (unsigned char) 0x0F) {
         // condition jmp
@@ -2038,7 +2037,7 @@ void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
         NativeGeneralJump::insert_unconditional(inst_addr, jmp_addr);
     }
 }
-
+/*
 void NormalCompileTask::index_check(Register array, Register index) {
     // destroys r1, rscratch1
     // check array
