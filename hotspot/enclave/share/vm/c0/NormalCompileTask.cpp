@@ -1626,8 +1626,7 @@ void NormalCompileTask::convert(){
     ShouldNotReachHere();
   }
 }
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::lcmp(){
   transition(ltos, itos);
   Label done;
@@ -1866,7 +1865,7 @@ void NormalCompileTask::idiv(){
   // r0 <== r1 idiv r0
   __ corrected_idivl(r0, r1, r0, false);
 }
-*/
+
 void NormalCompileTask::entry() {
     // determine code generation flags
 
