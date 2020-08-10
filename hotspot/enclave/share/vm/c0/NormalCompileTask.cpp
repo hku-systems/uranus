@@ -281,8 +281,7 @@ static jlong double_signflip_pool[2*2];
 // Miscelaneous helper routines
 // Store an oop (or NULL) at the Address described by obj.
 // If val == noreg this means store a NULL
-/*
- * temp comment out because of c++ 11 bug
+
 void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
                                      Address obj,
                                      Register val,
@@ -302,7 +301,7 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
 
     }
 }
- */
+
 
 //above have cause for c++ 11 bug
 //for pure virtual function
