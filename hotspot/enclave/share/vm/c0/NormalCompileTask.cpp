@@ -1052,8 +1052,7 @@ void NormalCompileTask::saload() {
   __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
 
-/*
- * temp comment out because of c++ 11 bug
+
 
 void NormalCompileTask::istore(){
   transition(itos, vtos);
@@ -1256,7 +1255,8 @@ void NormalCompileTask::castore() {
 void NormalCompileTask::sastore() {
     castore();
 }
-
+/*
+ * temp comment out because of c++ 11 bug
 void NormalCompileTask::pop() {
   transition(vtos, vtos);
   __ add(esp, esp, Interpreter::stackElementSize);
