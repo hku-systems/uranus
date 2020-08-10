@@ -3562,9 +3562,10 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
     __ mov(sp, esp);                     // set sp to sender sp
     __ push(ret_addr);
 }
-//comment out
+
 
 /*
+ * comment out
 void NormalCompileTask::narrow(Register result, TosState tos) {
     switch (tos) {
         case ztos:  __ andl(result, (int32_t)0x1);    break;
@@ -3630,7 +3631,7 @@ void NormalCompileTask::adjust_tos() {
       tos = vtos;
     }
 }
-/*
+
 //-----------------------------------------------------------------------------
 // Exceptions
 
@@ -3639,7 +3640,7 @@ void NormalCompileTask::athrow() {
   __ null_check(r0);
   __ b(Interpreter::throw_exception_entry());
 }
-
+/*
 //-----------------------------------------------------------------------------
 // Synchronization
 //
@@ -3657,7 +3658,8 @@ void NormalCompileTask::athrow() {
 // [frame data   ] <--- monitor block bot
 // ...
 // [saved rbp    ] <--- rbp
-//comment out
+
+ //comment out
 void NormalCompileTask::monitorenter() {
   transition(atos, vtos);
 
@@ -3814,6 +3816,7 @@ void NormalCompileTask::monitorexit() {
   __ unlock_object(c_rarg1);
   __ pop_ptr(r0); // discard object
 }
+ */
 
 inline bool is_jump_code(Bytecodes::Code code) {
     return ((code >= Bytecodes::_lcmp && code <= Bytecodes::_lookupswitch)
@@ -3831,6 +3834,7 @@ inline bool is_klass_code(Bytecodes::Code code) {
 //Comment out because it is in x86 format
 // fast_compile compile method less than 6 instructions (typically setter and getter)
 
+/*
 int NormalCompileTask::fast_compile() {
     int ins_count = 0;
     int depth = 0;
