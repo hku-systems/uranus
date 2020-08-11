@@ -50,7 +50,7 @@ public:
     void pop(Register r )               {   TOS_POP(atos, r, );        }
 
     void push(Register r )              {   TOS_PUSH(atos, r, );        }
-    void push(int32_t imm )             {   TOS_PUSH(atos, imm, );      }
+    //void push(int32_t imm )             {   TOS_PUSH(atos, imm, );      }
 
     void pop(TosState state)            {   TOS_POP(state, state, );   }
     void push(TosState state)           {   TOS_PUSH(state, state, );   }
