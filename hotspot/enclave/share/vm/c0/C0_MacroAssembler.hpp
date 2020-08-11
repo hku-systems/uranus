@@ -55,7 +55,8 @@ public:
     void pop(TosState state)            {   TOS_POP(state, state, );   }
     void push(TosState state)           {   TOS_PUSH(state, state, );   }
 
-
+    void pop(RegSet regs, Register stack) { ((MacroAssembler*)this)->pop(regs, stack); }
+    void push(RegSet regs, Register stack) { ((MacroAssembler*)this)->push(regs, stack); }
 
     /*
     void addptr(Register dst, int32_t imm32);
