@@ -38,6 +38,10 @@ sudo cp ~/qemu-user-static/bin/qemu-aarch64-static temp/usr/bin/
 
 最後根據 docker file
 
+under ~/
+
+git clone https://github.com/jianyu-m/openjdk-arch-sgx/ && cd openjdk-arch-sgx && git checkout origin/hansen_test && cp -R ~/linux-sgx/build/linux/ hotspot/lib && mkdir hotspot/build/ && cd hotspot/build/ && sudo cmake ../ && sudo make -j && sudo make install && sudo make install && sudo cp libenclave.so /usr/lib/ && cd ~/openjdk-arch-sgx/ && ./configure && sudo make images
+
 # Use javac and java to run environment test
 
 javac command under openjdk-arch-sgx/ev_test:
