@@ -34,17 +34,17 @@ public:
     }
 
     //defined in hotspot/enclave/cpu/aarch64/vm/interp_masm_aarch64.cpp
-    /*
-    void pop_ptr(Register r = rax)      {   TOS_POP(atos, r, _ptr);     }
-    void pop_i(Register r = rax)        {   TOS_POP(itos, r, _i);       }
-    void pop_l(Register r = rax)        {   TOS_POP(ltos, r, _l);       }
-    void pop_f(XMMRegister r = xmm0)    {   TOS_POP(ftos, r, _f);       }
-    void pop_d(XMMRegister r = xmm0)    {   TOS_POP(dtos, r, _d);       }
-    void push_ptr(Register r = rax)     {   TOS_PUSH(atos, r, _ptr);    }
-    void push_i(Register r = rax)       {   TOS_PUSH(atos, r, _i);      }
-    void push_l(Register r = rax)       {   TOS_PUSH(atos, r, _l);      }
-    void push_f(XMMRegister r = xmm0)   {   TOS_PUSH(atos, r, _f);      }
-    void push_d(XMMRegister r = xmm0)   {   TOS_PUSH(atos, r, _d);      }
+
+    void pop_ptr(Register r = r0)      {   TOS_POP(atos, r, _ptr);     }
+    void pop_i(Register r = r0)        {   TOS_POP(itos, r, _i);       }
+    void pop_l(Register r = r0)        {   TOS_POP(ltos, r, _l);       }
+    void pop_f(FloatRegister r = v0)    {   TOS_POP(ftos, r, _f);       }
+    void pop_d(FloatRegister r = v0)    {   TOS_POP(dtos, r, _d);       }
+    void push_ptr(Register r = r0)     {   TOS_PUSH(atos, r, _ptr);    }
+    void push_i(Register r = r0)       {   TOS_PUSH(atos, r, _i);      }
+    void push_l(Register r = r0)       {   TOS_PUSH(atos, r, _l);      }
+    void push_f(FloatRegister r = v0)   {   TOS_PUSH(atos, r, _f);      }
+    void push_d(FloatRegister r = v0)   {   TOS_PUSH(atos, r, _d);      }
 
 
     void pop(Register r )               {   TOS_POP(atos, r, );        }
@@ -57,6 +57,7 @@ public:
 
 
 
+    /*
     void addptr(Register dst, int32_t imm32);
 
     void addptr(Register dst, Register src) { InterpreterMacroAssembler::addptr(dst, src); }
