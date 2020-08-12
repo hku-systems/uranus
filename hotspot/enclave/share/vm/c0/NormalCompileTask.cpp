@@ -1879,6 +1879,8 @@ void NormalCompileTask::entry() {
     int size_parameters = method->size_of_parameters();
     int addtional_locals = size_locals - size_parameters;
 
+    printf("size_locals: %d, size_parameters: %d, addtional_locals: %d", size_locals, size_parameters, addtional_locals);
+
     #ifdef DB_FRAME
     //Comment out because it is for debug and it is for x86
       //__ push(r11);
@@ -1921,6 +1923,8 @@ void NormalCompileTask::entry() {
         }
     }
 
+    printf("r15: %d", r15);
+
     // compute beginning of parameters (rlocals)
     __ add(rlocals, esp, r2, ext::uxtx, 3);
     __ sub(rlocals, rlocals, wordSize);
@@ -1936,7 +1940,7 @@ void NormalCompileTask::entry() {
     for (int i = 0;i < addtional_locals;i++)
     {
         // for r3, hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp line 1109
-        __ str(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
+        __ str(noreg, Address(__ post(rscratch1, wordSize)));// initialize local variables
     }
 
     // initialize fixed part of activation frame
