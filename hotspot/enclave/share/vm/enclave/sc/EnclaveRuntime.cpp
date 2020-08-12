@@ -164,9 +164,9 @@ void* EnclaveRuntime::call_compiler(void *rbx_buf, Method *m) {
 
 void* EnclaveRuntime::call_interpreter(void *rbx_buf, Method *m) {
     ecall_count += 1;
-    if ((EnclaveRuntime::debug_bit & debug_ecall) == debug_ecall) {
+    //if ((EnclaveRuntime::debug_bit & debug_ecall) == debug_ecall) {
         printf("ecall %d, ocall %d\n", ecall_count, ocall_count);
-    }
+    //}
     JavaThread *javaThread = JavaThread::current();
     char rsp_tmp[8];
     return EnclaveABI::do_ecall(rbx_buf, rsp_tmp, javaThread, (address)m);

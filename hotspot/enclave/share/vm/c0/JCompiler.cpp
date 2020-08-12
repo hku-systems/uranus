@@ -42,6 +42,7 @@ void JCompiler::compile_method(Method *method) {
         task = new NativeCompileTask(method);
     }
     */
+   printf("creating Normal Compile Task");
    task = new NormalCompileTask(method);
 
     if (method->is_abstract()) {
@@ -49,10 +50,13 @@ void JCompiler::compile_method(Method *method) {
         return;
     }
 
+    printf("task calling compile function");
     task->compile(size);
+    printf("task calling set_compile_entry function");
     task->set_compile_entry();
 //    if (task->method_entry != EnclaveABI::do_ocall)
 //        task->print_disassembly();
+    printf("finish JCompiler::compile_method function");
 }
 
 bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {
