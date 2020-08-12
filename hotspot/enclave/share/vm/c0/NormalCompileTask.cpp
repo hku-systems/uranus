@@ -316,8 +316,9 @@ int NormalCompileTask::compile(int size) {
 
     bs->set_next_bci(0);
 
-
+    printf("call entry()\n");
     entry();
+    printf("finish entry()\n");
 
 #ifdef ENCLAVE_BOUND_CHECK
 #ifndef ENCLAVE_MPX
@@ -345,7 +346,11 @@ int NormalCompileTask::compile(int size) {
             //Temporarily comment because it is for debug in macroAssembler
         }
 
+        printf("call adjust_tos()\n");
+
         adjust_tos();
+
+        printf("finish adjust_tos()\n");
 
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
