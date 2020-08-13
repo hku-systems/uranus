@@ -3602,7 +3602,6 @@ void NormalCompileTask::narrow(Register result, TosState tos) {
 
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
-    _return(ret_tos);
     //jmp change to b
     __ b(ret_now);
     ret_tos = tos;
