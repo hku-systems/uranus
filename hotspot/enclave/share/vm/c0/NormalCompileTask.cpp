@@ -350,11 +350,12 @@ int NormalCompileTask::compile(int size) {
 
         adjust_tos();
 
-        printf("finish adjust_tos()\n");
+        printf("finish adjust_tos(): %d\n", tos);
 
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
+        printf("load bytecode: %s \n", code);
         switch (code) {
 
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
@@ -568,6 +569,7 @@ int NormalCompileTask::compile(int size) {
             default:
                 Unimplemented();
         }
+
     }
 
     __ end_expression_stack();
@@ -1884,7 +1886,7 @@ void NormalCompileTask::entry() {
     int size_parameters = method->size_of_parameters();
     int addtional_locals = size_locals - size_parameters;
 
-    printf("size_locals: %d, size_parameters: %d, addtional_locals: %d", size_locals, size_parameters, addtional_locals);
+    printf("size_locals: %d, size_parameters: %d, addtional_locals: %d\n", size_locals, size_parameters, addtional_locals);
 
     #ifdef DB_FRAME
     //Comment out because it is for debug and it is for x86
@@ -1928,7 +1930,7 @@ void NormalCompileTask::entry() {
         }
     }
 
-    printf("r15: %d", r15);
+    printf("r15: %d\n", r15);
 
     // compute beginning of parameters (rlocals)
     __ add(rlocals, esp, r2, ext::uxtx, 3);
