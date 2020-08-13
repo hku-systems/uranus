@@ -355,8 +355,7 @@ int NormalCompileTask::compile(int size) {
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
-        printf(code._name);
-        printf("\n");
+        printf("load bytecode function\n");
 
         switch (code) {
 
