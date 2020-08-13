@@ -355,7 +355,7 @@ int NormalCompileTask::compile(int size) {
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
-        printf("load bytecode: %s \n", code);
+        printf("load bytecode: %s \n", code::_name);
         switch (code) {
 
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
@@ -1947,7 +1947,7 @@ void NormalCompileTask::entry() {
     for (int i = 0;i < addtional_locals;i++)
     {
         // for r3, hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp line 1109
-        __ str(noreg, Address(__ post(rscratch1, wordSize)));// initialize local variables
+        __ str(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
     }
 
     // initialize fixed part of activation frame
