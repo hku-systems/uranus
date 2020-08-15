@@ -2168,7 +2168,8 @@ void NormalCompileTask::newarray() {
         EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
     }
 
-    __ str(r0, (intptr_t)EnclaveMemory::_type_array_klass);
+    //TODO: need to fix
+    __ str(r0, EnclaveMemory::_type_array_klass);
 
     //add gc point
     gc_point();
@@ -3363,7 +3364,7 @@ void NormalCompileTask::gc_point() {
     // temporarily comment out
     //movptr change to str
     //rbp to c_rarg1 for bottom of stack
-    __ str(bs->bci(),Address(c_rarg1, frame::interpreter_frame_last_sp_offset * wordSize));
+    __ str(Address(c_rarg1, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
