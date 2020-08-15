@@ -2139,36 +2139,55 @@ void NormalCompileTask::_new() {
         __ eden_allocate(r0, r3, 0, r10, slow_case);
         __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
     }
+    //add gc point
+    gc_point();
 
     // slow case
     __ bind(slow_case);
     __ get_constant_pool(c_rarg1);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::_new), c_rarg1, c_rarg2);
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_instance_id), c_rarg1, c_rarg2);
     __ verify_oop(r0);
+
 
     // continue
     __ bind(done);
+
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::newarray() {
+    //add gc point
+    gc_point();
     transition(itos, atos);
     __ load_unsigned_byte(c_rarg1, at_bcp(1));
     __ mov(c_rarg2, r0);
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::newarray),
+
+    if (EnclaveMemory::_type_array_klass == NULL) {
+        EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
+    }
+
+    __ str(r0, (intptr_t)EnclaveMemory::_type_array_klass);
+
+    //add gc point
+    gc_point();
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_type_array_id),
             c_rarg1, c_rarg2);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
 }
 
 void NormalCompileTask::anewarray() {
+    //add gc point
+    gc_point();
     transition(itos, atos);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
+    //add gc point
+    gc_point();
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
@@ -2181,15 +2200,23 @@ void NormalCompileTask::arraylength() {
 }
 
 void NormalCompileTask::multianewarray() {
+    //add gc point
+    gc_point();
     transition(vtos, atos);
     __ load_unsigned_byte(r0, at_bcp(3)); // get number of dimensions
     // last dim is on top of stack; we want address of first one:
     // first_addr = last_addr + (ndims - 1) * wordSize
     __ lea(c_rarg1, Address(esp, r0, Address::uxtw(3)));
     __ sub(c_rarg1, c_rarg1, wordSize);
+
+
+    // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_cpoll_multi_array));
+    //change below code to above
+    /*
     __ call_VM(r0,
-            CAST_FROM_FN_PTR(address, InterpreterRuntime::multianewarray),
+            CAST_FROM_FN_PTR(address, Runtime0::static_cpoll_multi_array),
             c_rarg1);
+    */
     __ load_unsigned_byte(r1, at_bcp(3));
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
@@ -2877,6 +2904,9 @@ void NormalCompileTask::prepare_invoke(int byte_no,
                                    Register recv,   // if caller wants to see it
                                    Register flags   // if caller wants to test it
 ) {
+    //add gc point
+    gc_point();
+
     // determine flags
     Bytecodes::Code code = bs->code();
     const bool is_invokeinterface  = code == Bytecodes::_invokeinterface;
@@ -3332,8 +3362,8 @@ void NormalCompileTask::instanceof() {
 void NormalCompileTask::gc_point() {
     // temporarily comment out
     //movptr change to str
-    //rbp to fp for bottom of stack
-    //__ str(Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
+    //rbp to c_rarg1 for bottom of stack
+    __ str(bs->bci(),Address(c_rarg1, frame::interpreter_frame_last_sp_offset * wordSize));
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 
