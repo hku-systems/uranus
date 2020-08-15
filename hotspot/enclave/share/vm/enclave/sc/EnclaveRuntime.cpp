@@ -147,6 +147,7 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
     {
         r = (u_char*)call_compiler(rbx_buf, (Method*)m);
     }
+    printf("finish call_compiler in do_ecall_comp\n");
     if (javaThread.has_unhandle_exception()) {
         *has_exception = 1;
     }
