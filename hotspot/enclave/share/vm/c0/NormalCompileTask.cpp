@@ -742,7 +742,13 @@ void NormalCompileTask::ldc(bool wide) {
 
   __ bind(call_ldc);
   __ mov(c_rarg1, wide);
+
   __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
+  //above change to below
+  //PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
+  //patchingStub->install();
+  //append_stub(patchingStub);
+
   __ push_ptr(r0);
   __ verify_oop(r0);
   __ b(Done);
@@ -2651,6 +2657,7 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
 
     // resolve first time through
     address entry;
+    /*
     switch (bs->code()) {
         case Bytecodes::_getstatic:
         case Bytecodes::_putstatic:
@@ -2674,6 +2681,8 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
             fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bs->code())));
             break;
     }
+     */
+    entry = method->constants()->cache()->entry_at(get_method_index());
     __ mov(temp, (int) bs->code());
     __ call_VM(noreg, entry, temp);
 
@@ -3319,7 +3328,9 @@ void NormalCompileTask::instanceof() {
   __ br(Assembler::EQ, quicked);
 
   __ push(atos); // save receiver for result, and for GC
+
   __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+
   // vm_result_2 has metadata result
   __ get_vm_result_2(r0, rthread);
   __ pop(r3); // restore receiver
