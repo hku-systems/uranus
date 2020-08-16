@@ -2682,9 +2682,10 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
             break;
     }
      */
-    entry = method->constants()->cache()->entry_at(get_method_index());
+
     __ mov(temp, (int) bs->code());
-    __ call_VM(noreg, entry, temp);
+    //temp comment out because do not deal with entry now
+    //__ call_VM(noreg, entry, temp);
 
     // Update registers with resolved info
     __ get_cache_and_index_at_bcp(Rcache, index, 1, index_size);
