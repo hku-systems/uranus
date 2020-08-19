@@ -3124,7 +3124,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     force_compile = false;
             } else {
                 __ load_klass(r3, recv);
-                __ str(r0, (intptr_t)interface_klass);
+                __ str(r0, (Register)(intptr_t)interface_klass);
 
                 __ lookup_interface_method(// inputs: rec. class, interface, itable index
                         r3, r0, vtable_index,
