@@ -3150,7 +3150,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     EnclaveRuntime::compile_method(callee);
                 }
                 // load Method*, if invokestatic or vfinal
-                __ str(m, (intptr_t)callee);
+                __ str(m, (Register)(intptr_t)callee);
                 if (JCompiler::is_compile(callee)) {
                     compiled_entry = *callee->enclave_native_function_addr();
                 }
