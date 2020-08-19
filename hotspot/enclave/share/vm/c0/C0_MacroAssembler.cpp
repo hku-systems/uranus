@@ -70,13 +70,15 @@ void C0_MacroAssembler::zero_memory(Register addr, Register len, Register t1) {
 
 
 void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool force_compile, PatchingStub* &stub) {
-    //comment out because not used in NormalCompileTask
-    /*
-    lea(r13, Address(rsp, 0));
-    movptr(Address(rbp, frame::interpreter_frame_last_sp_offset * wordSize), r13);
+
+    // set sender sp
+    mov(r13, sp);
+    // record last_sp
+    str(esp, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
+
     if (entry == (address)-1) {
-      movptr(rax, Address(method, Method::enclave_native_function_offset()));
-      call(rax);
+      str(r0, Address(method, Method::enclave_native_function_offset()));
+      br(r0);
     } else if (entry != NULL) {
          emit_int8((unsigned char)0xE8);
          intptr_t disp = entry - (pc() + sizeof(int32_t));
@@ -85,9 +87,9 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         // jump to the compile stub, if it is not a interface, remove the patch after
         stub = new PatchingStub(this, PatchingStub::compile_method_id, force_compile);
         stub->install();
-        movptr(rax, Address(method, Method::enclave_native_function_offset()));
-        call(rax);
-    }*/
+        str(r0, Address(method, Method::enclave_native_function_offset()));
+        br(r0);
+    }
 }
 /*
 void C0_MacroAssembler::addptr(Register dst, int32_t imm32)  {

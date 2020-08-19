@@ -2747,19 +2747,21 @@ void NormalCompileTask::invokevirtual(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f2_byte, "use this argument");
 
-  prepare_invoke(byte_no, rmethod, noreg, r2, r3);
+  //prepare_invoke(byte_no, rmethod, noreg, r2, r3);
 
   // rmethod: index (actually a Method*)
   // r2: receiver
   // r3: flags
 
-  invokevirtual_helper(rmethod, r2, r3);
+  //invokevirtual_helper(rmethod, r2, r3);
+  invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
     transition(vtos, vtos);
     assert(byte_no == f1_byte, "use this argument");
-
+    invoke(byte_no, rmethod, noreg, r2, noreg);
+    /*
     prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
                    r2, noreg);  // get receiver also for null check
     __ verify_oop(r2);
@@ -2768,9 +2770,12 @@ void NormalCompileTask::invokespecial(int byte_no) {
     __ profile_call(r0);
     __ profile_arguments_type(r0, rmethod, rbcp, false);
     __ jump_from_interpreted(rmethod, r0);
+    */
+
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
+    invoke(byte_no, rmethod, noreg, r2, noreg);
     // TODO: fix me
     // transition(vtos, vtos);
     // assert(byte_no == f1_byte, "use this argument");
@@ -2870,43 +2875,18 @@ void NormalCompileTask::invokestatic(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f1_byte, "use this argument");
 
-  prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);  // get f1 Method*
+  invoke(byte_no, rmethod, noreg, noreg, noreg);
+
+  //prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);  // get f1 Method*
+
   // do the call
-  __ profile_call(r0);
-  __ profile_arguments_type(r0, rmethod, r4, false);
-  __ jump_from_interpreted(rmethod, r0);
+  //__ profile_call(r0);
+  //__ profile_arguments_type(r0, rmethod, r4, false);
+  //__ jump_from_interpreted(rmethod, r0);
 }
 
 void NormalCompileTask::invokedynamic(int byte_no) {
-  transition(vtos, vtos);
-  assert(byte_no == f1_byte, "use this argument");
 
-  if (!EnableInvokeDynamic) {
-    // We should not encounter this bytecode if !EnableInvokeDynamic.
-    // The verifier will stop it.  However, if we get past the verifier,
-    // this will stop the thread in a reasonable way, without crashing the JVM.
-    __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-                     InterpreterRuntime::throw_IncompatibleClassChangeError));
-    // the call_VM checks for exception, so we should never return here.
-    __ should_not_reach_here();
-    return;
-  }
-
-  prepare_invoke(byte_no, rmethod, r0, noreg, noreg);
-
-  // r0: CallSite object (from cpool->resolved_references[])
-  // rmethod: MH.linkToCallSite method (from f2)
-
-  // Note:  r0_callsite is already pushed by prepare_invoke
-
-  // %%% should make a type profile for any invokedynamic that takes a ref argument
-  // profile this call
-  __ profile_call(rbcp);
-  __ profile_arguments_type(r3, rmethod, r13, false);
-
-  __ verify_oop(r0);
-
-  __ jump_from_interpreted(rmethod, r0);
 }
 
 void NormalCompileTask::prepare_invoke(int byte_no,
@@ -2940,7 +2920,9 @@ void NormalCompileTask::prepare_invoke(int byte_no,
     // save 'interpreter return address'
     __ save_bcp();
 
-    load_invoke_cp_cache_entry(byte_no, method, index, flags, is_invokevirtual, false, is_invokedynamic);
+    //load_invoke_cp_cache_entry(byte_no, method, index, flags, is_invokevirtual, false, is_invokedynamic);
+    //to:
+    // ConstantPoolCacheEntry *method_entry = method->constants()->cache()->entry_at(get_method_index());
 
     // maybe push appendix to arguments (just before return address)
     if (is_invokedynamic || is_invokehandle) {
@@ -2983,42 +2965,6 @@ void NormalCompileTask::prepare_invoke(int byte_no,
     }
 }
 
-void NormalCompileTask::load_invoke_cp_cache_entry(int byte_no,
-                                               Register method,
-                                               Register itable_index,
-                                               Register flags,
-                                               bool is_invokevirtual,
-                                               bool is_invokevfinal,
-                                               bool is_invokedynamic) {
-    // setup registers
-    const Register cache = rscratch2;
-    const Register index = r4;
-    assert_different_registers(method, flags);
-    assert_different_registers(method, cache, index);
-    assert_different_registers(itable_index, flags);
-    assert_different_registers(itable_index, cache, index);
-    // determine constant pool cache field offsets
-    assert(is_invokevirtual == (byte_no == f2_byte), "is_invokevirtual flag redundant");
-    const int method_offset = in_bytes(
-            ConstantPoolCache::base_offset() +
-            (is_invokevirtual
-             ? ConstantPoolCacheEntry::f2_offset()
-             : ConstantPoolCacheEntry::f1_offset()));
-    const int flags_offset = in_bytes(ConstantPoolCache::base_offset() +
-                                      ConstantPoolCacheEntry::flags_offset());
-    // access constant pool cache fields
-    const int index_offset = in_bytes(ConstantPoolCache::base_offset() +
-                                      ConstantPoolCacheEntry::f2_offset());
-
-    size_t index_size = (is_invokedynamic ? sizeof(u4) : sizeof(u2));
-    resolve_cache_and_index(byte_no, cache, index, index_size);
-    __ ldr(method, Address(cache, method_offset));
-
-    if (itable_index != noreg) {
-        __ ldr(itable_index, Address(cache, index_offset));
-    }
-    __ ldrw(flags, Address(cache, flags_offset));
-}
 
 void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
                                    Register temp_reg, bool load_bc_into_bc_reg,
@@ -3075,8 +3021,7 @@ void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
     __ strb(bc_reg, at_bcp(0));
     __ bind(L_patch_done);
 }
-/*
-// Comment out because not used
+
 
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
@@ -3090,8 +3035,8 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     int parameter_size = 0;
     const bool load_receiver    =   (recv   !=  noreg);
     // setup registers & access constant pool cache
-    if (recv  == noreg)  recv  = rcx;
-    if (flags == noreg)  flags = rdx;
+    if (recv  == noreg)  recv  = r2;
+    if (flags == noreg)  flags = r3;
 
     ConstantPoolCacheEntry *method_entry = method->constants()->cache()->entry_at(get_method_index());
     Method* callee = NULL;
@@ -3112,7 +3057,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     if (load_receiver) {
         // patch the offset later
         parameter_size += 1;
-        __ movptr(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
+        __ str(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
     }
 
     // find the Method*
@@ -3124,8 +3069,8 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_method_id, bs->bci());
         Label final;
         if (bs->code() == Bytecodes::_invokeinterface) {
-            __ movptr(rax, NULL_WORD);
-            __ movptr(index, 0xffff);
+            __ str(r0, zr);
+            __ str(index, 0xffff);
         } else if (bs->code() == Bytecodes::_invokevirtual) {
             // we do not know if this is a final method
             // we use rbx as both index and method register
@@ -3137,11 +3082,11 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
             // next: movptr rax, klass_off(recv)
             // movptr rbx, (index_reg * off + base)(rax)
             // after:
-            __ movptr(m, NULL_WORD);
-            __ jmp(final);
+            __ str(m, zr);
+            __ b(final);
         } else {
             compiled_entry = (address)-1;
-            __ movptr(m, NULL_WORD);
+            __ str(m, zr);
         }
 
         stub->install();
@@ -3150,13 +3095,13 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         if (bs->code() == Bytecodes::_invokeinterface) {
             __ load_klass(rdx, recv);
             __ lookup_interface_method(// inputs: rec. class, interface, itable index
-                    rdx, rax, index,
+                    rdx, r0, index,
                     // outputs: method, scan temp. reg
                     m, r13,
                     no_such_interface);
         } else if (bs->code() == Bytecodes::_invokevirtual) {
-          __ load_klass(rax, recv);
-          __ lookup_virtual_method(rax, index, m);
+          __ load_klass(r0, recv);
+          __ lookup_virtual_method(r0, index, m);
           __ bind(final);
         }
 
@@ -3166,7 +3111,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 
         if (load_receiver) {
             parameter_size += 1;
-            __ movptr(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
+            __ str(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
         }
 
         if (bs->code() == Bytecodes::_invokeinterface) {
@@ -3174,15 +3119,15 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
             vtable_index = method_entry->f2_as_index();
 
             if (method_entry->is_forced_virtual()) {
-                    __ load_klass(rax, recv);
-                    __ lookup_virtual_method(rax, vtable_index, m);
+                    __ load_klass(r0, recv);
+                    __ lookup_virtual_method(r0, vtable_index, m);
                     force_compile = false;
             } else {
-                __ load_klass(rdx, recv);
-                __ movptr(rax, (intptr_t)interface_klass);
+                __ load_klass(r3, recv);
+                __ str(r0, (intptr_t)interface_klass);
 
                 __ lookup_interface_method(// inputs: rec. class, interface, itable index
-                        rdx, rax, vtable_index,
+                        r3, r0, vtable_index,
                         // outputs: method, scan temp. reg
                         m, r13,
                         no_such_interface);
@@ -3195,8 +3140,8 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     callee = method_entry->f2_as_vfinal_method();
                 } else {
                     vtable_index = method_entry->f2_as_index();
-                    __ load_klass(rax, recv);
-                    __ lookup_virtual_method(rax, vtable_index, m);
+                    __ load_klass(r0, recv);
+                    __ lookup_virtual_method(r0, vtable_index, m);
                 }
             }
 
@@ -3205,7 +3150,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     EnclaveRuntime::compile_method(callee);
                 }
                 // load Method*, if invokestatic or vfinal
-                __ movptr(m, (intptr_t)callee);
+                __ str(m, (intptr_t)callee);
                 if (JCompiler::is_compile(callee)) {
                     compiled_entry = *callee->enclave_native_function_addr();
                 }
@@ -3246,7 +3191,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         append_stub(patch_compile);
     }
 }
-*/
+
 
 
 

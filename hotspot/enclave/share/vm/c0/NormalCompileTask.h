@@ -273,21 +273,13 @@ public:
     void invokeinterface(int byte_no);
     void invokedynamic(int byte_no);
     void invokespecial(int byte_no);
-    //void invoke(int byte_no, Register m, Register index, Register recv, Register flags);
+    void invoke(int byte_no, Register m, Register index, Register recv, Register flags);
     void prepare_invoke(int byte_no,
                                        Register method, // linked method (or i-klass)
                                        Register index,  // itable index, MethodType, etc.
                                        Register recv,   // if caller wants to see it
                                        Register flags   // if caller wants to test it
     );
-
-    void load_invoke_cp_cache_entry(int byte_no,
-                                                       Register method,
-                                                       Register itable_index,
-                                                       Register flags,
-                                                       bool is_invokevirtual,
-                                                       bool is_invokevfinal, /*unused*/
-                                                       bool is_invokedynamic);
 
     void gc_point();
 
