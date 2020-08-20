@@ -102,6 +102,7 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     if (tos >= number_of_states)                    \
         printf("error in bci %d\n", bs->bci());     \
     if (!(intos == otos && intos == vtos)) {        \
+        printf("%s\n", func);                       \
         if (intos == vtos && tos != vtos) {         \
             switch (tos) {                          \
                 case atos: __ push_ptr();   break;  \
@@ -356,9 +357,6 @@ int NormalCompileTask::compile(int size) {
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
 
         printf("load bytecode function\n");
-
-        printf("%s\n", code.java_code());
-
 
         switch (code) {
 
