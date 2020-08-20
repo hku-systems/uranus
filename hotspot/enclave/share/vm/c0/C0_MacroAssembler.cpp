@@ -76,9 +76,10 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
     // record last_sp
     str(esp, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
 
+    //call to bl
     if (entry == (address)-1) {
       str(r0, Address(method, Method::enclave_native_function_offset()));
-      br(r0);
+      bl(r0);
     } else if (entry != NULL) {
          emit_int8((unsigned char)0xE8);
          intptr_t disp = entry - (pc() + sizeof(int32_t));
@@ -88,7 +89,7 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         stub = new PatchingStub(this, PatchingStub::compile_method_id, force_compile);
         stub->install();
         str(r0, Address(method, Method::enclave_native_function_offset()));
-        br(r0);
+        bl(r0);
     }
 }
 /*
