@@ -3057,7 +3057,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     if (load_receiver) {
         // patch the offset later
         parameter_size += 1;
-        __ str(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
+        __ str(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
     }
 
     // find the Method*
@@ -3070,7 +3070,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         Label final;
         if (bs->code() == Bytecodes::_invokeinterface) {
             __ str(r0, zr);
-            __ str(index, 0xffff);
+            __ str(index, (Register)(intptr_t)0xffff);
         } else if (bs->code() == Bytecodes::_invokevirtual) {
             // we do not know if this is a final method
             // we use rbx as both index and method register
@@ -3093,9 +3093,9 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         append_stub(stub);
 
         if (bs->code() == Bytecodes::_invokeinterface) {
-            __ load_klass(rdx, recv);
+            __ load_klass(r3, recv);
             __ lookup_interface_method(// inputs: rec. class, interface, itable index
-                    rdx, r0, index,
+                    r3, r0, index,
                     // outputs: method, scan temp. reg
                     m, r13,
                     no_such_interface);
@@ -3111,7 +3111,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 
         if (load_receiver) {
             parameter_size += 1;
-            __ str(recv, Address(rsp, (-1 + parameter_size) * Interpreter::stackElementSize));
+            __ str(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
         }
 
         if (bs->code() == Bytecodes::_invokeinterface) {
