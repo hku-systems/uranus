@@ -102,7 +102,6 @@ void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     if (tos >= number_of_states)                    \
         printf("error in bci %d\n", bs->bci());     \
     if (!(intos == otos && intos == vtos)) {        \
-        printf("%s\n", func);                       \
         if (intos == vtos && tos != vtos) {         \
             switch (tos) {                          \
                 case atos: __ push_ptr();   break;  \
@@ -2755,11 +2754,13 @@ void NormalCompileTask::invokevirtual(int byte_no) {
   // r3: flags
 
   //invokevirtual_helper(rmethod, r2, r3);
+    printf("%s/n", __func__);
   invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
     transition(vtos, vtos);
+    printf("%s/n", __func__);
     assert(byte_no == f1_byte, "use this argument");
     invoke(byte_no, rmethod, noreg, r2, noreg);
     /*
@@ -2776,6 +2777,7 @@ void NormalCompileTask::invokespecial(int byte_no) {
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
+    printf("%s/n", __func__);
     invoke(byte_no, rmethod, noreg, r2, noreg);
     // TODO: fix me
     // transition(vtos, vtos);
@@ -2875,6 +2877,8 @@ void NormalCompileTask::invokeinterface(int byte_no) {
 void NormalCompileTask::invokestatic(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f1_byte, "use this argument");
+
+  printf("%s/n", __func__);
 
   invoke(byte_no, rmethod, noreg, noreg, noreg);
 
