@@ -357,6 +357,9 @@ int NormalCompileTask::compile(int size) {
 
         printf("load bytecode function\n");
 
+        printf("%s\n", code.java_code());
+
+
         switch (code) {
 
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
@@ -2745,7 +2748,7 @@ void NormalCompileTask::invokevirtual_helper(Register index,
 
 void NormalCompileTask::invokevirtual(int byte_no) {
   transition(vtos, vtos);
-  assert(byte_no == f2_byte, "use this argument");
+  //assert(byte_no == f2_byte, "use this argument");
 
   //prepare_invoke(byte_no, rmethod, noreg, r2, r3);
 
