@@ -2885,7 +2885,7 @@ void NormalCompileTask::invokestatic(int byte_no) {
 
   printf("%s\n", __func__);
 
-  prepare_invoke(byte_no, rmethod);
+  prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);
 
   invoke(byte_no, rmethod, noreg, noreg, noreg);
 
