@@ -85,7 +85,7 @@ public:
 
     ~StubFrame() {
        _sasm->leave();
-       //_sasm->ret(0);
+       _sasm->ret(lr);
     }
 };
 
@@ -124,7 +124,7 @@ void Runtime0::generate_blob_for(BufferBlob *buffer_blob, Runtime0::StubID id) {
     assert(blob != NULL, "blob must exist");
     _blobs[id] = blob;
 }
-
+//TODO: change back to Uranus x86
 void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
     const Register exception_oop = r0;
     const Register exception_pc  = r3;
@@ -866,7 +866,7 @@ void Runtime0::initialize_pd() {
     }
      */
 }
-
+//TODO: change back to Uranus x86
 OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
     // use the maximum number of runtime-arguments here because it is difficult to
     // distinguish each RT-Call.
@@ -1003,7 +1003,7 @@ int Runtime0::move_mirror_patching(JavaThread *thread) {
 int Runtime0::move_appendix_patching(JavaThread *thread) {
     patch_code(thread, load_appendix_patching_id);
 }
-
+//TODO: change back to Uranus x86
 void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     RegisterMap reg_map(thread, false);
 
