@@ -375,9 +375,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                     // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
                     Register last_java_sp = r0;
                     __ lea(last_java_sp, Address(esp, wordSize));
-                    __ set_last_Java_frame(rthread, last_java_sp, rbp, NULL);
+                    __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
                 }
-                __ call(RuntimeAddress(entry_point));
+                __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, gc_barrier)));
                 if (true) {
                     __ reset_last_Java_frame(rthread, true);
                     // quick fix to avoid gc in runtime
@@ -387,7 +387,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                     // check for pending exceptions (java_thread is set upon return)
                     // r15 is callee-saved
 
-                    __ cmpptr(Address(rthread, Thread::pending_exception_offset()), (int32_t) NULL_WORD);
+                    __ cmpptr(Address(rthread, Thread::pending_exception_offset()), noreg);
 
                     Label ok;
                     __ br(Assembler::EQ, ok);
