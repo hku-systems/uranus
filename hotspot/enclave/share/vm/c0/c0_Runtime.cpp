@@ -379,7 +379,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 }
                 __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, gc_barrier)));
                 if (true) {
-                    __ reset_last_Java_frame(rthread, true);
+                    __ reset_last_Java_frame(true);
                     // quick fix to avoid gc in runtime
 //      movptr(r13, Address(rbp, frame::interpreter_frame_bcx_offset * wordSize));
                 }
