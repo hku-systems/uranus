@@ -509,44 +509,304 @@ int Runtime0::move_mirror_patching(JavaThread *thread) {
 int Runtime0::move_appendix_patching(JavaThread *thread) {
     patch_code(thread, load_appendix_patching_id);
 }
-//TODO: change back to Uranus x86
+
 void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
-    RegisterMap reg_map(thread, false);
-
     NOT_PRODUCT(_patch_code_slowcase_cnt++;)
-    // According to the ARMv8 ARM, "Concurrent modification and
-    // execution of instructions can lead to the resulting instruction
-    // performing any behavior that can be achieved by executing any
-    // sequence of instructions that can be executed from the same
-    // Exception level, except where the instruction before
-    // modification and the instruction after modification is a B, BL,
-    // NOP, BKPT, SVC, HVC, or SMC instruction."
-    //
-    // This effectively makes the games we play when patching
-    // impossible, so when we come across an access that needs
-    // patching we must deoptimize.
 
-    /*
-    if (TracePatching) {
-        tty->print_cr("Deoptimizing because patch is needed");
-    }
-     */
+    JavaThread* THREAD = thread;
 
+    ResourceMark rm(thread);
+    RegisterMap reg_map(thread, false);
     frame runtime_frame = thread->last_frame();
     frame caller_frame = runtime_frame.sender(&reg_map);
 
-    // It's possible the nmethod was invalidated in the last
-    // safepoint, but if it's still alive then make it not_entrant.
-    /*
-    nmethod* nm = CodeCache::find_nmethod(caller_frame.pc());
-    if (nm != NULL) {
-        nm->make_not_entrant();
+    // last java frame on stack
+
+    Method* mth;
+
+    methodHandle caller_method(THREAD, caller_frame.interpreter_frame_method());
+    // Note that caller_method->code() may not be same as caller_code because of OSR's
+    // Note also that in the presence of inlining it is not guaranteed
+    // that caller_method() == caller_code->method()
+
+    NativeGeneralJump *bci_jmp = nativeGeneralJump_at(caller_frame.pc() + PatchingStub::_patch_info_offset * 2);
+    int bci = (int)bci_jmp->jump_destination();
+
+    Bytecodes::Code code = caller_method()->java_code_at(bci);
+
+    bool deoptimize_for_volatile = false;
+    int patch_field_offset = -1;
+    KlassHandle init_klass(THREAD, NULL); // klass needed by load_klass_patching code
+    KlassHandle load_klass(THREAD, NULL); // klass needed by load_klass_patching code
+    Handle mirror(THREAD, NULL);                    // oop needed by load_mirror_patching code
+    Handle appendix(THREAD, NULL);                  // oop needed by appendix_patching code
+    Klass* interface_klass;
+    int interface_itable_idx;
+    int virtual_vtable_idx;
+    bool load_klass_or_mirror_patch_id =
+            (stub_id == Runtime0::load_klass_patching_id || stub_id == Runtime0::load_mirror_patching_id);
+
+    if (stub_id == Runtime0::access_field_patching_id) {
+
+        Bytecode_field field_access(caller_method, bci);
+//        fieldDescriptor result; // initialize class if needed
+        Bytecodes::Code code = field_access.code();
+        constantPoolHandle constants(THREAD, caller_method->constants());
+        patch_field_offset = JVM_ENTRY_resolve_get_put_C(THREAD, constants(), field_access.index(), Bytecodes::java_code(code));
+
+
+        // If we're patching a field which is volatile then at compile it
+        // must not have been know to be volatile, so the generated code
+        // isn't correct for a volatile reference.  The nmethod has to be
+        // deoptimized so that the code can be regenerated correctly.
+        // This check is only needed for access_field_patching since this
+        // is the path for patching field offsets.  load_klass is only
+        // used for patching references to oops which don't need special
+        // handling in the volatile case.
+//        deoptimize_for_volatile = result.access_flags().is_volatile();
+
+    } else if (load_klass_or_mirror_patch_id) {
+        Klass* k = NULL;
+        switch (code) {
+            case Bytecodes::_putstatic:
+            case Bytecodes::_getstatic:
+            { Klass* klass = resolve_field_return_klass(caller_method, bci, CHECK);
+                init_klass = KlassHandle(THREAD, klass);
+                mirror = Handle(THREAD, (oop)klass);
+            }
+                break;
+            case Bytecodes::_new:
+            { Bytecode_new bnew(caller_method(), caller_method->bcp_from(bci));
+                k = caller_method->constants()->klass_at(bnew.index(), CHECK);
+            }
+                break;
+            case Bytecodes::_multianewarray:
+            { Bytecode_multianewarray mna(caller_method(), caller_method->bcp_from(bci));
+                k = caller_method->constants()->klass_at(mna.index(), CHECK);
+            }
+                break;
+            case Bytecodes::_instanceof:
+            { Bytecode_instanceof io(caller_method(), caller_method->bcp_from(bci));
+                k = caller_method->constants()->klass_at(io.index(), CHECK);
+            }
+                break;
+            case Bytecodes::_checkcast:
+            { Bytecode_checkcast cc(caller_method(), caller_method->bcp_from(bci));
+                k = caller_method->constants()->klass_at(cc.index(), CHECK);
+            }
+                break;
+            case Bytecodes::_anewarray:
+            { Bytecode_anewarray anew(caller_method(), caller_method->bcp_from(bci));
+                Klass* ek = caller_method->constants()->klass_at(anew.index(), CHECK);
+                k = (Klass*)KLASS_array_klass(ek, 1, 0);
+            }
+                break;
+            case Bytecodes::_ldc:
+            case Bytecodes::_ldc_w:
+            {
+                Bytecode_loadconstant cc(caller_method, bci);
+                oop m = cc.resolve_constant(JavaThread::current());
+                if (java_lang_String::is_instance(m)) {
+                    m = StringTable::intern(m, JavaThread::current());
+                } else {
+                    m = (oop)java_lang_Class::as_Klass(m);
+                }
+                mirror = Handle(THREAD, m);
+            }
+                break;
+            default: fatal("unexpected bytecode for load_klass_or_mirror_patch_id");
+        }
+        // convert to handle
+        load_klass = KlassHandle(THREAD, k);
+    } else if (stub_id == load_method_patching_id) {
+        Bytecode_invoke call(caller_method, bci);
+        Bytecodes::Code bytecode = call.invoke_code();
+        int bytecode_index = call.index();
+
+        char* recv = NULL;
+        if (bytecode == Bytecodes::_invokevirtual || bytecode == Bytecodes::_invokeinterface ||
+            bytecode == Bytecodes::_invokespecial) {
+            recv = (char*)caller_frame.interpreter_callee_receiver(call.signature());
+            if (recv == NULL) {
+                ENCLAVE_THROW(EnclaveException::java_lang_NullPointerException);
+            }
+        }
+        // Resolve method. This is parameterized by bytecode.
+        constantPoolHandle constants(THREAD, caller_method->constants());
+        mth = (Method*)JVM_ENTRY_resolve_invoke_C(recv, constants(), bytecode_index, bytecode);
+
+        if (code == Bytecodes::_invokeinterface) {
+            interface_klass = mth->method_holder();
+            interface_itable_idx = mth->itable_index();
+            oop recv_recv = (oop)recv;
+            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_itable(interface_klass, interface_itable_idx, JavaThread::current());
+            EnclaveRuntime::compile_method(method);
+        } else {
+            if (code == Bytecodes::_invokevirtual) {
+                virtual_vtable_idx = mth->vtable_index();
+                if (virtual_vtable_idx > 0) {
+                    oop recv_recv = (oop)recv;
+                    Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_vtable(virtual_vtable_idx);
+                    EnclaveRuntime::compile_method(method);
+                } else {
+                    // final method
+                    EnclaveRuntime::compile_method(mth);
+                }
+            } else {
+                // static or special method
+                EnclaveRuntime::compile_method(mth);
+            }
+        }
+    } else if (stub_id == compile_method_patching_id) {
+        Method* compiled_method = thread->compiled_method();
+        EnclaveRuntime::compile_method(compiled_method);
+    } else if (stub_id == load_appendix_patching_id) {
+        D_WARN_Unimplement;
+    } else {
+        ShouldNotReachHere();
     }
-     */
 
-    //Deoptimization::deoptimize_frame(thread, caller_frame.id());
+    if (deoptimize_for_volatile) {
+        D_WARN_Unimplement;
+    }
 
-    // Return to the now deoptimized frame.
+    // Now copy code back
+    // we are encountering the call interface, we cannot patch the stub
+    if (stub_id == compile_method_patching_id && bci == 1) {
+        // no patch is necessary for invokeinterface
+        return;
+    }
+
+    {
+        // Deoptimization may have happened while we waited for the lock.
+        // In that case we don't bother to do any patching we just return
+        // and let the deopt happen
+
+        NativeGeneralJump* jump = nativeGeneralJump_at(caller_frame.pc());
+        address instr_pc = jump->jump_destination();
+        NativeInstruction* ni = nativeInstruction_at(instr_pc);
+        if (ni->is_jump() ) {
+            // the jump has not been patched yet
+            // The jump destination is slow case and therefore not part of the stubs
+            // (stubs are only for StaticCalls)
+
+            // format of buffer
+            //    ....
+            //    instr byte 0     <-- copy_buff
+            //    instr byte 1
+            //    ..
+            //    instr byte n-1
+            //      n
+            //    ....             <-- call destination
+
+            address stub_location = caller_frame.pc() + PatchingStub::_patch_info_offset * 2;
+            unsigned char* byte_count = (unsigned char*) (stub_location - 1);
+            unsigned char* byte_skip = (unsigned char*) (stub_location - 2);
+            unsigned char* being_initialized_entry_offset = (unsigned char*) (stub_location - 3);
+            address copy_buff = stub_location - *byte_skip - *byte_count;
+            address being_initialized_entry = stub_location - *being_initialized_entry_offset;
+            // depending on the code below, do_patch says whether to copy the patch body back into the nmethod
+            bool do_patch = true;
+            if (stub_id == Runtime0::access_field_patching_id) {
+                // The offset may not be correct if the class was not loaded at code generation time.
+                // Set it now.
+                NativeMovRegMem* n_move = nativeMovRegMem_at(copy_buff);
+                assert(n_move->offset() == 0 || (n_move->offset() == 4 && (patch_field_type == T_DOUBLE || patch_field_type == T_LONG)), "illegal offset for type");
+                assert(patch_field_offset >= 0, "illegal offset");
+                n_move->set_offset(patch_field_offset);
+            } else if (load_klass_or_mirror_patch_id) {
+                // If a getstatic or putstatic is referencing a klass which
+                // isn't fully initialized, the patch body isn't copied into
+                // place until initialization is complete.  In this case the
+                // patch site is setup so that any threads besides the
+                // initializing thread are forced to come into the VM and
+                // block.
+                do_patch = (code != Bytecodes::_getstatic && code != Bytecodes::_putstatic) ||
+                           InstanceKlass::cast(init_klass())->is_initialized();
+                NativeGeneralJump* jump = nativeGeneralJump_at(instr_pc);
+                if (jump->jump_destination() == being_initialized_entry) {
+                    assert(do_patch == true, "initialization must be complete at this point");
+                } else {
+                    // patch the instruction <move reg, klass>
+                    NativeMovConstReg* n_copy = nativeMovConstReg_at(copy_buff);
+
+                    assert(n_copy->data() == 0 ||
+                           n_copy->data() == (intptr_t)Universe::non_oop_word(),
+                           "illegal init value");
+                    if (stub_id == Runtime0::load_klass_patching_id) {
+                        assert(load_klass() != NULL, "klass not set");
+                        n_copy->set_data((intx) (load_klass()));
+                    } else {
+                        assert(mirror() != NULL, "klass not set");
+                        // Don't need a G1 pre-barrier here since we assert above that data isn't an oop.
+                        n_copy->set_data(cast_from_oop<intx>(mirror()));
+                    }
+
+                }
+            } else if (stub_id == Runtime0::load_method_patching_id) {
+                if (code == Bytecodes::_invokeinterface) {
+                    NativeMovConstReg *n_copy = nativeMovConstReg_at(copy_buff);
+                    n_copy->set_data((intptr_t)interface_klass);
+                    NativeMovConstReg *n_copy_index = nativeMovConstReg_at(copy_buff + NativeMovConstReg::instruction_size);
+                    n_copy_index->set_data(interface_itable_idx);
+                } else if (code == Bytecodes::_invokevirtual && virtual_vtable_idx > 0) {
+                    NativeMovConstReg *n_copy = nativeMovConstReg_at(copy_buff);
+                    n_copy->set_data(virtual_vtable_idx);
+                    unsigned char* jmp_buf = copy_buff + NativeMovConstReg::instruction_size;
+                    if (jmp_buf[0] != 0xEB) {
+                        int32_t* jmp_offset = (int32_t*)(jmp_buf + 1);
+                        *jmp_offset = 0;
+                    } else {
+                        jmp_buf[1] = 0;
+                    }
+                } else {
+                    NativeMovConstReg *n_copy = nativeMovConstReg_at(copy_buff);
+                    n_copy->set_data((intptr_t)mth);
+                }
+            } else if (stub_id == Runtime0::load_appendix_patching_id) {
+                NativeMovConstReg* n_copy = nativeMovConstReg_at(copy_buff);
+                assert(n_copy->data() == 0 ||
+                       n_copy->data() == (intptr_t)Universe::non_oop_word(),
+                       "illegal init value");
+                n_copy->set_data(cast_from_oop<intx>(appendix()));
+
+            } else if (stub_id == Runtime0::compile_method_patching_id) {
+                // reset as nop
+                for (int i = 0;i < NativeCall::instruction_size;i++) {
+                    copy_buff[i] = 0x90;
+                }
+            } else {
+                ShouldNotReachHere();
+            }
+
+            if (do_patch) {
+                // replace instructions
+                // first replace the tail, then the call
+
+                for (int i = NativeCall::instruction_size; i < *byte_count; i++) {
+                    address ptr = copy_buff + i;
+                    int a_byte = (*ptr) & 0xFF;
+                    address dst = instr_pc + i;
+                    *(unsigned char*)dst = (unsigned char) a_byte;
+                }
+                ICache::invalidate_range(instr_pc, *byte_count);
+                NativeGeneralJump::replace_mt_safe(instr_pc, copy_buff);
+
+                if (load_klass_or_mirror_patch_id ||
+                    stub_id == Runtime0::load_appendix_patching_id) {
+                }
+
+            } else {
+                ICache::invalidate_range(copy_buff, *byte_count);
+                NativeGeneralJump::insert_unconditional(instr_pc, being_initialized_entry);
+            }
+        }
+    }
+
+    // If we are patching in a non-perm oop, make sure the nmethod
+    // is on the right list.
+    // TODO: gc
+
 }
 
 int Runtime0::compile_method_patching(JavaThread *thread) {

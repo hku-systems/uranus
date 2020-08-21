@@ -607,6 +607,7 @@ int NormalCompileTask::compile(int size) {
 //        delete (PatchingStub*)(*itr);
 //    }
 
+    /*
     if (has_interface) {
       __ bind(no_such_interface);
       //abort
@@ -614,6 +615,7 @@ int NormalCompileTask::compile(int size) {
       __ str(r0, Address(r0, -1));
       __ str(r0, Address(r0, 0));
     }
+    */
 
     __ flush();
 
