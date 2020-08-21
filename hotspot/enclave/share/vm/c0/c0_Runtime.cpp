@@ -126,9 +126,6 @@ void Runtime0::generate_blob_for(BufferBlob *buffer_blob, Runtime0::StubID id) {
 }
 //TODO: change back to Uranus x86
 void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
-    const Register exception_oop = r0;
-    const Register exception_pc  = r3;
-
     // for better readability
     const bool must_gc_arguments = true;
     const bool dont_gc_arguments = false;
@@ -138,702 +135,244 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
     // stub code & info for the different stubs
     OopMapSet* oop_maps = NULL;
-    OopMap* oop_map = NULL;
     switch (id) {
+        /*
+        case new_instance_id: {
+            Register klass = r3;
+            Register obj = r0;
+            Register obj_size = r2;
+            Register t1 = r19;
+            Register t2 = r4;
+
+            // * register mapping:
+            // * rdx => r3
+            // * rax => r0
+            // * rcx => r2
+            // * rbx => r19
+            // * rsi => r4
+
+
+            __ push(rdi);
+            __ push(r19);
+
+            Label slow_case;
+            Label done;
+            Label initialize_header;
+            Label initialize_object; // including clearing the fields
+            Label allocate_shared;
+
+            // get instance_size in InstanceKlass (scaled to a count of bytes)
+            __ movl(obj_size,
+                    Address(klass,
+                            Klass::layout_helper_offset()));
+            // test to see if it has a finalizer or is malformed in some way
+            __ testl(obj_size, Klass::_lh_instance_slow_path_bit);
+            __ jcc(Assembler::notZero, slow_case);
+
+            // Allocate the instance
+            // 1) Try to allocate in the TLAB
+            // 2) if fail and the object is large allocate in the shared Eden
+            // 3) if the above fails (or is not applicable), go to a slow case
+            // (creates a new TLAB, etc.)
+
+            // Allocation in the shared Eden, if allowed.
+            //
+            // rdx: instance size in bytes
+
+            __ bind(allocate_shared);
+
+            __ eden_allocate(obj, obj_size, 0, t1, slow_case);
+
+            __ initialize_object(obj, klass, obj_size, 0, t1, t2);
+            __ verify_oop(obj);
+            __ pop(rbx);
+            __ pop(rdi);
+            __ ret(0);
+
+            // slow case
+            __ bind(slow_case);
+            __ pop(rbx);
+            __ pop(rdi);
+
+            __ mov(c_rarg1, klass);
+            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj));
+            __ verify_oop(rax);
+            // continue
+            __ bind(done);
+            __ ret(0);
+
+            break;
+        }
+        */
+        /*
+        case new_type_array_id:
         {
-            /*
-            case forward_exception_id:
-            {
-                oop_maps = generate_handle_exception(id, sasm);
-                __ leave();
-                __ ret(lr);
-            }
-            break;
+            Register length = rbx;
+            Register klass  = rdx;
+            Register obj    = rax;
 
-            case throw_div0_exception_id:
-            { StubFrame f(sasm, "throw_div0_exception", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_div0_exception), false);
-            }
-            break;
+            Register arr_size = rsi;
+            Register t1     = rcx;
+            Register t2     = rdi;
+            Label slow_path;
+            assert_different_registers(length, klass, obj, arr_size, t1, t2);
+            __ cmpl(length, max_array_allocation_length);
+            __ jcc(Assembler::above, slow_path);
 
-            case throw_null_pointer_exception_id:
-            { StubFrame f(sasm, "throw_null_pointer_exception", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_null_pointer_exception), false);
-            }
-            break;
-            */
-            case new_instance_id:
-            //case fast_new_instance_id:
-            //case fast_new_instance_init_check_id:
-            {
-                Register klass = r3; // Incoming
-                Register obj   = r0; // Result
+            // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
+            // since size is positive movl does right thing on 64bit
+            __ movl(t1, Address(klass, Klass::layout_helper_offset()));
+            // since size is postive movl does right thing on 64bit
+            __ movl(arr_size, length);
+            assert(t1 == rcx, "fixed register usage");
+            __ shlptr(arr_size );
+            // by t1=rcx, mod 32
+            __ shrptr(t1, Klass::_lh_header_size_shift);
+            __ andptr(t1, Klass::_lh_header_size_mask);
+            __ addptr(arr_size, t1);
+            __ addptr(arr_size, MinObjAlignmentInBytesMask); // align up
+            __ andptr(arr_size, ~MinObjAlignmentInBytesMask);
 
-                if (id == new_instance_id) {
-                    //set_info undefined
-                    //__ set_info("new_instance", dont_gc_arguments);
+            __ eden_allocate(obj, arr_size, 0, t1, slow_path);  // preserves arr_size
 
-                    //} else if (id == fast_new_instance_id) {
-                //    __ set_info("fast new_instance", dont_gc_arguments);
-                } else {
-                    //assert(id == fast_new_instance_init_check_id, "bad StubID");
-                    //set_info undefined
-                    //__ set_info("fast new_instance init check", dont_gc_arguments);
-                }
+            __ initialize_header(obj, klass, length, t1, t2);
+            __ movb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
+            assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
+            assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
+            __ andptr(t1, Klass::_lh_header_size_mask);
+            __ subptr(arr_size, t1);  // body length
+            __ addptr(t1, obj);       // body start
+            __ initialize_body(t1, arr_size, 0, t2);
+            __ verify_oop(obj);
+            __ ret(0);
 
-                //if ((id == fast_new_instance_id || id == fast_new_instance_init_check_id) &&
-                //    UseTLAB && FastTLABRefill) {
-                    Label slow_path;
-                    Register obj_size = r2;
-                    Register t1       = r19;
-                    Register t2       = r4;
-                    assert_different_registers(klass, obj, obj_size, t1, t2);
+            __ bind(slow_path);
 
-                    __ stp(r5, r19, Address(__ pre(sp, -2 * wordSize)));
-
-                    //if (id == fast_new_instance_init_check_id) {
-                        // make sure the klass is initialized
-                        __ ldrb(rscratch1, Address(klass, InstanceKlass::init_state_offset()));
-                        __ cmpw(rscratch1, InstanceKlass::fully_initialized);
-                        __ br(Assembler::NE, slow_path);
-                    //}
-
-#ifdef ASSERT
-                    // assert object can be fast path allocated
-          {
-            Label ok, not_ok;
-            __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
-            __ cmp(obj_size, 0u);
-            __ br(Assembler::LE, not_ok);  // make sure it's an instance (LH > 0)
-            __ tstw(obj_size, Klass::_lh_instance_slow_path_bit);
-            __ br(Assembler::EQ, ok);
-            __ bind(not_ok);
-            __ stop("assert(can be fast path allocated)");
-            __ should_not_reach_here();
-            __ bind(ok);
-          }
-#endif // ASSERT
-
-                    // if we got here then the TLAB allocation failed, so try
-                    // refilling the TLAB or allocating directly from eden.
-                    Label retry_tlab, try_eden;
-                    __ tlab_refill(retry_tlab, try_eden, slow_path); // does not destroy r3 (klass), returns r5
-
-                    __ bind(retry_tlab);
-
-                    // get the instance size (size is postive so movl is fine for 64bit)
-                    __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
-
-                    __ tlab_allocate(obj, obj_size, 0, t1, t2, slow_path);
-
-                    __ initialize_object(obj, klass, obj_size, 0, t1, t2);
-                    __ verify_oop(obj);
-                    __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
-                    __ ret(lr);
-
-                    __ bind(try_eden);
-                    // get the instance size (size is postive so movl is fine for 64bit)
-                    __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
-
-                    __ eden_allocate(obj, obj_size, 0, t1, slow_path);
-                    __ incr_allocated_bytes(rthread, obj_size, 0, rscratch1);
-
-                    __ initialize_object(obj, klass, obj_size, 0, t1, t2);
-                    __ verify_oop(obj);
-                    __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
-                    __ ret(lr);
-
-                    __ bind(slow_path);
-                    __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
-                //}
-
-                __ enter();
-                //OopMap* map = save_live_registers(sasm);
-                //add_gc_map undefined, so call_offset abandon
-                //int call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_instance), klass);
-                oop_maps = new OopMapSet();
-                //add_gc_map undefined
-                //oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers_except_r0(sasm);
-                __ verify_oop(obj);
-                __ leave();
-                __ ret(lr);
-
-                // r0,: new instance
-            }
-
-            break;
-
-            /*
-            case counter_overflow_id:
-            {
-                Register bci = r0, method = r1;
-                __ enter();
-                OopMap* map = save_live_registers(sasm);
-                // Retrieve bci
-                __ ldrw(bci, Address(rfp, 2*BytesPerWord));
-                // And a pointer to the Method*
-                __ ldr(method, Address(rfp, 3*BytesPerWord));
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, counter_overflow), bci, method);
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers(sasm);
-                __ leave();
-                __ ret(lr);
-            }
-            break;
-             */
-
-            case new_type_array_id:
-            case new_object_array_id:
-            {
-                Register length   = r19; // Incoming
-                Register klass    = r3; // Incoming
-                Register obj      = r0; // Result
-
-                if (id == new_type_array_id) {
-                    //set_info undefined
-                    //__ set_info("new_type_array", dont_gc_arguments);
-                } else {
-                    //set_info undefined
-                    //__ set_info("new_object_array", dont_gc_arguments);
-                }
-
-#ifdef ASSERT
-                // assert object type is really an array of the proper kind
+            __ movptr(c_rarg1, Address(rdx, Klass::java_mirror_offset()));
+            __ movl(c_rarg2, length);
+            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
+            __ ret(0);
+        }
+         */
+        /*
+        case new_object_array_id:
         {
-          Label ok;
-          Register t0 = obj;
-          __ ldrw(t0, Address(klass, Klass::layout_helper_offset()));
-          __ asrw(t0, t0, Klass::_lh_array_tag_shift);
-          int tag = ((id == new_type_array_id)
-                     ? Klass::_lh_array_tag_type_value
-                     : Klass::_lh_array_tag_obj_value);
-	  __ mov(rscratch1, tag);
-          __ cmpw(t0, rscratch1);
-          __ br(Assembler::EQ, ok);
-          __ stop("assert(is an array klass)");
-          __ should_not_reach_here();
-          __ bind(ok);
+            Register length = rbx;
+            Register klass  = rdx;
+            Register obj    = rax;
+
+            Register arr_size = rsi;
+            Register t1     = rcx;
+            Register t2     = rdi;
+            Label slow_path;
+            assert_different_registers(length, klass, obj, arr_size, t1, t2);
+            __ cmpl(length, max_array_allocation_length);
+            __ jcc(Assembler::above, slow_path);
+
+            // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
+            // since size is positive movl does right thing on 64bit
+            __ movl(t1, Address(klass, Klass::layout_helper_offset()));
+            // since size is postive movl does right thing on 64bit
+            __ movl(arr_size, length);
+            assert(t1 == rcx, "fixed register usage");
+            __ shlptr(arr_size );
+            //by t1=rcx, mod 32
+            __ shrptr(t1, Klass::_lh_header_size_shift);
+            __ andptr(t1, Klass::_lh_header_size_mask);
+            __ addptr(arr_size, t1);
+            __ addptr(arr_size, MinObjAlignmentInBytesMask); // align up
+            __ andptr(arr_size, ~MinObjAlignmentInBytesMask);
+
+            __ eden_allocate(obj, arr_size, 0, t1, slow_path);  // preserves arr_size
+
+            __ initialize_header(obj, klass, length, t1, t2);
+            __ movb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
+            assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
+            assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
+            __ andptr(t1, Klass::_lh_header_size_mask);
+            __ subptr(arr_size, t1);  // body length
+            __ addptr(t1, obj);       // body start
+            __ initialize_body(t1, arr_size, 0, t2);
+            __ verify_oop(obj);
+            __ ret(0);
+
+            __ bind(slow_path);
+
+            __ movptr(c_rarg1, rdx);
+            __ movl(c_rarg2, length);
+            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
+            __ ret(0);
         }
-#endif // ASSERT
-
-                if (UseTLAB && FastTLABRefill) {
-                    Register arr_size = r4;
-                    Register t1       = r2;
-                    Register t2       = r5;
-                    Label slow_path;
-                    assert_different_registers(length, klass, obj, arr_size, t1, t2);
-
-                    // check that array length is small enough for fast path.
-                    __ mov(rscratch1, max_array_allocation_length);
-                    __ cmpw(length, rscratch1);
-                    __ br(Assembler::HI, slow_path);
-
-                    // if we got here then the TLAB allocation failed, so try
-                    // refilling the TLAB or allocating directly from eden.
-                    Label retry_tlab, try_eden;
-                    const Register thread =
-                            __ tlab_refill(retry_tlab, try_eden, slow_path); // preserves r19 & r3, returns rthread
-
-                    __ bind(retry_tlab);
-
-                    // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
-                    // since size is positive ldrw does right thing on 64bit
-                    __ ldrw(t1, Address(klass, Klass::layout_helper_offset()));
-                    __ lslvw(arr_size, length, t1);
-                    __ ubfx(t1, t1, Klass::_lh_header_size_shift,
-                            exact_log2(Klass::_lh_header_size_mask + 1));
-                    __ add(arr_size, arr_size, t1);
-                    __ add(arr_size, arr_size, MinObjAlignmentInBytesMask); // align up
-                    __ andr(arr_size, arr_size, ~MinObjAlignmentInBytesMask);
-
-                    __ tlab_allocate(obj, arr_size, 0, t1, t2, slow_path);  // preserves arr_size
-
-                    __ initialize_header(obj, klass, length, t1, t2);
-                    __ ldrb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
-                    assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
-                    assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
-                    __ andr(t1, t1, Klass::_lh_header_size_mask);
-                    __ sub(arr_size, arr_size, t1);  // body length
-                    __ add(t1, t1, obj);       // body start
-                    __ initialize_body(t1, arr_size, 0, t2);
-                    __ verify_oop(obj);
-
-                    __ ret(lr);
-
-                    __ bind(try_eden);
-                    // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
-                    // since size is positive ldrw does right thing on 64bit
-                    __ ldrw(t1, Address(klass, Klass::layout_helper_offset()));
-                    // since size is postive movw does right thing on 64bit
-                    __ movw(arr_size, length);
-                    __ lslvw(arr_size, length, t1);
-                    __ ubfx(t1, t1, Klass::_lh_header_size_shift,
-                            exact_log2(Klass::_lh_header_size_mask + 1));
-                    __ add(arr_size, arr_size, t1);
-                    __ add(arr_size, arr_size, MinObjAlignmentInBytesMask); // align up
-                    __ andr(arr_size, arr_size, ~MinObjAlignmentInBytesMask);
-
-                    __ eden_allocate(obj, arr_size, 0, t1, slow_path);  // preserves arr_size
-                    __ incr_allocated_bytes(thread, arr_size, 0, rscratch1);
-
-                    __ initialize_header(obj, klass, length, t1, t2);
-                    __ ldrb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
-                    assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
-                    assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
-                    __ andr(t1, t1, Klass::_lh_header_size_mask);
-                    __ sub(arr_size, arr_size, t1);  // body length
-                    __ add(t1, t1, obj);       // body start
-                    __ initialize_body(t1, arr_size, 0, t2);
-                    __ verify_oop(obj);
-
-                    __ ret(lr);
-
-                    __ bind(slow_path);
-                }
-
-                __ enter();
-                //OopMap* map = save_live_registers(sasm);
-                int call_offset;
-                //add_gc_map undefined, so call_offset abandon
-                /*
-                if (id == new_type_array_id) {
-                    call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_type_array), klass, length);
-                } else {
-                    call_offset = __ call_RT(obj, noreg, CAST_FROM_FN_PTR(address, new_object_array), klass, length);
-                }
-                 */
-
-                oop_maps = new OopMapSet();
-                //add_gc_map undefined
-                //oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers_except_r0(sasm);
-
-                __ verify_oop(obj);
-                __ leave();
-                __ ret(lr);
-
-                // r0: new array
-            }
-            break;
-
-            case new_multi_array_id:
-            { StubFrame f(sasm, "new_multi_array", dont_gc_arguments);
-                // r0,: klass
-                // r19,: rank
-                // r2: address of 1st dimension
-                //OopMap* map = save_live_registers(sasm);
-                __ mov(c_rarg1, r0);
-                __ mov(c_rarg3, r2);
-                __ mov(c_rarg2, r19);
-                //add_gc_map undefined, so call_offset abandon
-                //int call_offset = __ call_RT(r0, noreg, CAST_FROM_FN_PTR(address, new_multi_array), r1, r2, r3);
-
-                oop_maps = new OopMapSet();
-                //add_gc_map undefined
-                //oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers_except_r0(sasm);
-
-                // r0,: new multi array
-                __ verify_oop(r0);
-            }
-            break;
-
-            /*
-            case register_finalizer_id:
-            {
-                __ set_info("register_finalizer", dont_gc_arguments);
-
-                // This is called via call_runtime so the arguments
-                // will be place in C abi locations
-
-                __ verify_oop(c_rarg0);
-
-                // load the klass and check the has finalizer flag
-                Label register_finalizer;
-                Register t = r5;
-                __ load_klass(t, r0);
-                __ ldrw(t, Address(t, Klass::access_flags_offset()));
-                __ tst(t, JVM_ACC_HAS_FINALIZER);
-                __ br(Assembler::NE, register_finalizer);
-                __ ret(lr);
-
-                __ bind(register_finalizer);
-                __ enter();
-                OopMap* oop_map = save_live_registers(sasm);
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, SharedRuntime::register_finalizer), r0);
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, oop_map);
-
-                // Now restore all the live registers
-                restore_live_registers(sasm);
-
-                __ leave();
-                __ ret(lr);
-            }
-            break;
-
-            case throw_class_cast_exception_id:
-            { StubFrame f(sasm, "throw_class_cast_exception", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_class_cast_exception), true);
-            }
-            break;
-
-            case throw_incompatible_class_change_error_id:
-            { StubFrame f(sasm, "throw_incompatible_class_cast_exception", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_incompatible_class_change_error), false);
-            }
-            break;
-
-            case slow_subtype_check_id:
-            {
-                // Typical calling sequence:
-                // __ push(klass_RInfo);  // object klass or other subclass
-                // __ push(sup_k_RInfo);  // array element klass or other superclass
-                // __ bl(slow_subtype_check);
-                // Note that the subclass is pushed first, and is therefore deepest.
-                enum layout {
-                    r0_off, r0_off_hi,
-                    r2_off, r2_off_hi,
-                    r4_off, r4_off_hi,
-                    r5_off, r5_off_hi,
-                    sup_k_off, sup_k_off_hi,
-                    klass_off, klass_off_hi,
-                    framesize,
-                    result_off = sup_k_off
-                };
-
-                __ set_info("slow_subtype_check", dont_gc_arguments);
-                __ push(RegSet::of(r0, r2, r4, r5), sp);
-
-                // This is called by pushing args and not with C abi
-                // __ ldr(r4, Address(sp, (klass_off) * VMRegImpl::stack_slot_size)); // subclass
-                // __ ldr(r0, Address(sp, (sup_k_off) * VMRegImpl::stack_slot_size)); // superclass
-
-                __ ldp(r4, r0, Address(sp, (sup_k_off) * VMRegImpl::stack_slot_size));
-
-                Label miss;
-                __ check_klass_subtype_slow_path(r4, r0, r2, r5, NULL, &miss);
-
-                // fallthrough on success:
-                __ mov(rscratch1, 1);
-                __ str(rscratch1, Address(sp, (result_off) * VMRegImpl::stack_slot_size)); // result
-                __ pop(RegSet::of(r0, r2, r4, r5), sp);
-                __ ret(lr);
-
-                __ bind(miss);
-                __ str(zr, Address(sp, (result_off) * VMRegImpl::stack_slot_size)); // result
-                __ pop(RegSet::of(r0, r2, r4, r5), sp);
-                __ ret(lr);
-            }
-            break;
-
-            case monitorenter_nofpu_id:
-                save_fpu_registers = false;
-            // fall through
-            case monitorenter_id:
-            {
-                StubFrame f(sasm, "monitorenter", dont_gc_arguments);
-                OopMap* map = save_live_registers(sasm, save_fpu_registers);
-
-                // Called with store_parameter and not C abi
-
-                f.load_argument(1, r0); // r0,: object
-                f.load_argument(0, r1); // r1,: lock address
-
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, monitorenter), r0, r1);
-
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers(sasm, save_fpu_registers);
-            }
-            break;
-
-            case monitorexit_nofpu_id:
-                save_fpu_registers = false;
-            // fall through
-            case monitorexit_id:
-            {
-                StubFrame f(sasm, "monitorexit", dont_gc_arguments);
-                OopMap* map = save_live_registers(sasm, save_fpu_registers);
-
-                // Called with store_parameter and not C abi
-
-                f.load_argument(0, r0); // r0,: lock address
-
-                // note: really a leaf routine but must setup last java sp
-                //       => use call_RT for now (speed can be improved by
-                //       doing last java sp setup manually)
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, monitorexit), r0);
-
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers(sasm, save_fpu_registers);
-            }
-            break;
-            */
-            /*
-            case deoptimize_id:
-            {
-                StubFrame f(sasm, "deoptimize", dont_gc_arguments);
-                OopMap* oop_map = save_live_registers(sasm);
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, deoptimize));
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, oop_map);
-                restore_live_registers(sasm);
-                DeoptimizationBlob* deopt_blob = SharedRuntime::deopt_blob();
-                assert(deopt_blob != NULL, "deoptimization blob must have been created");
-                __ leave();
-                __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
-            }
-             */
-            //break;
-            case gc_barrier_id: {
-                {
-                    //temporarily comment out, need implementation similar to line1021
-                    // /openjdk-sgx/hotspot/enclave_src/cpu/x86/vm/macroAssembler_x86.cpp
-                    //__ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
-                    __ ret(lr);
-                }
-            }
-            break;
-
-            /*
-            case throw_range_check_failed_id:
-            { StubFrame f(sasm, "range_check_failed", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_range_check_exception), true);
-            }
-            break;
-
-            case unwind_exception_id:
-            { __ set_info("unwind_exception", dont_gc_arguments);
-                // note: no stubframe since we are about to leave the current
-                //       activation and we are calling a leaf VM function only.
-                generate_unwind_exception(sasm);
-            }
-            break;
-             */
-            case access_field_patching_id:
-            { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
-                // we should set up register map
-                oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, access_field_patching));
-            }
-            break;
-
-            case load_klass_patching_id:
-            { StubFrame f(sasm, "load_klass_patching", dont_gc_arguments);
-                // we should set up register map
-                oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_klass_patching));
-            }
-            break;
-
-            case load_mirror_patching_id:
-            { StubFrame f(sasm, "load_mirror_patching", dont_gc_arguments);
-                // we should set up register map
-                oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_mirror_patching));
-            }
-            break;
-
-            case load_appendix_patching_id:
-            { StubFrame f(sasm, "load_appendix_patching", dont_gc_arguments);
-                // we should set up register map
-                oop_maps = generate_patching(sasm, CAST_FROM_FN_PTR(address, move_appendix_patching));
-            }
-            break;
-
-            /*
-            case handle_exception_nofpu_id:
-            case handle_exception_id:
-            { StubFrame f(sasm, "handle_exception", dont_gc_arguments);
-                oop_maps = generate_handle_exception(id, sasm);
-            }
-            break;
-
-            case handle_exception_from_callee_id:
-            { StubFrame f(sasm, "handle_exception_from_callee", dont_gc_arguments);
-                oop_maps = generate_handle_exception(id, sasm);
-            }
-            break;
-
-            case throw_index_exception_id:
-            { StubFrame f(sasm, "index_range_check_failed", dont_gc_arguments);
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_index_exception), true);
-            }
-            break;
-
-            case throw_array_store_exception_id:
-            { StubFrame f(sasm, "throw_array_store_exception", dont_gc_arguments);
-                // tos + 0: link
-                //     + 1: return address
-                oop_maps = generate_exception_throw(sasm, CAST_FROM_FN_PTR(address, throw_array_store_exception), true);
-            }
-            break;
-            */
-#if INCLUDE_ALL_GCS
-
-      /*
-            case g1_pre_barrier_slow_id:
-      {
-        StubFrame f(sasm, "g1_pre_barrier", dont_gc_arguments);
-        // arg0 : previous value of memory
-
-        BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() != BarrierSet::G1SATBCTLogging && bs->kind() != BarrierSet::ShenandoahBarrierSet) {
-	  __ mov(r0, (int)id);
-	  __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
-	  __ should_not_reach_here();
-          break;
+        */
+        /*
+        case access_field_patching_id:
+        { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
+            // we should set up register map
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, access_field_patching));
         }
-
-        const Register pre_val = r0;
-        const Register thread = rthread;
-        const Register tmp = rscratch1;
-
-        Address in_progress(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                             PtrQueue::byte_offset_of_active()));
-
-        Address queue_index(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                             PtrQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                        PtrQueue::byte_offset_of_buf()));
-
-        Label done;
-        Label runtime;
-
-        // Can we store original value in the thread's buffer?
-        __ ldr(tmp, queue_index);
-        __ cbz(tmp, runtime);
-
-        __ sub(tmp, tmp, wordSize);
-        __ str(tmp, queue_index);
-        __ ldr(rscratch2, buffer);
-	__ add(tmp, tmp, rscratch2);
-	f.load_argument(0, rscratch2);
-        __ str(rscratch2, Address(tmp, 0));
-        __ b(done);
-
-        __ bind(runtime);
-        __ push_call_clobbered_registers();
-        f.load_argument(0, pre_val);
-        __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), pre_val, thread);
-        __ pop_call_clobbered_registers();
-        __ bind(done);
-      }
-      break;
-    case g1_post_barrier_slow_id:
-      {
-        StubFrame f(sasm, "g1_post_barrier", dont_gc_arguments);
-
-        // arg0: store_address
-        Address store_addr(rfp, 2*BytesPerWord);
-
-        BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() == BarrierSet::ShenandoahBarrierSet) {
-          __ movptr(r0, (int)id);
-          __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
-          __ should_not_reach_here();
-          break;
-        }
-
-        CardTableModRefBS* ct = (CardTableModRefBS*)bs;
-        assert(sizeof(*ct->byte_map_base) == sizeof(jbyte), "adjust this code");
-
-        Label done;
-        Label runtime;
-
-        // At this point we know new_value is non-NULL and the new_value crosses regions.
-        // Must check to see if card is already dirty
-
-        const Register thread = rthread;
-
-        Address queue_index(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                             PtrQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                        PtrQueue::byte_offset_of_buf()));
-
-        const Register card_offset = rscratch2;
-        // LR is free here, so we can use it to hold the byte_map_base.
-        const Register byte_map_base = lr;
-
-        assert_different_registers(card_offset, byte_map_base, rscratch1);
-
-        f.load_argument(0, card_offset);
-        __ lsr(card_offset, card_offset, CardTableModRefBS::card_shift);
-        __ load_byte_map_base(byte_map_base);
-        __ ldrb(rscratch1, Address(byte_map_base, card_offset));
-        __ cmpw(rscratch1, (int)G1SATBCardTableModRefBS::g1_young_card_val());
-	__ br(Assembler::EQ, done);
-
-	assert((int)CardTableModRefBS::dirty_card_val() == 0, "must be 0");
-
-        __ membar(Assembler::StoreLoad);
-        __ ldrb(rscratch1, Address(byte_map_base, card_offset));
-	__ cbzw(rscratch1, done);
-
-        // storing region crossing non-NULL, card is clean.
-        // dirty card and log.
-        __ strb(zr, Address(byte_map_base, card_offset));
-
-        // Convert card offset into an address in card_addr
-        Register card_addr = card_offset;
-        __ add(card_addr, byte_map_base, card_addr);
-
-        __ ldr(rscratch1, queue_index);
-        __ cbz(rscratch1, runtime);
-        __ sub(rscratch1, rscratch1, wordSize);
-        __ str(rscratch1, queue_index);
-
-        // Reuse LR to hold buffer_addr
-        const Register buffer_addr = lr;
-
-	__ ldr(buffer_addr, buffer);
-	__ str(card_addr, Address(buffer_addr, rscratch1));
-	__ b(done);
-
-        __ bind(runtime);
-        __ push_call_clobbered_registers();
-        __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_post), card_addr, thread);
-        __ pop_call_clobbered_registers();
-        __ bind(done);
-
-      }
-      break;
-   */
-#endif
-
-            /*
-            case predicate_failed_trap_id:
-            {
-                StubFrame f(sasm, "predicate_failed_trap", dont_gc_arguments);
-
-                OopMap* map = save_live_registers(sasm);
-
-                int call_offset = __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, predicate_failed_trap));
-                oop_maps = new OopMapSet();
-                oop_maps->add_gc_map(call_offset, map);
-                restore_live_registers(sasm);
-                __ leave();
-                DeoptimizationBlob* deopt_blob = SharedRuntime::deopt_blob();
-                assert(deopt_blob != NULL, "deoptimization blob must have been created");
-
-                __ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
-            }
             break;
-            */
 
+        case load_klass_patching_id:
+        { StubFrame f(sasm, "load_klass_patching", dont_gc_arguments);
+            // we should set up register map
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, move_klass_patching));
+        }
+            break;
 
-            default:
-            { StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
-                __ mov(r0, (int)id);
-                //unimplemented_entry undefined
-                //__ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
-                __ should_not_reach_here();
+        case load_mirror_patching_id:
+        { StubFrame f(sasm, "load_mirror_patching", dont_gc_arguments);
+            // we should set up register map
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, move_mirror_patching));
+        }
+            break;
+
+        case load_appendix_patching_id:
+        { StubFrame f(sasm, "load_appendix_patching", dont_gc_arguments);
+            // we should set up register map
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, move_appendix_patching));
+        }
+            break;
+        */
+        case load_method_patching_id:
+        { StubFrame f(sasm, "load_method_patching", dont_gc_arguments);
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, move_method_patching));
+        }
+            break;
+        /*
+        case compile_method_patching_id:
+        {
+            Label compile_start;
+            __ movptr(rax, Address(rbx, Method::enclave_native_function_offset()));
+            __ testptr(rax, rax);
+            __ jcc(MacroAssembler::zero, compile_start);
+            __ ret(0);
+            __ bind(compile_start);
+            __ movptr(Address(r15_thread, JavaThread::compiled_method_offset()), rbx);
+            {
+                StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
+                generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
             }
             break;
         }
+        case gc_barrier_id: {
+            {
+                //
+                __ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
+                __ ret(0);
+            }
+            break;
+        }
+         */
+        default:
+        {
+//            StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
+//            __ movptr(rax, (int)id);
+//            __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), rax);
+//            __ should_not_reach_here();
+        }
+            break;
     }
-    //return oop_maps;
+
 }
 
 void Runtime0::initialize() {
@@ -866,122 +405,50 @@ void Runtime0::initialize_pd() {
     }
      */
 }
-//TODO: change back to Uranus x86
-OopMapSet* Runtime0::generate_patching(StubAssembler *sasm, address target) {
+
+void Runtime0::generate_patching(StubAssembler *sasm, address target) {
     // use the maximum number of runtime-arguments here because it is difficult to
     // distinguish each RT-Call.
     // Note: This number affects also the RT-Call in generate_handle_exception because
     //       the oop-map is shared for all calls.
     const int num_rt_args = 2;  // thread + dummy
 
-    //OopMap* oop_map = save_live_registers(sasm, num_rt_args);;
-
     save_live_registers(sasm, num_rt_args);
 
-    __ mov(c_rarg0, rthread);
+    const Register thread = r15_thread;
+    // No need to worry about dummy
+    __ mov(c_rarg0, thread);
+
+    //__ set_last_Java_frame(thread, noreg, rbp, NULL);
+    // to below
     Label retaddr;
     __ set_last_Java_frame(sp, rfp, retaddr, rscratch1);
+
     // do the call
+    //__ call(RuntimeAddress(target));
+    // to below
     __ lea(rscratch1, RuntimeAddress(target));
     __ blr(rscratch1);
     __ bind(retaddr);
-    OopMapSet* oop_maps = new OopMapSet();
-    //add_gc_map undefined
-    //oop_maps->add_gc_map(__ offset(), oop_map);
+
     // verify callee-saved register
-#ifdef ASSERT
-    { Label L;
-    __ get_thread(rscratch1);
-    __ cmp(rthread, rscratch1);
-    __ br(Assembler::EQ, L);
-    __ stop("StubAssembler::call_RT: rthread not callee saved?");
-    __ bind(L);
-  }
-#endif
+
+    //__ reset_last_Java_frame(thread, true);
+    // to below
     __ reset_last_Java_frame(true);
     __ maybe_isb();
 
     // check for pending exceptions
     { Label L;
-        __ ldr(rscratch1, Address(rthread, Thread::pending_exception_offset()));
-        __ cbz(rscratch1, L);
+        __ cbnz(Address(thread, Thread::pending_exception_offset()), L);
         // exception pending => remove activation and forward to exception handler
-
-        /*
-        { Label L1;
-            __ cbnz(r0, L1);                                  // have we deoptimized?
-            __ far_jump(RuntimeAddress(Runtime1::entry_for(Runtime1::forward_exception_id)));
-            __ bind(L1);
-        }
-         */
-
-        // the deopt blob expects exceptions in the special fields of
-        // JavaThread, so copy and clear pending exception.
-
-        // load and clear pending exception
-        __ ldr(r0, Address(rthread, Thread::pending_exception_offset()));
-        __ str(zr, Address(rthread, Thread::pending_exception_offset()));
-
-        // check that there is really a valid exception
-        //__ verify_not_null_oop(r0);
-
-        // load throwing pc: this is the return address of the stub
-        __ mov(r3, lr);
-
-#ifdef ASSERT
-        // check that fields in JavaThread for exception oop and issuing pc are empty
-    Label oop_empty;
-    __ ldr(rscratch1, Address(rthread, Thread::pending_exception_offset()));
-    __ cbz(rscratch1, oop_empty);
-    __ stop("exception oop must be empty");
-    __ bind(oop_empty);
-
-    Label pc_empty;
-    __ ldr(rscratch1, Address(rthread, JavaThread::exception_pc_offset()));
-    __ cbz(rscratch1, pc_empty);
-    __ stop("exception pc must be empty");
-    __ bind(pc_empty);
-#endif
-
-        // store exception oop and throwing pc to JavaThread
-        __ str(r0, Address(rthread, JavaThread::exception_oop_offset()));
-        __ str(r3, Address(rthread, JavaThread::exception_pc_offset()));
-
-        restore_live_registers(sasm);
-
-        //__ leave();
-
-        // Forward the exception directly to deopt blob. We can blow no
-        // registers and must leave throwing pc on the stack.  A patch may
-        // have values live in registers so the entry point with the
-        // exception in tls.
-
-        //__ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
-
-        //__ bind(L);
+        // TODO: fix me exception
+        __ bind(L);
     }
 
-
-    // Runtime will return true if the nmethod has been deoptimized during
-    // the patching process. In that case we must do a deopt reexecute instead.
-
-    Label reexecuteEntry, cont;
-
-    __ cbz(r0, cont);                                 // have we deoptimized?
-
-    // Will reexecute. Proper return address is already on the stack we just restore
-    // registers, pop all of our frame but the return address and jump to the deopt blob
     restore_live_registers(sasm);
-    __ leave();
-    //__ far_jump(RuntimeAddress(deopt_blob->unpack_with_reexecution()));
-
-    __ bind(cont);
-    restore_live_registers(sasm);
-    __ leave();
-    __ ret(lr);
-
-    return oop_maps;
-
+//    __ leave();
+    // __ ret(0);
 }
 
 int Runtime0::move_method_patching(JavaThread *thread) {
