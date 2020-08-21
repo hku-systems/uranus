@@ -535,7 +535,10 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     //int bci = (int)bci_jmp->jump_destination();
     // change to below because
     //error: cast from 'address {aka unsigned char*}' to 'int' loses precision [-fpermissive]
-    int bci = bci_jmp->jump_destination();
+    //int bci = bci_jmp->jump_destination();
+    unsigned char* raw =bci_jmp->jump_destination();
+    uint32_t result = (raw[0] << 24 | raw[1] << 16 | raw[2] << 8 | raw[3]);
+    int bci = result;
 
     Bytecodes::Code code = caller_method()->java_code_at(bci);
 
