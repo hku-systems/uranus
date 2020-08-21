@@ -310,7 +310,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ ret(0);
         }
         */
-        /*
+
         case access_field_patching_id:
         { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
             // we should set up register map
@@ -338,7 +338,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             generate_patching(sasm, CAST_FROM_FN_PTR(address, move_appendix_patching));
         }
             break;
-        */
+
         case load_method_patching_id:
         { StubFrame f(sasm, "load_method_patching", dont_gc_arguments);
             generate_patching(sasm, CAST_FROM_FN_PTR(address, move_method_patching));
@@ -535,7 +535,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     //int bci = (int)bci_jmp->jump_destination();
     // change to below because
     //error: cast from 'address {aka unsigned char*}' to 'int' loses precision [-fpermissive]
-    int bci = std::atoi(bci_jmp->jump_destination());
+    int bci = bci_jmp->jump_destination();
 
     Bytecodes::Code code = caller_method()->java_code_at(bci);
 
