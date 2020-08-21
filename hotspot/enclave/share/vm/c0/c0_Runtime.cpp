@@ -365,7 +365,36 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
         case gc_barrier_id: {
             {
                 //
-                __ call_VM(CAST_FROM_FN_PTR(address, gc_barrier));
+                //__ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
+                // call_VME implementation
+
+                __ mov(c_rarg0, rthread);
+                if (true) {
+                    // TODO: move it to InterpreterMacroAssember
+                    // quick fix to avoid gc in runtime
+                    // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
+                    Register last_java_sp = r0;
+                    __ lea(last_java_sp, Address(esp, wordSize));
+                    __ set_last_Java_frame(rthread, last_java_sp, rbp, NULL);
+                }
+                __ call(RuntimeAddress(entry_point));
+                if (true) {
+                    __ reset_last_Java_frame(rthread, true);
+                    // quick fix to avoid gc in runtime
+//      movptr(r13, Address(rbp, frame::interpreter_frame_bcx_offset * wordSize));
+                }
+                if (true) {
+                    // check for pending exceptions (java_thread is set upon return)
+                    // r15 is callee-saved
+
+                    __ cmpptr(Address(rthread, Thread::pending_exception_offset()), (int32_t) NULL_WORD);
+
+                    Label ok;
+                    __ br(Assembler::EQ, ok);
+                    __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                    __ bind(ok);
+                }
+
                 __ ret(lr);
             }
             break;
