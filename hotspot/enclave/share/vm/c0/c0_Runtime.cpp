@@ -136,6 +136,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
     // stub code & info for the different stubs
     OopMapSet* oop_maps = NULL;
     switch (id) {
+
         /*
         case new_instance_id: {
             Register klass = r3;
@@ -152,8 +153,11 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             // * rsi => r4
 
 
-            __ push(rdi);
-            __ push(r19);
+
+            // * do not know below two instruction's use
+            //__ push(rdi);
+            //__ push(r19);
+
 
             Label slow_case;
             Label done;
@@ -203,7 +207,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
             break;
         }
-        */
+
+         */
+
         /*
         case new_type_array_id:
         {

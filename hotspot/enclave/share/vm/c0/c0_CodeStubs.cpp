@@ -92,12 +92,12 @@ void PatchingStub::emit() {
     address target = NULL;
 
     switch (_id) {
-        case access_field_id:   target = Runtime0::entry_for(Runtime0::access_field_patching_id);   break;
-        case load_klass_id:     target = Runtime0::entry_for(Runtime0::load_klass_patching_id);     break;
-        case load_mirror_id:    target = Runtime0::entry_for(Runtime0::load_mirror_patching_id);    break;
-        case load_appendix_id:  target = Runtime0::entry_for(Runtime0::load_appendix_patching_id);  break;
-        case load_method_id:    target = Runtime0::entry_for(Runtime0::load_method_patching_id);    break;
-        case compile_method_id:    target = Runtime0::entry_for(Runtime0::compile_method_patching_id);    break;
+        case access_field_id:   printf("access_field_id\n"); target = Runtime0::entry_for(Runtime0::access_field_patching_id);    break;
+        case load_klass_id:     printf("load_klass_id\n"); target = Runtime0::entry_for(Runtime0::load_klass_patching_id);     break;
+        case load_mirror_id:    printf("load_mirror_id\n"); target = Runtime0::entry_for(Runtime0::load_mirror_patching_id);    break;
+        case load_appendix_id:  printf("load_appendix_id\n"); target = Runtime0::entry_for(Runtime0::load_appendix_patching_id);  break;
+        case load_method_id:    printf("load_method_id\n"); target = Runtime0::entry_for(Runtime0::load_method_patching_id);    break;
+        case compile_method_id:    printf("compile_method_id\n"); target = Runtime0::entry_for(Runtime0::compile_method_patching_id);    break;
         default: ShouldNotReachHere();
     }
 
