@@ -386,9 +386,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 if (true) {
                     // check for pending exceptions (java_thread is set upon return)
                     // r15 is callee-saved
-                    //compare to NULLWORD using zr
+                    //compare to NULLWORD using noreg
 
-                    __ cmpptr(Address(rthread, Thread::pending_exception_offset()), zr);
+                    __ cmpptr(noreg, Address(rthread, Thread::pending_exception_offset()));
 
                     Label ok;
                     __ br(Assembler::EQ, ok);
