@@ -101,8 +101,8 @@ void PatchingStub::emit() {
         default: ShouldNotReachHere();
     }
 
-    //call to br
-    __ br(RuntimeAddress(target));
+    //call to b
+    __ bl(RuntimeAddress(target));
     if (_id == compile_method_id) {
         //jmp to b
         __ b(_patch_site_continuation);
