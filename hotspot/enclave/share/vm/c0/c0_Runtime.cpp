@@ -415,7 +415,7 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
 
     save_live_registers(sasm, num_rt_args);
 
-    const Register thread = r15_thread;
+    const Register thread = rthread;
     // No need to worry about dummy
     __ mov(c_rarg0, thread);
 
@@ -440,9 +440,38 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
 
     // check for pending exceptions
     { Label L;
-        __ cbnz(Address(thread, Thread::pending_exception_offset()), L);
+        __ ldr(rscratch1, Address(rthread, Thread::pending_exception_offset()));
+        __ cbz(rscratch1, L);
         // exception pending => remove activation and forward to exception handler
         // TODO: fix me exception
+
+        // the deopt blob expects exceptions in the special fields of
+        // JavaThread, so copy and clear pending exception.
+
+        // load and clear pending exception
+        __ ldr(r0, Address(rthread, Thread::pending_exception_offset()));
+        __ str(zr, Address(rthread, Thread::pending_exception_offset()));
+
+        // check that there is really a valid exception
+        __ verify_not_null_oop(r0);
+
+        // load throwing pc: this is the return address of the stub
+        __ mov(r3, lr);
+
+        // store exception oop and throwing pc to JavaThread
+        __ str(r0, Address(rthread, JavaThread::exception_oop_offset()));
+        __ str(r3, Address(rthread, JavaThread::exception_pc_offset()));
+
+        restore_live_registers(sasm);
+
+        __ leave();
+
+        // Forward the exception directly to deopt blob. We can blow no
+        // registers and must leave throwing pc on the stack.  A patch may
+        // have values live in registers so the entry point with the
+        // exception in tls.
+        __ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
+
         __ bind(L);
     }
 
