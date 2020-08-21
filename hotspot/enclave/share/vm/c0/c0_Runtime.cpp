@@ -453,7 +453,8 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
         __ str(zr, Address(rthread, Thread::pending_exception_offset()));
 
         // check that there is really a valid exception
-        __ verify_not_null_oop(r0);
+        //comment out because no such function
+        //__ verify_not_null_oop(r0);
 
         // load throwing pc: this is the return address of the stub
         __ mov(r3, lr);
@@ -470,7 +471,10 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
         // registers and must leave throwing pc on the stack.  A patch may
         // have values live in registers so the entry point with the
         // exception in tls.
-        __ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
+
+        //comment out because no deopt_blob
+
+        //__ far_jump(RuntimeAddress(deopt_blob->unpack_with_exception_in_tls()));
 
         __ bind(L);
     }
