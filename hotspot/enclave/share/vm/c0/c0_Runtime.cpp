@@ -344,6 +344,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             generate_patching(sasm, CAST_FROM_FN_PTR(address, move_method_patching));
         }
             break;
+
         /*
         case compile_method_patching_id:
         {
@@ -360,15 +361,16 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             }
             break;
         }
+         */
         case gc_barrier_id: {
             {
                 //
-                __ call_VME(CAST_FROM_FN_PTR(address, gc_barrier));
-                __ ret(0);
+                __ call_VM(CAST_FROM_FN_PTR(address, gc_barrier));
+                __ ret(lr);
             }
             break;
         }
-         */
+
         default:
         {
 //            StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
@@ -530,7 +532,10 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     // that caller_method() == caller_code->method()
 
     NativeGeneralJump *bci_jmp = nativeGeneralJump_at(caller_frame.pc() + PatchingStub::_patch_info_offset * 2);
-    int bci = (int)bci_jmp->jump_destination();
+    //int bci = (int)bci_jmp->jump_destination();
+    // change to below because
+    //error: cast from 'address {aka unsigned char*}' to 'int' loses precision [-fpermissive]
+    int bci = std::atoi(bci_jmp->jump_destination());
 
     Bytecodes::Code code = caller_method()->java_code_at(bci);
 
