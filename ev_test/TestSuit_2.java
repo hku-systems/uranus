@@ -29,6 +29,47 @@ public class TestSuit_2 {
                }
     static int invokeinterface(HelloInterface i) { return i.me(); }
     static int newobj() { return new B().m; }
+    static int newintarr() {
+          int[] arr = new int[3];
+          arr[0] = 2;
+          return arr[0];
+        }
+    static int newmultiintarr() {
+                 int[][] arr = new int[3][3];
+                 arr[0][0] = 2;
+                 return arr[0][0];
+               }
+    static Object newobjarr(Object o) {
+                 B[] arr_b = new B[3];
+                 B b = new B();
+                 arr_b[0] = b;
+                 assert(arr_b[0] == b);
+
+                 Object[] arr = new Object[10];
+                 arr[0] = o;
+                 return arr[0];
+               }
+
+    static int aastore(int[] m, int i) {
+          m[0] = i;
+          return m[0];
+        }
+
+    static Object aastore(Object[] m, Object i) {
+                 m[0] = i;
+                 return m[0];
+               }
+
+    static Object putgetfield(TestSuit_2 s, Object o) {
+                 s.f_c = o;
+                 return o;
+               }
+    static boolean _instanceof(TestSuit_2 s) {
+                 Object o = (Object)s;
+                 TestSuit_2 ss = (TestSuit_2)o;
+                 return o instanceof TestSuit_2;
+               }
+
 
     int sgx_hook_add(int a, int b) { return a + b; }
     String sgx_hook_string() { return "hook"; }
@@ -61,16 +102,24 @@ public class TestSuit_2 {
     }
 
     int sgx_hook_newintarr() {
+    return newintarr();
+    /*
       int[] arr = new int[3];
       arr[0] = 2;
       return arr[0];
+    */
     }
     int sgx_hook_newmultiintarr() {
+    return newmultiintarr();
+    /*
       int[][] arr = new int[3][3];
       arr[0][0] = 2;
       return arr[0][0];
+    */
     }
     Object sgx_hook_newobjarr(Object o) {
+    return newobjarr(o);
+    /*
       B[] arr_b = new B[3];
       B b = new B();
       arr_b[0] = b;
@@ -79,23 +128,36 @@ public class TestSuit_2 {
       Object[] arr = new Object[10];
       arr[0] = o;
       return arr[0];
+    */
     }
     int sgx_hook_aastore(int[] m, int i) {
+    return aastore(m,i);
+    /*
       m[0] = i;
       return m[0];
+    */
     }
     Object sgx_hook_aastore(Object[] m, Object i) {
+    return aastore(m,i);
+    /*
       m[0] = i;
       return m[0];
+    */
     }
     Object sgx_hook_putgetfield(TestSuit_2 s, Object o) {
+    return putgetfield(s,o);
+    /*
       s.f_c = o;
       return o;
+    */
     }
     boolean sgx_hook_instanceof(TestSuit_2 s) {
+    return _instanceof(s);
+    /*
       Object o = (Object)s;
       TestSuit_2 ss = (TestSuit_2)o;
       return o instanceof TestSuit_2;
+    */
     }
     int sgx_hook_forloop() {
       int sum = 0;
@@ -143,37 +205,58 @@ public class TestSuit_2 {
 
       invokeinterface(new TestSuit_2.HelloInterfaceImpl());
       assert(h.sgx_hook_invokeinterface(new TestSuit_2.HelloInterfaceImpl()) == 1);
-
       System.out.println("Test: invokeinterface");
+
       assert(h.sgx_hook_getfield(new TestSuit_2()) == 1);
       System.out.println("Test: getfield");
       assert(h.sgx_hook_putfiled(new TestSuit_2(), 3) == 3);
       System.out.println("Test: putfiled");
+
+      putgetfield(h, (Object)h);
       assert(h.sgx_hook_putgetfield(h, (Object)h) == h);
       System.out.println("Test: putget object");
+
       assert(h.sgx_hook_forloop() == 10);
       System.out.println("Test: branch, while");
+      _instanceof(h);
       assert(h.sgx_hook_instanceof(h) == true);
       System.out.println("Test: instanceOf, cast");
+
+      aastore(new TestSuit_2[3], h);
       assert(h.sgx_hook_aastore(new TestSuit_2[3], h) == h);
       System.out.println("Test: aastore, objarr");
+
+      aastore(new int[3], 1);
       assert(h.sgx_hook_aastore(new int[3], 1) == 1);
       System.out.println("Test: aastore, intarr");
+
       newobj();
       assert(h.sgx_hook_newobj() == 10);
       System.out.println("Test: new obj");
+
+      newintarr();
       assert(h.sgx_hook_newintarr() == 2);
       System.out.println("Test: new int arr");
+
+      newobjarr(h);
       assert(h.sgx_hook_newobjarr(h) == h);
       System.out.println("Test: new obj arr");
+
+      newmultiintarr();
       assert(h.sgx_hook_newmultiintarr() == 2);
       System.out.println("Test: new multi int arr");
+
+      h.hashCode();
       assert(h.sgx_hook_native_hashcode(h) != 0);
       System.out.println("Test: native hashCode");
-      h.sgx_hook_exception_active();
 
       static_call();
       h.sgx_hook_invokestatic();
-      // h.sgx_hook_runtime_exception();
+
+      h.sgx_hook_exception_active();
+
+
+
+      h.sgx_hook_runtime_exception();
     }
 }
