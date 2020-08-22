@@ -345,23 +345,24 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
         }
             break;
 
-        /*
+
         case compile_method_patching_id:
         {
             Label compile_start;
-            __ movptr(rax, Address(rbx, Method::enclave_native_function_offset()));
-            __ testptr(rax, rax);
-            __ jcc(MacroAssembler::zero, compile_start);
-            __ ret(0);
+            __ str(r0, Address(rfp, Method::enclave_native_function_offset()));
+            //and operation and test zero
+            __ andr(r0, r0, r0);
+            __ cbz(r0, compile_start);
+            __ ret(lr);
             __ bind(compile_start);
-            __ movptr(Address(r15_thread, JavaThread::compiled_method_offset()), rbx);
+            __ str(Address(rthead, JavaThread::compiled_method_offset()), rfp);
             {
                 StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
                 generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
             }
             break;
         }
-         */
+
         case gc_barrier_id: {
             {
                 //
