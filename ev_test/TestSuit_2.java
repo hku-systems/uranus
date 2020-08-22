@@ -234,18 +234,22 @@ public class TestSuit_2 {
       assert(h.sgx_hook_newobj() == 10);
       System.out.println("Test: new obj");
 
+      //cannot run
       newintarr();
       assert(h.sgx_hook_newintarr() == 2);
       System.out.println("Test: new int arr");
 
+      //cannot run
       newobjarr(h);
       assert(h.sgx_hook_newobjarr(h) == h);
       System.out.println("Test: new obj arr");
 
+      //cannot run
       newmultiintarr();
       assert(h.sgx_hook_newmultiintarr() == 2);
       System.out.println("Test: new multi int arr");
 
+      //cannot run
       h.hashCode();
       assert(h.sgx_hook_native_hashcode(h) != 0);
       System.out.println("Test: native hashCode");
@@ -253,10 +257,10 @@ public class TestSuit_2 {
       static_call();
       h.sgx_hook_invokestatic();
 
+      //cannot run
       h.sgx_hook_exception_active();
 
-
-
+      //cannot run
       h.sgx_hook_runtime_exception();
     }
 }

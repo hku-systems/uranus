@@ -238,106 +238,181 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
 
 
-        /*
+
+         // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
         case new_type_array_id:
         {
-            Register length = rbx;
-            Register klass  = rdx;
-            Register obj    = rax;
+            Register length   = r19; // Incoming
+            Register klass    = r3; // Incoming
+            Register obj      = r0; // Result
 
-            Register arr_size = rsi;
-            Register t1     = rcx;
-            Register t2     = rdi;
+            Register arr_size = r4;
+            Register t1       = r2;
+            Register t2       = r5;
+
             Label slow_path;
             assert_different_registers(length, klass, obj, arr_size, t1, t2);
-            __ cmpl(length, max_array_allocation_length);
-            __ jcc(Assembler::above, slow_path);
+
+            // check that array length is small enough for fast path.
+            __ mov(rscratch1, max_array_allocation_length);
+            __ cmpw(length, rscratch1);
+            __ br(Assembler::HI, slow_path);
 
             // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
-            // since size is positive movl does right thing on 64bit
-            __ movl(t1, Address(klass, Klass::layout_helper_offset()));
-            // since size is postive movl does right thing on 64bit
-            __ movl(arr_size, length);
-            assert(t1 == rcx, "fixed register usage");
-            __ shlptr(arr_size );
-            // by t1=rcx, mod 32
-            __ shrptr(t1, Klass::_lh_header_size_shift);
-            __ andptr(t1, Klass::_lh_header_size_mask);
-            __ addptr(arr_size, t1);
-            __ addptr(arr_size, MinObjAlignmentInBytesMask); // align up
-            __ andptr(arr_size, ~MinObjAlignmentInBytesMask);
+            // since size is positive ldrw does right thing on 64bit
+            __ ldrw(t1, Address(klass, Klass::layout_helper_offset()));
+            // since size is postive movw does right thing on 64bit
+            __ movw(arr_size, length);
+            __ lslvw(arr_size, length, t1);
+            __ ubfx(t1, t1, Klass::_lh_header_size_shift,
+                    exact_log2(Klass::_lh_header_size_mask + 1));
+            __ add(arr_size, arr_size, t1);
+            __ add(arr_size, arr_size, MinObjAlignmentInBytesMask); // align up
+            __ andr(arr_size, arr_size, ~MinObjAlignmentInBytesMask);
 
             __ eden_allocate(obj, arr_size, 0, t1, slow_path);  // preserves arr_size
+            __ incr_allocated_bytes(thread, arr_size, 0, rscratch1);
 
             __ initialize_header(obj, klass, length, t1, t2);
-            __ movb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
+            __ ldrb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
             assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
             assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
-            __ andptr(t1, Klass::_lh_header_size_mask);
-            __ subptr(arr_size, t1);  // body length
-            __ addptr(t1, obj);       // body start
+            __ andr(t1, t1, Klass::_lh_header_size_mask);
+            __ sub(arr_size, arr_size, t1);  // body length
+            __ add(t1, t1, obj);       // body start
             __ initialize_body(t1, arr_size, 0, t2);
             __ verify_oop(obj);
-            __ ret(0);
+
+            __ ret(lr);
 
             __ bind(slow_path);
 
-            __ movptr(c_rarg1, Address(rdx, Klass::java_mirror_offset()));
-            __ movl(c_rarg2, length);
-            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
-            __ ret(0);
+            // keep and change to aarch64 version
+            __ str(c_rarg1, Address(r3, Klass::java_mirror_offset()));
+            __ ldrw(c_rarg2, length);
+
+            //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
+
+            // call_VME implementation
+
+            __ mov(c_rarg0, rthread);
+            if (true) {
+                // TODO: move it to InterpreterMacroAssember
+                // quick fix to avoid gc in runtime
+                // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
+                Register last_java_sp = r0;
+                __ lea(last_java_sp, Address(esp, wordSize));
+                __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
+            }
+            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array)));
+            if (true) {
+                __ reset_last_Java_frame(true);
+                // quick fix to avoid gc in runtime
+//      movptr(r13, Address(rbp, frame::interpreter_frame_bcx_offset * wordSize));
+            }
+            if (true) {
+                // check for pending exceptions (java_thread is set upon return)
+                // r15 is callee-saved
+                //compare to NULLWORD using noreg
+
+                __ cmpptr(noreg, Address(rthread, Thread::pending_exception_offset()));
+
+                Label ok;
+                __ br(Assembler::EQ, ok);
+                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ bind(ok);
+            }
+
+            __ ret(lr);
         }
-         */
-        /*
+
+        // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
         case new_object_array_id:
         {
-            Register length = rbx;
-            Register klass  = rdx;
-            Register obj    = rax;
+            Register length   = r19; // Incoming
+            Register klass    = r3; // Incoming
+            Register obj      = r0; // Result
 
-            Register arr_size = rsi;
-            Register t1     = rcx;
-            Register t2     = rdi;
+            Register arr_size = r4;
+            Register t1       = r2;
+            Register t2       = r5;
+
             Label slow_path;
             assert_different_registers(length, klass, obj, arr_size, t1, t2);
-            __ cmpl(length, max_array_allocation_length);
-            __ jcc(Assembler::above, slow_path);
+
+            // check that array length is small enough for fast path.
+            __ mov(rscratch1, max_array_allocation_length);
+            __ cmpw(length, rscratch1);
+            __ br(Assembler::HI, slow_path);
 
             // get the allocation size: round_up(hdr + length << (layout_helper & 0x1F))
-            // since size is positive movl does right thing on 64bit
-            __ movl(t1, Address(klass, Klass::layout_helper_offset()));
-            // since size is postive movl does right thing on 64bit
-            __ movl(arr_size, length);
-            assert(t1 == rcx, "fixed register usage");
-            __ shlptr(arr_size );
-            //by t1=rcx, mod 32
-            __ shrptr(t1, Klass::_lh_header_size_shift);
-            __ andptr(t1, Klass::_lh_header_size_mask);
-            __ addptr(arr_size, t1);
-            __ addptr(arr_size, MinObjAlignmentInBytesMask); // align up
-            __ andptr(arr_size, ~MinObjAlignmentInBytesMask);
+            // since size is positive ldrw does right thing on 64bit
+            __ ldrw(t1, Address(klass, Klass::layout_helper_offset()));
+            // since size is postive movw does right thing on 64bit
+            __ movw(arr_size, length);
+            __ lslvw(arr_size, length, t1);
+            __ ubfx(t1, t1, Klass::_lh_header_size_shift,
+                    exact_log2(Klass::_lh_header_size_mask + 1));
+            __ add(arr_size, arr_size, t1);
+            __ add(arr_size, arr_size, MinObjAlignmentInBytesMask); // align up
+            __ andr(arr_size, arr_size, ~MinObjAlignmentInBytesMask);
 
             __ eden_allocate(obj, arr_size, 0, t1, slow_path);  // preserves arr_size
+            __ incr_allocated_bytes(thread, arr_size, 0, rscratch1);
 
             __ initialize_header(obj, klass, length, t1, t2);
-            __ movb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
+            __ ldrb(t1, Address(klass, in_bytes(Klass::layout_helper_offset()) + (Klass::_lh_header_size_shift / BitsPerByte)));
             assert(Klass::_lh_header_size_shift % BitsPerByte == 0, "bytewise");
             assert(Klass::_lh_header_size_mask <= 0xFF, "bytewise");
-            __ andptr(t1, Klass::_lh_header_size_mask);
-            __ subptr(arr_size, t1);  // body length
-            __ addptr(t1, obj);       // body start
+            __ andr(t1, t1, Klass::_lh_header_size_mask);
+            __ sub(arr_size, arr_size, t1);  // body length
+            __ add(t1, t1, obj);       // body start
             __ initialize_body(t1, arr_size, 0, t2);
             __ verify_oop(obj);
-            __ ret(0);
+
+            __ ret(lr);
 
             __ bind(slow_path);
 
-            __ movptr(c_rarg1, rdx);
-            __ movl(c_rarg2, length);
-            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
-            __ ret(0);
+            // keep and change to aarch64 version
+            __ str(c_rarg1, Address(r3, Klass::java_mirror_offset()));
+            __ ldrw(c_rarg2, length);
+
+            //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
+
+            // call_VME implementation
+
+            __ mov(c_rarg0, rthread);
+            if (true) {
+                // TODO: move it to InterpreterMacroAssember
+                // quick fix to avoid gc in runtime
+                // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
+                Register last_java_sp = r0;
+                __ lea(last_java_sp, Address(esp, wordSize));
+                __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
+            }
+            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array)));
+            if (true) {
+                __ reset_last_Java_frame(true);
+                // quick fix to avoid gc in runtime
+//      movptr(r13, Address(rbp, frame::interpreter_frame_bcx_offset * wordSize));
+            }
+            if (true) {
+                // check for pending exceptions (java_thread is set upon return)
+                // r15 is callee-saved
+                //compare to NULLWORD using noreg
+
+                __ cmpptr(noreg, Address(rthread, Thread::pending_exception_offset()));
+
+                Label ok;
+                __ br(Assembler::EQ, ok);
+                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ bind(ok);
+            }
+
+            __ ret(lr);
         }
-        */
+
 
         case access_field_patching_id:
         { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);
