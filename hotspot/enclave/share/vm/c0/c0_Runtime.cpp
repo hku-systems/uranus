@@ -382,7 +382,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ cbz(r0, compile_start);
             __ ret(lr);
             __ bind(compile_start);
-            __ str(Address(rthead, JavaThread::compiled_method_offset()), rfp);
+            __ str(Address(rthread, JavaThread::compiled_method_offset()), rfp);
             {
                 StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
                 generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
