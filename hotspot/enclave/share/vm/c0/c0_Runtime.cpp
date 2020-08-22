@@ -161,6 +161,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
             Label slow_path;
             Label retry_tlab, try_eden;
+            Label done;
             __ tlab_refill(retry_tlab, try_eden, slow_path); // does not destroy r3 (klass), returns r5
 
             __ bind(retry_tlab);
@@ -382,7 +383,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ cbz(r0, compile_start);
             __ ret(lr);
             __ bind(compile_start);
-            __ str(Address(rthread, JavaThread::compiled_method_offset()), rfp);
+            __ str(rfp, Address(rthread, JavaThread::compiled_method_offset()));
             {
                 StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
                 generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
