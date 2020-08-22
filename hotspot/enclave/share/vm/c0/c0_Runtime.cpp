@@ -368,14 +368,18 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             break;
 
         case load_method_patching_id:
-        { StubFrame f(sasm, "load_method_patching", dont_gc_arguments);
+        {
+            printf("c0_runtime: inside load_method_patching_id\n");
+            StubFrame f(sasm, "load_method_patching", dont_gc_arguments);
             generate_patching(sasm, CAST_FROM_FN_PTR(address, move_method_patching));
+            printf("c0_runtime: finish load_method_patching_id\n");
         }
             break;
 
 
         case compile_method_patching_id:
         {
+            printf("c0_runtime: inside load_method_patching_id\n");
             Label compile_start;
             __ str(r0, Address(rfp, Method::enclave_native_function_offset()));
             //and operation and test zero
@@ -388,6 +392,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
                 generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
             }
+            printf("c0_runtime: finish load_method_patching_id\n");
             break;
         }
 
@@ -474,6 +479,7 @@ void Runtime0::initialize_pd() {
 }
 
 void Runtime0::generate_patching(StubAssembler *sasm, address target) {
+    printf("inside generate_patching\n");
     // use the maximum number of runtime-arguments here because it is difficult to
     // distinguish each RT-Call.
     // Note: This number affects also the RT-Call in generate_handle_exception because
@@ -549,6 +555,7 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
     restore_live_registers(sasm);
 //    __ leave();
     // __ ret(0);
+    printf("finish generate_patching\n");
 }
 
 int Runtime0::move_method_patching(JavaThread *thread) {
