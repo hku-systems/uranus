@@ -137,7 +137,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
     OopMapSet* oop_maps = NULL;
     switch (id) {
 
-        /*
+
         case new_instance_id: {
             Register klass = r3;
             Register obj = r0;
@@ -152,63 +152,90 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             // * rbx => r19
             // * rsi => r4
 
-
+            __ stp(r5, r19, Address(__ pre(sp, -2 * wordSize)));
 
             // * do not know below two instruction's use
             //__ push(rdi);
             //__ push(r19);
 
 
-            Label slow_case;
-            Label done;
-            Label initialize_header;
-            Label initialize_object; // including clearing the fields
-            Label allocate_shared;
+            Label slow_path;
+            Label retry_tlab, try_eden;
+            __ tlab_refill(retry_tlab, try_eden, slow_path); // does not destroy r3 (klass), returns r5
 
-            // get instance_size in InstanceKlass (scaled to a count of bytes)
-            __ movl(obj_size,
-                    Address(klass,
-                            Klass::layout_helper_offset()));
-            // test to see if it has a finalizer or is malformed in some way
-            __ testl(obj_size, Klass::_lh_instance_slow_path_bit);
-            __ jcc(Assembler::notZero, slow_case);
+            __ bind(retry_tlab);
 
-            // Allocate the instance
-            // 1) Try to allocate in the TLAB
-            // 2) if fail and the object is large allocate in the shared Eden
-            // 3) if the above fails (or is not applicable), go to a slow case
-            // (creates a new TLAB, etc.)
+            // get the instance size (size is postive so movl is fine for 64bit)
+            __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
 
-            // Allocation in the shared Eden, if allowed.
-            //
-            // rdx: instance size in bytes
-
-            __ bind(allocate_shared);
-
-            __ eden_allocate(obj, obj_size, 0, t1, slow_case);
+            __ tlab_allocate(obj, obj_size, 0, t1, t2, slow_path);
 
             __ initialize_object(obj, klass, obj_size, 0, t1, t2);
             __ verify_oop(obj);
-            __ pop(rbx);
-            __ pop(rdi);
-            __ ret(0);
+            __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
+            __ ret(lr);
 
-            // slow case
-            __ bind(slow_case);
-            __ pop(rbx);
-            __ pop(rdi);
+            __ bind(try_eden);
+            // get the instance size (size is postive so movl is fine for 64bit)
+            __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
+
+            __ eden_allocate(obj, obj_size, 0, t1, slow_path);
+            __ incr_allocated_bytes(rthread, obj_size, 0, rscratch1);
+
+            __ initialize_object(obj, klass, obj_size, 0, t1, t2);
+            __ verify_oop(obj);
+            __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
+            __ ret(lr);
+
+            __ bind(slow_path);
+            __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
+
+            //below didn't change
 
             __ mov(c_rarg1, klass);
-            __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj));
-            __ verify_oop(rax);
+
+            //implementation of call_VME
+            //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj));
+
+            __ mov(c_rarg0, rthread);
+            if (true) {
+                // TODO: move it to InterpreterMacroAssember
+                // quick fix to avoid gc in runtime
+                // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
+                Register last_java_sp = r0;
+                __ lea(last_java_sp, Address(esp, wordSize));
+                __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
+            }
+            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj)));
+            if (true) {
+                __ reset_last_Java_frame(true);
+                // quick fix to avoid gc in runtime
+//      movptr(r13, Address(rbp, frame::interpreter_frame_bcx_offset * wordSize));
+            }
+            if (true) {
+                // check for pending exceptions (java_thread is set upon return)
+                // r15 is callee-saved
+                //compare to NULLWORD using noreg
+
+                __ cmpptr(noreg, Address(rthread, Thread::pending_exception_offset()));
+
+                Label ok;
+                __ br(Assembler::EQ, ok);
+                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ bind(ok);
+            }
+            //end of call_VME
+
+            __ verify_oop(r0);
             // continue
             __ bind(done);
-            __ ret(0);
+            __ leave();
+            __ ret(lr);
 
             break;
         }
 
-         */
+
 
         /*
         case new_type_array_id:
