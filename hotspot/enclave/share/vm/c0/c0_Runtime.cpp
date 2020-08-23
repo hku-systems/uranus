@@ -124,7 +124,7 @@ void Runtime0::generate_blob_for(BufferBlob *buffer_blob, Runtime0::StubID id) {
     assert(blob != NULL, "blob must exist");
     _blobs[id] = blob;
 }
-//TODO: change back to Uranus x86
+
 void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
     // for better readability
     const bool must_gc_arguments = true;
@@ -235,9 +235,6 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
             break;
         }
-
-
-
 
          // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
         case new_type_array_id:
@@ -412,7 +409,6 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
             __ ret(lr);
         }
-
 
         case access_field_patching_id:
         { StubFrame f(sasm, "access_field_patching", dont_gc_arguments);

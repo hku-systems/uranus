@@ -21,7 +21,7 @@ public class TestSuit_2 {
 
     static public class B { int m = 10; }
 
-    static int add(int a, int b) { return a + b; }
+    int add(int a, int b) { return a + b; }
     static int constance() {return 0; }
     static int new_invokevirtual() {
                  TestSuit_2 s = new TestSuit_2();
@@ -194,7 +194,7 @@ public class TestSuit_2 {
       //assert(h.sgx_hook_string() == "hook");
       //System.out.println("Test: ldc string");
 
-      add(1, 2);
+      h.add(1, 2);
       assert(h.sgx_hook_invokevirtual(1, 2) == 3);
       System.out.println("Test: invokevirtual");
 
