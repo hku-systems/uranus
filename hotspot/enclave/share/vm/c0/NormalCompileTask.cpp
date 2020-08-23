@@ -2192,7 +2192,7 @@ void NormalCompileTask::anewarray() {
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
