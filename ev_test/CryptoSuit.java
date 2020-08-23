@@ -1,5 +1,7 @@
 import edu.anonymity.sgx.*;
 
+//AES GCM armv8
+
 public class CryptoSuit {
     
     @IntelSGX

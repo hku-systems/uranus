@@ -2165,10 +2165,10 @@ void NormalCompileTask::_new() {
     __ membar(Assembler::StoreStore);
 }
 
+//TODO: reference to uranus x86 and template table
 void NormalCompileTask::newarray() {
-    //add gc point
-    gc_point();
     transition(itos, atos);
+    gc_point();
     __ load_unsigned_byte(c_rarg1, at_bcp(1));
     __ mov(c_rarg2, r0);
 
@@ -2176,10 +2176,6 @@ void NormalCompileTask::newarray() {
         EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
     }
 
-    //TODO: need to fix
-    //__ str(r0, EnclaveMemory::_type_array_klass);
-
-    //add gc point
     gc_point();
     __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_type_array_id),
             c_rarg1, c_rarg2);
@@ -2187,16 +2183,16 @@ void NormalCompileTask::newarray() {
     __ membar(Assembler::StoreStore);
 }
 
+//TODO: reference to uranus x86 and template table
 void NormalCompileTask::anewarray() {
     //add gc point
     gc_point();
+
     transition(itos, atos);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    //add gc point
-    gc_point();
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
+    call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
@@ -2208,6 +2204,7 @@ void NormalCompileTask::arraylength() {
     __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
 
+//TODO: reference to uranus x86 and template table
 void NormalCompileTask::multianewarray() {
     //add gc point
     gc_point();
@@ -3078,7 +3075,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     // if the Method is not resolved, then resolve and compile it
     // else if the method is not compiled, then compile it later
     // else call the method directly
-    if (method_entry == NULL || !method_entry->is_resolved(bs->code())) {
+    if (true || method_entry == NULL || !method_entry->is_resolved(bs->code())) {
         // method is not loaded, do the patch and then compile it
         PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_method_id, bs->bci());
         Label final;
