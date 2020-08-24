@@ -2754,16 +2754,16 @@ void NormalCompileTask::invokevirtual(int byte_no) {
 
   //invokevirtual_helper(rmethod, r2, r3);
     printf("%s\n", __func__);
-    prepare_invoke(byte_no, rmethod, noreg, r2, r3);
-  invoke(byte_no, rmethod, rmethod, r2, r3);
+    //prepare_invoke(byte_no, rmethod, noreg, r2, r3);
+    invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
     transition(vtos, vtos);
     printf("%s\n", __func__);
     assert(byte_no == f1_byte, "use this argument");
-    prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
-                   r2, noreg);  // get receiver also for null check
+    //prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
+    //               r2, noreg);  // get receiver also for null check
     invoke(byte_no, rmethod, noreg, r2, noreg);
     /*
     prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
@@ -2780,8 +2780,8 @@ void NormalCompileTask::invokespecial(int byte_no) {
 
 void NormalCompileTask::invokeinterface(int byte_no) {
     printf("%s\n", __func__);
-    prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
-     	 r2, r3); // recv, flags
+    //prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
+    // 	 r2, r3); // recv, flags
     invoke(byte_no, rmethod, noreg, r2, noreg);
     // TODO: fix me
     // transition(vtos, vtos);
@@ -2884,7 +2884,7 @@ void NormalCompileTask::invokestatic(int byte_no) {
 
   printf("%s\n", __func__);
 
-  prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);
+  //prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);
 
   invoke(byte_no, rmethod, noreg, noreg, noreg);
 
