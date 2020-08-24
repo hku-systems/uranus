@@ -102,8 +102,10 @@ void PatchingStub::emit() {
     }
 
     printf("finish switch id in emit()\n");
-    //call to b
-    __ b(RuntimeAddress(target));
+    //call to below
+    //__ call(RuntimeAddress(target));
+    __ lea(rscratch1, RuntimeAddress(target));
+    __ blr(rscratch1);
     if (_id == compile_method_id) {
         //jmp to b
         __ b(_patch_site_continuation);
