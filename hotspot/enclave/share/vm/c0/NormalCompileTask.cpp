@@ -2218,11 +2218,11 @@ void NormalCompileTask::multianewarray() {
 
     // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_cpoll_multi_array));
     //change below code to above
-    /*
+
     __ call_VM(r0,
-            CAST_FROM_FN_PTR(address, Runtime0::static_cpoll_multi_array),
+            CAST_FROM_FN_PTR(address, Runtime0::new_type_array_id),
             c_rarg1);
-    */
+
     __ load_unsigned_byte(r1, at_bcp(3));
     __ lea(esp, Address(esp, r1, Address::uxtw(3)));
 }
@@ -3071,11 +3071,12 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         __ str(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
     }
 
+    // Note: method patching start from here
     // find the Method*
     // if the Method is not resolved, then resolve and compile it
     // else if the method is not compiled, then compile it later
     // else call the method directly
-    if (true || method_entry == NULL || !method_entry->is_resolved(bs->code())) {
+    if (method_entry == NULL || !method_entry->is_resolved(bs->code())) {
         // method is not loaded, do the patch and then compile it
         PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_method_id, bs->bci());
         Label final;

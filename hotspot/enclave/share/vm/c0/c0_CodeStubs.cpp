@@ -101,6 +101,7 @@ void PatchingStub::emit() {
         default: ShouldNotReachHere();
     }
 
+    printf("finish switch id in emit()\n");
     //call to b
     __ b(RuntimeAddress(target));
     if (_id == compile_method_id) {
