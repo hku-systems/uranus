@@ -2086,7 +2086,7 @@ void NormalCompileTask::index_check(Register array, Register index) {
 //-----------------------------------------------------------------------------
 // Allocation
 
-
+//TODO: reference to uranus x86 and template table
 void NormalCompileTask::_new() {
     transition(vtos, atos);
 
