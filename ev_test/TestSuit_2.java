@@ -69,10 +69,14 @@ public class TestSuit_2 {
                  TestSuit_2 ss = (TestSuit_2)o;
                  return o instanceof TestSuit_2;
                }
+    static String _string() { return "hook"; }
 
 
     int sgx_hook_add(int a, int b) { return a + b; }
-    String sgx_hook_string() { return "hook"; }
+    String sgx_hook_string() {
+        _string();
+    //return "hook";
+    }
     int sgx_hook_invokevirtual(int a, int b) { return add(1, 2); }
     int sgx_hook_new_invokevirtual() {
       //TestSuit_2 s = new TestSuit_2();
@@ -191,8 +195,10 @@ public class TestSuit_2 {
       //System.out.println("Test: syn");
       assert(h.sgx_hook_add(1, 2) == 3);
       System.out.println("Test: 1 + 1 = 2");
-      //assert(h.sgx_hook_string() == "hook");
-      //System.out.println("Test: ldc string");
+
+
+      assert(h.sgx_hook_string() == "hook");
+      System.out.println("Test: ldc string");
 
       h.add(1, 2);
       assert(h.sgx_hook_invokevirtual(1, 2) == 3);
