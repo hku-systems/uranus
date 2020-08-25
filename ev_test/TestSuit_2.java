@@ -74,7 +74,7 @@ public class TestSuit_2 {
 
     int sgx_hook_add(int a, int b) { return a + b; }
     String sgx_hook_string() {
-        _string();
+        return _string();
     //return "hook";
     }
     int sgx_hook_invokevirtual(int a, int b) { return add(1, 2); }
@@ -196,10 +196,11 @@ public class TestSuit_2 {
       assert(h.sgx_hook_add(1, 2) == 3);
       System.out.println("Test: 1 + 1 = 2");
 
-
+      _string();
       assert(h.sgx_hook_string() == "hook");
       System.out.println("Test: ldc string");
 
+      //cannot run
       h.add(1, 2);
       assert(h.sgx_hook_invokevirtual(1, 2) == 3);
       System.out.println("Test: invokevirtual");
@@ -240,6 +241,10 @@ public class TestSuit_2 {
       assert(h.sgx_hook_newobj() == 10);
       System.out.println("Test: new obj");
 
+      static_call();
+      h.sgx_hook_invokestatic();
+      System.out.println("Test: static call");
+
       //cannot run
       newintarr();
       assert(h.sgx_hook_newintarr() == 2);
@@ -259,9 +264,6 @@ public class TestSuit_2 {
       h.hashCode();
       assert(h.sgx_hook_native_hashcode(h) != 0);
       System.out.println("Test: native hashCode");
-
-      static_call();
-      h.sgx_hook_invokestatic();
 
       //cannot run
       h.sgx_hook_exception_active();
