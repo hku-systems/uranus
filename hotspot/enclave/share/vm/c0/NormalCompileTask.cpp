@@ -2009,7 +2009,7 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
     // the parameters plus the ret address
     __ current_entry->clear_bit_prev(parameter_size + 1);
 }
-
+//TODO: clean the code
 void NormalCompileTask::_return(TosState state) {
     transition(state, state);
     assert(_desc->calls_vm(),
@@ -2138,7 +2138,7 @@ void NormalCompileTask::anewarray() {
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
+    __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
