@@ -2110,8 +2110,8 @@ void NormalCompileTask::_new() {
 
     //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
     //call to below
-    lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
-    blr(r0);
+    __ lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
+    __ blr(r0);
 }
 
 //TODO: reference to uranus x86 and template table
@@ -3144,7 +3144,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
          __ bind(no_such_interface);
          __ str(r0, (Register)(intptr_t)-1);
          __ b(r0);
-    // }
+    }
 
     return_entry(tosState, parameter_size);
     tos = called_tos;
