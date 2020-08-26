@@ -2114,22 +2114,22 @@ void NormalCompileTask::_new() {
     __ blr(r0);
 }
 
-//TODO: reference to uranus x86 and template table
 void NormalCompileTask::newarray() {
-    transition(itos, atos);
+    Register length = r19;
+    Register klass  = r3;
     gc_point();
-    __ load_unsigned_byte(c_rarg1, at_bcp(1));
-    __ mov(c_rarg2, r0);
-
+    __ str(length, r0);
     if (EnclaveMemory::_type_array_klass == NULL) {
         EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
     }
+    __ str(r0, (Register)(intptr_t)EnclaveMemory::_type_array_klass);
+    __ str(klass, Address(r0, (int32_t)bs->get_index_u1(), Address::times_ptr));
 
     gc_point();
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_type_array_id),
-            c_rarg1, c_rarg2);
-    // Must prevent reordering of stores for object initialization with stores that publish the new object.
-    __ membar(Assembler::StoreStore);
+    //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
+    //call to below
+    __ lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
+    __ blr(r0);
 }
 
 //TODO: reference to uranus x86 and template table
