@@ -20,8 +20,6 @@
 #include "MetadataAccessor.hpp"
 #include "c0_Runtime.hpp"
 //add more include
-#include "interpreter/interpreter.hpp"
-#include "interpreter/interpreterRuntime.hpp"
 #include "interpreter/templateTable.hpp"
 #include "oops/method.hpp"
 #include "oops/objArrayKlass.hpp"
@@ -553,6 +551,7 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_athrow:        gen(athrow(),           atos, vtos);
             case Bytecodes::_checkcast:     gen(checkcast(),        atos, atos);
             case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
+            //TODO: add aarch64 version for below 2 instructions
             //case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
             //case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
             case Bytecodes::_wide:
@@ -2123,7 +2122,8 @@ void NormalCompileTask::newarray() {
         EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
     }
     __ str(r0, (Register)(intptr_t)EnclaveMemory::_type_array_klass);
-    __ str(klass, Address(r0, (int32_t)bs->get_index_u1(), Address::times_ptr));
+    //__ str(klass, Address(r0, (int32_t)bs->get_index_u1(), Address::times_ptr));
+    __ str(klass, Address(r0, (int32_t)bs->get_index_u1()));
 
     gc_point();
     //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
@@ -2134,17 +2134,45 @@ void NormalCompileTask::newarray() {
 
 //TODO: reference to uranus x86 and template table
 void NormalCompileTask::anewarray() {
-    //add gc point
-    gc_point();
-
     transition(itos, atos);
     __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
     __ get_constant_pool(c_rarg1);
     __ mov(c_rarg3, r0);
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_object_array_id),
+    call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::anewarray),
             c_rarg1, c_rarg2, c_rarg3);
     // Must prevent reordering of stores for object initialization with stores that publish the new object.
     __ membar(Assembler::StoreStore);
+    //to below
+    /*
+    gc_point();
+    int idx = bs->get_index_u2();
+    __ movl(rbx, rax);
+    constantTag tag =  method->constants()->tag_at(idx);
+    if (!tag.is_klass()) {
+        if (will_run) {
+            Bytecode_anewarray anew(method, method->bcp_from(bs->bci()));
+            Klass* ek = method->constants()->klass_at(anew.index(), JavaThread::current());
+            Klass* klass = (Klass*)KLASS_array_klass(ek, 1, 0);
+            __ movptr(rdx, (intptr_t)klass);
+        } else {
+            // do the patch
+            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
+            __ movptr(rdx, NULL_WORD);
+            patchingStub->install();
+            append_stub(patchingStub);
+        }
+    } else {
+        Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
+        klass = (Klass*)KLASS_array_klass(klass, 1, 0);
+        __ movptr(rdx, (intptr_t) klass);
+    }
+
+    gc_point();
+    //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_object_array_id)));
+    //call to below
+    __ lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_object_array_id)));
+    __ blr(r0);
+     */
 }
 
 void NormalCompileTask::arraylength() {
