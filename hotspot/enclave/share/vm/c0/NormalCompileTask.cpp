@@ -326,8 +326,8 @@ int NormalCompileTask::compile(int size) {
     char* end_heap = start_heap + get_enclave_heap_size();
     // last 2 registers to hold argument values
     // movptr change to str
-    __ str(r6, (intptr_t)start_heap);
-    __ str(r7, (intptr_t)end_heap);
+    __ str(r6, (Register)(intptr_t)start_heap);
+    __ str(r7, (Register)(intptr_t)end_heap);
 #endif
 #endif
 
@@ -2086,83 +2086,32 @@ void NormalCompileTask::index_check(Register array, Register index) {
 //-----------------------------------------------------------------------------
 // Allocation
 
-//TODO: reference to uranus x86 and template table
 void NormalCompileTask::_new() {
     transition(vtos, atos);
-
-    __ get_unsigned_2_byte_index_at_bcp(r3, 1);
-    Label slow_case;
-    Label done;
-    Label initialize_header;
-    Label initialize_object; // including clearing the fields
-    Label allocate_shared;
-
-    __ get_cpool_and_tags(r4, r0);
-    // Make sure the class we're about to instantiate has been resolved.
-    // This is done before loading InstanceKlass to be consistent with the order
-    // how Constant Pool is updated (see ConstantPool::klass_at_put)
-
-
-    const int tags_offset = Array<u1>::base_offset_in_bytes();
-
-
-
-    __ lea(rscratch1, Address(r0, r3, Address::lsl(0)));
-    __ lea(rscratch1, Address(rscratch1, tags_offset));
-    __ ldarb(rscratch1, rscratch1);
-    __ cmp(rscratch1, JVM_CONSTANT_Class);
-    __ br(Assembler::NE, slow_case);
-
-    // get InstanceKlass
-    __ lea(r4, Address(r4, r3, Address::lsl(3)));
-    __ ldr(r4, Address(r4, sizeof(ConstantPool)));
-
-    // make sure klass is initialized & doesn't have finalizer
-    // make sure klass is fully initialized
-    __ ldrb(rscratch1, Address(r4, InstanceKlass::init_state_offset()));
-    __ cmp(rscratch1, InstanceKlass::fully_initialized);
-    __ br(Assembler::NE, slow_case);
-
-    // get instance_size in InstanceKlass (scaled to a count of bytes)
-    __ ldrw(r3,
-            Address(r4,
-                    Klass::layout_helper_offset()));
-    // test to see if it has a finalizer or is malformed in some way
-    __ tbnz(r3, exact_log2(Klass::_lh_instance_slow_path_bit), slow_case);
-
-    // Allocate the instance
-    // 1) Try to allocate in the TLAB
-    // 2) if fail and the object is large allocate in the shared Eden
-    // 3) if the above fails (or is not applicable), go to a slow case
-    // (creates a new TLAB, etc.)
-
-    const bool allow_shared_alloc = true;
-
-    // Allocation in the shared Eden, if allowed.
-    //
-    // r3: instance size in bytes
-    if (allow_shared_alloc) {
-        __ bind(allocate_shared);
-
-        __ eden_allocate(r0, r3, 0, r10, slow_case);
-        __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
+    int idx = bs->get_index_u2();
+    constantTag tag =  method->constants()->tag_at(idx);
+    if (!tag.is_klass()) {
+        if (will_run) {
+            Bytecode_new bytecode_new(method, method->bcp_from(bs->bci()));
+            Klass* klass = method->constants()->klass_at(bytecode_new.index(), JavaThread::current());
+            __ str(r3, (Register)(intptr_t) klass);
+        } else {
+            // do the patch
+            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
+            __ str(r3, noreg);
+            patchingStub->install();
+            append_stub(patchingStub);
+        }
+    } else {
+        Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
+        __ str(r3, (Register)(intptr_t) klass);
     }
-    //add gc point
     gc_point();
 
-    // slow case
-    __ bind(slow_case);
-    __ get_constant_pool(c_rarg1);
-    __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-    __ call_VM(r0, CAST_FROM_FN_PTR(address, Runtime0::new_instance_id), c_rarg1, c_rarg2);
-    __ verify_oop(r0);
-
-
-    // continue
-    __ bind(done);
-
-    // Must prevent reordering of stores for object initialization with stores that publish the new object.
-    __ membar(Assembler::StoreStore);
+    //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
+    //call to below
+    lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
+    blr(r0);
 }
 
 //TODO: reference to uranus x86 and template table
@@ -3191,10 +3140,10 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     __ jump_to_compiled(m, compiled_entry, force_compile, patch_compile);
 
     // do not handle now
-    // if (bs->code() == Bytecodes::_invokeinterface) {
-    //     __ bind(no_such_interface);
-    //     __ movptr(rax, (intptr_t)-1);
-    //     __ jmp(rax);
+    if (bs->code() == Bytecodes::_invokeinterface) {
+         __ bind(no_such_interface);
+         __ str(r0, (Register)(intptr_t)-1);
+         __ b(r0);
     // }
 
     return_entry(tosState, parameter_size);
