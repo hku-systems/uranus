@@ -314,9 +314,7 @@ int NormalCompileTask::compile(int size) {
 
     bs->set_next_bci(0);
 
-    printf("call entry()\n");
     entry();
-    printf("finish entry()\n");
 
 #ifdef ENCLAVE_BOUND_CHECK
 #ifndef ENCLAVE_MPX
@@ -344,16 +342,10 @@ int NormalCompileTask::compile(int size) {
             //Temporarily comment because it is for debug in macroAssembler
         }
 
-        printf("call adjust_tos()\n");
-
         adjust_tos();
-
-        printf("finish adjust_tos(): %d\n", tos);
 
         bci_ptr_map.insert(std::pair<int, address>(bs->bci(), __ pc()));
         bci_tos.insert(std::pair<int, TosState>(bs->bci(), tos));
-
-        printf("load bytecode function\n");
 
         switch (code) {
 
@@ -1894,8 +1886,6 @@ void NormalCompileTask::entry() {
     int size_parameters = method->size_of_parameters();
     int addtional_locals = size_locals - size_parameters;
 
-    printf("size_locals: %d, size_parameters: %d, addtional_locals: %d\n", size_locals, size_parameters, addtional_locals);
-
     #ifdef DB_FRAME
     //Comment out because it is for debug and it is for x86
       //__ push(r11);
@@ -1937,8 +1927,6 @@ void NormalCompileTask::entry() {
             __ push(r15);
         }
     }
-
-    printf("r15: %d\n", r15);
 
     // compute beginning of parameters (rlocals)
     __ add(rlocals, esp, r2, ext::uxtx, 3);
@@ -2730,14 +2718,12 @@ void NormalCompileTask::invokevirtual(int byte_no) {
   // r3: flags
 
   //invokevirtual_helper(rmethod, r2, r3);
-    printf("%s\n", __func__);
     //prepare_invoke(byte_no, rmethod, noreg, r2, r3);
     invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
     transition(vtos, vtos);
-    printf("%s\n", __func__);
     assert(byte_no == f1_byte, "use this argument");
     //prepare_invoke(byte_no, rmethod, noreg,  // get f1 Method*
     //               r2, noreg);  // get receiver also for null check
@@ -2756,7 +2742,6 @@ void NormalCompileTask::invokespecial(int byte_no) {
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
-    printf("%s\n", __func__);
     //prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
     // 	 r2, r3); // recv, flags
     invoke(byte_no, rmethod, noreg, r2, noreg);
@@ -2858,8 +2843,6 @@ void NormalCompileTask::invokeinterface(int byte_no) {
 void NormalCompileTask::invokestatic(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f1_byte, "use this argument");
-
-  printf("%s\n", __func__);
 
   //prepare_invoke(byte_no, rmethod, noreg, noreg, noreg);
 

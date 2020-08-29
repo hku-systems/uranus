@@ -99,9 +99,9 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     klass_map = new std::map<std::string, Klass*>();
 
     compiler = JCompiler::create_compiler();
-    #ifdef HAVE_COMPILER
+
     Runtime0::initialize();
-    #endif
+
     // init mpx and set bound
     ENABLE_MPX();
 
@@ -147,7 +147,6 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
     {
         r = (u_char*)call_compiler(rbx_buf, (Method*)m);
     }
-    printf("finish call_compiler in do_ecall_comp\n");
     if (javaThread.has_unhandle_exception()) {
         *has_exception = 1;
     }
@@ -165,9 +164,9 @@ void* EnclaveRuntime::call_compiler(void *rbx_buf, Method *m) {
 
 void* EnclaveRuntime::call_interpreter(void *rbx_buf, Method *m) {
     ecall_count += 1;
-    //if ((EnclaveRuntime::debug_bit & debug_ecall) == debug_ecall) {
+    if ((EnclaveRuntime::debug_bit & debug_ecall) == debug_ecall) {
         printf("ecall %d, ocall %d\n", ecall_count, ocall_count);
-    //}
+    }
     JavaThread *javaThread = JavaThread::current();
     char rsp_tmp[8];
     return EnclaveABI::do_ecall(rbx_buf, rsp_tmp, javaThread, (address)m);

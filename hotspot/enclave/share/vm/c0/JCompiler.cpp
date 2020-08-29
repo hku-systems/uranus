@@ -9,9 +9,7 @@
 
 //Change to JIT
 
-#define HAVE_COMPILER (1==1)
 
-#ifdef HAVE_COMPILER
 #include "NormalCompileTask.h"
 #include "NativeCompileTask.hpp"
 #include "OCallCompileTask.hpp"
@@ -42,7 +40,6 @@ void JCompiler::compile_method(Method *method) {
         task = new NativeCompileTask(method);
     }
     */
-   printf("creating Normal Compile Task\n");
    task = new NormalCompileTask(method);
 
     if (method->is_abstract()) {
@@ -50,13 +47,10 @@ void JCompiler::compile_method(Method *method) {
         return;
     }
 
-    printf("task calling compile function\n");
     task->compile(size);
-    printf("task calling set_compile_entry function\n");
     task->set_compile_entry();
 //    if (task->method_entry != EnclaveABI::do_ocall)
 //        task->print_disassembly();
-    printf("finish JCompiler::compile_method function\n");
 }
 
 bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {
@@ -78,20 +72,3 @@ bool JCompiler::is_compile(Method *method) {
     address method_entry = *method->enclave_native_function_addr();
     return sgx_is_within_enclave(method_entry, 1);
 }
-
-#else
-JCompiler* JCompiler::compiler = NULL;
-
-void JCompiler::compile_method(Method *method) {
- 
-}
-
-bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {
-
-}
-
-bool JCompiler::is_compile(Method *method) {
-
-}
-
-#endif

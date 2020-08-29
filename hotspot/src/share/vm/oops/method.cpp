@@ -969,7 +969,6 @@ void Method::link_method(methodHandle h_method, TRAPS) {
     if ((sgx_flags & sgx_ecall_flag) == sgx_ecall_flag || strncmp(name()->as_C_string(), "sgx_hook", 8) == 0) {
         _i2i_entry = Interpreter::ecall_entry();
         _from_interpreted_entry = _i2i_entry;
-        printf("set ecall for %s\n", this->name()->as_C_string());
     } else if ((sgx_flags & sgx_ocall_flag) == sgx_ocall_flag || strncmp(name()->as_C_string(), "sgx_unhook", 10) == 0) {
 
     }

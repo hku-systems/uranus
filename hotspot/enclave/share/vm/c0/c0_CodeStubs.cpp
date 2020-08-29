@@ -101,7 +101,6 @@ void PatchingStub::emit() {
         default: ShouldNotReachHere();
     }
 
-    printf("finish switch id in emit()\n");
     //call to below
     //__ call(RuntimeAddress(target));
     __ lea(rscratch1, RuntimeAddress(target));
