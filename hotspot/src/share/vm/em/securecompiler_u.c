@@ -162,6 +162,12 @@ typedef struct ms_ocall_jvm_malloc_t {
 	int ms_size;
 } ms_ocall_jvm_malloc_t;
 
+typedef struct ms_ocall_classfile_buffer_t {
+	void* ms_retval;
+	char* ms_name;
+	int* ms_size;
+} ms_ocall_classfile_buffer_t;
+
 typedef struct ms_ocall_pthread_create_t {
 	int ms_retval;
 	pthread_t* ms_new_thread;
@@ -1889,6 +1895,14 @@ static sgx_status_t SGX_CDECL securecompiler_ocall_jvm_malloc(void* pms)
 {
 	ms_ocall_jvm_malloc_t* ms = SGX_CAST(ms_ocall_jvm_malloc_t*, pms);
 	ms->ms_retval = ocall_jvm_malloc(ms->ms_size);
+
+	return SGX_SUCCESS;
+}
+
+static sgx_status_t SGX_CDECL securecompiler_ocall_classfile_buffer(void* pms)
+{
+	ms_ocall_classfile_buffer_t* ms = SGX_CAST(ms_ocall_classfile_buffer_t*, pms);
+	ms->ms_retval = ocall_classfile_buffer((const char*)ms->ms_name, ms->ms_size);
 
 	return SGX_SUCCESS;
 }
@@ -4018,9 +4032,9 @@ static sgx_status_t SGX_CDECL securecompiler_ocall_if_freenameindex(void* pms)
 
 const struct {
 	size_t nr_ocall;
-	void * table[287];
+	void * table[288];
 } ocall_table_enclave = {
-	287,
+	288,
 	{
 		(void*)securecompiler_ocall_interpreter,
 		(void*)securecompiler_ocall_jvm_resolve_invoke,
@@ -4043,6 +4057,7 @@ const struct {
 		(void*)securecompiler_ocall_multi_array_klass_get,
 		(void*)securecompiler_ocall_jvm_pre_native,
 		(void*)securecompiler_ocall_jvm_malloc,
+		(void*)securecompiler_ocall_classfile_buffer,
 		(void*)securecompiler_ocall_pthread_create,
 		(void*)securecompiler_ocall_pthread_self,
 		(void*)securecompiler_ocall_pthread_join,

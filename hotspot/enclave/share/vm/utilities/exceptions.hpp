@@ -29,24 +29,24 @@
 #include "oops/oopsHierarchy.hpp"
 #include "utilities/sizes.hpp"
 
-// This file provides the basic support for exception handling in the VM.
-// Note: We do not use C++ exceptions to avoid compiler dependencies and
-// unpredictable performance.
-//
-// Scheme: Exceptions are stored with the thread. There is never more
-// than one pending exception per thread. All functions that can throw
-// an exception carry a THREAD argument (usually the last argument and
-// declared with the TRAPS macro). Throwing an exception means setting
-// a pending exception in the thread. Upon return from a function that
-// can throw an exception, we must check if an exception is pending.
-// The CHECK macros do this in a convenient way. Carrying around the
-// thread provides also convenient access to it (e.g. for Handle
-// creation, w/o the need for recomputation).
+ // This file provides the basic support for exception handling in the VM.
+ // Note: We do not use C++ exceptions to avoid compiler dependencies and
+ // unpredictable performance.
+ //
+ // Scheme: Exceptions are stored with the thread. There is never more
+ // than one pending exception per thread. All functions that can throw
+ // an exception carry a THREAD argument (usually the last argument and
+ // declared with the TRAPS macro). Throwing an exception means setting
+ // a pending exception in the thread. Upon return from a function that
+ // can throw an exception, we must check if an exception is pending.
+ // The CHECK macros do this in a convenient way. Carrying around the
+ // thread provides also convenient access to it (e.g. for Handle
+ // creation, w/o the need for recomputation).
 
 
 
-// Forward declarations to be independent of the include structure.
-// This allows us to have exceptions.hpp included in top.hpp.
+ // Forward declarations to be independent of the include structure.
+ // This allows us to have exceptions.hpp included in top.hpp.
 
 class Thread;
 class Handle;
@@ -57,50 +57,116 @@ class JavaCallArguments;
 // field of the Thread class w/o having access to the Thread's interface (for
 // include hierachy reasons).
 
-class ThreadShadow: public CHeapObj<mtThread> {
-  friend class VMStructs;
+class ThreadShadow : public CHeapObj<mtThread> {
+    friend class VMStructs;
 
- protected:
-  oop  _pending_exception;                       // Thread has gc actions.
-  const char* _exception_file;                   // file information for exception (debugging only)
-  int         _exception_line;                   // line information for exception (debugging only)
+protected:
+    oop  _pending_exception;                       // Thread has gc actions.
+    const char* _exception_file;                   // file information for exception (debugging only)
+    int         _exception_line;                   // line information for exception (debugging only)
+    friend void check_ThreadShadow();              // checks _pending_exception offset
 
-  // The following virtual exists only to force creation of a vtable.
-  // We need ThreadShadow to have a vtable, even in product builds,
-  // so that its layout will start at an offset of zero relative to Thread.
-  // Some C++ compilers are so "clever" that they put the ThreadShadow
-  // base class at offset 4 in Thread (after Thread's vtable), if they
-  // notice that Thread has a vtable but ThreadShadow does not.
-  virtual void unused_initial_virtual() { }
+    // The following virtual exists only to force creation of a vtable.
+    // We need ThreadShadow to have a vtable, even in product builds,
+    // so that its layout will start at an offset of zero relative to Thread.
+    // Some C++ compilers are so "clever" that they put the ThreadShadow
+    // base class at offset 4 in Thread (after Thread's vtable), if they
+    // notice that Thread has a vtable but ThreadShadow does not.
+    virtual void unused_initial_virtual() { }
 
- public:
-  oop  pending_exception() const                 { return _pending_exception; }
-  bool has_pending_exception() const             { return _pending_exception != NULL; }
-  const char* exception_file() const             { return _exception_file; }
-  int  exception_line() const                    { return _exception_line; }
+public:
+    oop  pending_exception() const { return _pending_exception; }
+    bool has_pending_exception() const { return _pending_exception != NULL; }
+    const char* exception_file() const { return _exception_file; }
+    int  exception_line() const { return _exception_line; }
 
-  // Code generation support
-  static ByteSize pending_exception_offset()     { return byte_offset_of(ThreadShadow, _pending_exception); }
-  static ByteSize exception_file_offset()     { return byte_offset_of(ThreadShadow, _exception_file); }
-  static ByteSize exception_line_offset()     { return byte_offset_of(ThreadShadow, _exception_line); }
+    // Code generation support
+    static ByteSize pending_exception_offset() { return byte_offset_of(ThreadShadow, _pending_exception); }
+    static ByteSize exception_file_offset() { return byte_offset_of(ThreadShadow, _exception_file); }
+    static ByteSize exception_line_offset() { return byte_offset_of(ThreadShadow, _exception_line); }
 
-  // use THROW whenever possible!
-  void set_pending_exception(oop exception, const char* file, int line) {
-    _pending_exception = exception;
-    _exception_file = file;
-    _exception_line = line;
-  }
+    // use THROW whenever possible!
+    void set_pending_exception(oop exception, const char* file, int line);
 
-  // use CLEAR_PENDING_EXCEPTION whenever possible!
-  void clear_pending_exception() {
-    _pending_exception = NULL;
-    _exception_file = NULL;
-    _exception_line = 0;
-  }
+    // use CLEAR_PENDING_EXCEPTION whenever possible!
+    void clear_pending_exception();
 
-  ThreadShadow() : _pending_exception(NULL),
-                   _exception_file(NULL), _exception_line(0) {}
+    ThreadShadow() : _pending_exception(NULL),
+        _exception_file(NULL), _exception_line(0) {}
 };
+
+
+// Exceptions is a helper class that encapsulates all operations
+// that require access to the thread interface and which are
+// relatively rare. The Exceptions operations should only be
+// used directly if the macros below are insufficient.
+
+class Exceptions {
+    static bool special_exception(Thread* thread, const char* file, int line, Handle exception);
+    static bool special_exception(Thread* thread, const char* file, int line, Symbol* name, const char* message);
+public:
+    // this enum is defined to indicate whether it is safe to
+    // ignore the encoding scheme of the original message string.
+    typedef enum {
+        safe_to_utf8 = 0,
+        unsafe_to_utf8 = 1
+    } ExceptionMsgToUtf8Mode;
+    // Throw exceptions: w/o message, w/ message & with formatted message.
+    static void _throw_oop(Thread* thread, const char* file, int line, oop exception);
+    static void _throw(Thread* thread, const char* file, int line, Handle exception, const char* msg = NULL);
+
+    static void _throw_msg(Thread* thread, const char* file, int line, Symbol* name, const char* message);
+    static void _throw_msg(Thread* thread, const char* file, int line, Symbol* name, const char* message,
+        Handle loader, Handle protection_domain);
+
+    static void _throw_msg_cause(Thread* thread, const char* file, int line, Symbol* name, const char* message, Handle h_cause);
+    static void _throw_msg_cause(Thread* thread, const char* file, int line, Symbol* name, const char* message, Handle h_cause,
+        Handle h_loader, Handle h_protection_domain);
+
+    static void _throw_cause(Thread* thread, const char* file, int line, Symbol* name, Handle h_cause);
+    static void _throw_cause(Thread* thread, const char* file, int line, Symbol* name, Handle h_cause,
+        Handle h_loader, Handle h_protection_domain);
+
+    static void _throw_args(Thread* thread, const char* file, int line,
+        Symbol* name, Symbol* signature,
+        JavaCallArguments* args);
+
+    // There is no THROW... macro for this method. Caller should remember
+    // to do a return after calling it.
+    static void fthrow(Thread* thread, const char* file, int line, Symbol* name,
+        const char* format, ...) ATTRIBUTE_PRINTF(5, 6);
+
+    // Create and initialize a new exception
+    static Handle new_exception(Thread* thread, Symbol* name,
+        Symbol* signature, JavaCallArguments* args,
+        Handle loader, Handle protection_domain);
+
+    static Handle new_exception(Thread* thread, Symbol* name,
+        Symbol* signature, JavaCallArguments* args,
+        Handle cause,
+        Handle loader, Handle protection_domain);
+
+    static Handle new_exception(Thread* thread, Symbol* name,
+        Handle cause,
+        Handle loader, Handle protection_domain,
+        ExceptionMsgToUtf8Mode to_utf8_safe = safe_to_utf8);
+
+    static Handle new_exception(Thread* thread, Symbol* name,
+        const char* message, Handle cause,
+        Handle loader, Handle protection_domain,
+        ExceptionMsgToUtf8Mode to_utf8_safe = safe_to_utf8);
+
+    static Handle new_exception(Thread* thread, Symbol* name,
+        const char* message,
+        ExceptionMsgToUtf8Mode to_utf8_safe = safe_to_utf8);
+
+    static void throw_stack_overflow_exception(Thread* thread, const char* file, int line, methodHandle method);
+
+    // for AbortVMOnException flag
+    NOT_PRODUCT(static void debug_check_abort(Handle exception, const char* message = NULL);)
+        NOT_PRODUCT(static void debug_check_abort(const char* value_string, const char* message = NULL);)
+};
+
 
 // The THREAD & TRAPS macros facilitate the declaration of functions that throw exceptions.
 // Convention: Use the TRAPS macro as the last argument of such a function; e.g.:
@@ -148,7 +214,7 @@ class ThreadShadow: public CHeapObj<mtThread> {
 // visible within the scope containing the THROW. Usually this is achieved by declaring the function
 // with a TRAPS argument.
 
-#define THREAD_AND_LOCATION                      THREAD, __FILE__, __LINE__
+#define THREAD_AND_LOCATION                      (Thread*)THREAD, __FILE__, __LINE__
 
 #define THROW_OOP(e)                                \
   { Exceptions::_throw_oop(THREAD_AND_LOCATION, e);                             return;  }
@@ -224,12 +290,12 @@ class ThreadShadow: public CHeapObj<mtThread> {
 // It is used with the EXCEPTION_MARK macro.
 
 class ExceptionMark {
- private:
-  Thread* _thread;
+private:
+    Thread* _thread;
 
- public:
-  ExceptionMark(Thread*& thread);
-  ~ExceptionMark();
+public:
+    ExceptionMark(Thread*& thread);
+    ~ExceptionMark();
 };
 
 
@@ -242,6 +308,6 @@ class ExceptionMark {
 // which preserves pre-existing exceptions and does not allow new
 // exceptions.
 
-#define EXCEPTION_MARK                           Thread* THREAD = NULL;
+#define EXCEPTION_MARK                           Thread* THREAD = NULL; ExceptionMark __em(THREAD);
 
 #endif // SHARE_VM_UTILITIES_EXCEPTIONS_HPP

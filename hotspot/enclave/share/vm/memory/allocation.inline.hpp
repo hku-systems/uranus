@@ -95,7 +95,7 @@ inline void FreeHeap(void* p, MEMFLAGS memflags = mtInternal) {
 }
 
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new(size_t size,
       const NativeCallStack& stack) throw() {
   void* p = (void*)AllocateHeap(size, F, stack);
 #ifdef ASSERT
@@ -104,11 +104,11 @@ template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size,
   return p;
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size) throw() {
+template <MEMFLAGS F> void* CHeapObj<F>::operator new(size_t size) throw() {
   return CHeapObj<F>::operator new(size, CALLER_PC);
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new (size_t size,
   const std::nothrow_t&  nothrow_constant, const NativeCallStack& stack) throw() {
   void* p = (void*)AllocateHeap(size, F, stack,
       AllocFailStrategy::RETURN_NULL);
@@ -118,27 +118,27 @@ template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size,
     return p;
   }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new (std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new (size_t size,
   const std::nothrow_t& nothrow_constant) throw() {
   return CHeapObj<F>::operator new(size, nothrow_constant, CALLER_PC);
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new [](std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new [](size_t size,
       const NativeCallStack& stack) throw() {
   return CHeapObj<F>::operator new(size, stack);
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new [](std::size_t size)
+template <MEMFLAGS F> void* CHeapObj<F>::operator new [](size_t size)
   throw() {
   return CHeapObj<F>::operator new(size, CALLER_PC);
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new [](std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new [](size_t size,
   const std::nothrow_t&  nothrow_constant, const NativeCallStack& stack) throw() {
   return CHeapObj<F>::operator new(size, nothrow_constant, stack);
 }
 
-template <MEMFLAGS F> void* CHeapObj<F>::operator new [](std::size_t size,
+template <MEMFLAGS F> void* CHeapObj<F>::operator new [](size_t size,
   const std::nothrow_t& nothrow_constant) throw() {
   return CHeapObj<F>::operator new(size, nothrow_constant, CALLER_PC);
 }

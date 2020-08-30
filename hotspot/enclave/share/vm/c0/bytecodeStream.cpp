@@ -26,8 +26,7 @@
 #include "bytecodeStream.hpp"
 #include "interpreter/bytecodes.hpp"
 
-/*
- * Bytecodes::Code RawBytecodeStream::raw_next_special(Bytecodes::Code code) {
+Bytecodes::Code RawBytecodeStream::raw_next_special(Bytecodes::Code code) {
   assert(!is_last_bytecode(), "should have been checked");
   // set next bytecode position
   address bcp = RawBytecodeStream::bcp();
@@ -52,7 +51,7 @@
   }
   _raw_code = code;
   return code;
-}*/
+}
 
 #ifdef ASSERT
 void BaseBytecodeStream::assert_raw_index_size(int size) const {

@@ -37,6 +37,7 @@ void ObjArrayKlass::objarray_follow_contents(oop obj, int index) {
   D_WARN_Unimplement;
 }
 
+#if INCLUDE_ALL_GCS
 void ObjArrayKlass::oop_follow_contents(ParCompactionManager* cm, oop obj,
                                         int index) {
   D_WARN_Unimplement;
@@ -47,5 +48,6 @@ void ObjArrayKlass::objarray_follow_contents(ParCompactionManager* cm, oop obj,
                                              int index) {
   D_WARN_Unimplement;
 }
+#endif // INCLUDE_ALL_GCS
 
 #endif // SHARE_VM_OOPS_OBJARRAYKLASS_INLINE_HPP

@@ -43,7 +43,7 @@
 
 #define CALL_NULL_THROW printf(D_ERROR("Runtime")" call remove call: %s %d: %s\n", __FILE__, __LINE__, __FUNCTION__); \
     JavaThread* THREAD = thread; \
-    ENCLAVE_THROW(EnclaveException::java_lang_RuntimeException)
+    THROW(vmSymbols::java_lang_RuntimeException())
 
 class InterpreterRuntime: AllStatic {
     friend class BytecodeClosure; // for method and bcp

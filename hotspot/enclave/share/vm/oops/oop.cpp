@@ -112,7 +112,7 @@ unsigned int oopDesc::new_hash(juint seed) {
     // Use alternate hashing algorithm on the string
     return AltHashing::murmur3_32(seed, chars, length);
   } else {
-    ENCLAVE_THROW_EXIT(EnclaveException::java_lang_OutOfMemoryError);
+    THROW_0(vmSymbols::java_lang_OutOfMemoryError());
     return 0;
   }
 }

@@ -679,7 +679,7 @@ class Relocation VALUE_OBJ_CLASS_SPEC {
   }
 
  public:
-  void* operator new (std::size_t size, const RelocationHolder& holder) throw() {
+  void* operator new(size_t size, const RelocationHolder& holder) throw() {
     if (size > sizeof(holder._relocbuf)) guarantee_size();
     assert((void* const *)holder.reloc() == &holder._relocbuf[0], "ptrs must agree");
     return holder.reloc();

@@ -31,10 +31,12 @@
 #include "oops/method.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/symbol.hpp"
+#include "prims/methodHandles.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/signature.hpp"
+#include "utilities/quickSort.hpp"
 
 PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
 
@@ -112,13 +114,45 @@ Method* Method::allocate(ClassLoaderData* loader_data,
 }
 
 Method::Method(ConstMethod* xconst, AccessFlags access_flags, int size) {
-  D_WARN_Unimplement;
+  // No_Safepoint_Verifier no_safepoint;
+  set_constMethod(xconst);
+  set_access_flags(access_flags);
+  set_method_size(size);
+  set_intrinsic_id(vmIntrinsics::_none);
+  set_jfr_towrite(false);
+  set_force_inline(false);
+  set_hidden(false);
+  set_dont_inline(false);
+  set_has_injected_profile(false);
+  set_method_data(NULL);
+  clear_method_counters();
+  set_vtable_index(Method::garbage_vtable_index);
+
+  // Fix and bury in Method*
+  set_interpreter_entry(NULL); // sets i2i entry and from_int
+  set_adapter_entry(NULL);
+  clear_code(false /* don't need a lock */); // from_c/from_i get set to c2i/i2i
+
+  if (access_flags.is_native()) {
+    clear_native_function();
+    set_signature_handler(NULL);
+  }
+
+  NOT_PRODUCT(set_compiled_invocation_count(0);)
 }
 
 // Release Method*.  The nmethod will be gone when we get here because
 // we've walked the code cache.
 void Method::deallocate_contents(ClassLoaderData* loader_data) {
-  D_WARN_Unimplement;
+  clear_jmethod_id(loader_data);
+  MetadataFactory::free_metadata(loader_data, constMethod());
+  set_constMethod(NULL);
+  MetadataFactory::free_metadata(loader_data, method_data());
+  set_method_data(NULL);
+  MetadataFactory::free_metadata(loader_data, method_counters());
+  clear_method_counters();
+  // The nmethod will be gone when we get here.
+  if (code() != NULL) _code = NULL;
 }
 
 address Method::get_i2c_entry() {
@@ -197,12 +231,7 @@ int Method::fast_exception_handler_bci_for(methodHandle mh, KlassHandle ex_klass
         // we know the exception class => get the constraint class
         // this may require loading of the constraint class; if verification
         // fails or some other exception occurs, return handler_bci
-#ifdef ENCLAVE_UNIX
-          // TODO: if we use this every time, it is too time-consuming
-        Klass* k = (Klass*)JVM_ENTRY_resolve_klass(THREAD, mh->constants(), klass_index);
-#else
         Klass* k = pool->klass_at(klass_index, CHECK_(handler_bci));
-#endif
         KlassHandle klass = KlassHandle(THREAD, k);
         assert(klass.not_null(), "klass not loaded");
         if (ex_klass->is_subtype_of(klass())) {
@@ -286,7 +315,7 @@ address Method::bcp_from(int bci) const {
 int Method::size(bool is_native) {
   // If native, then include pointers for native_function and signature_handler
   // jianyu: if native, then also include pointers for native_function and signature_handler for enclave
-  int extra_bytes = (is_native) ? 4*sizeof(address*) : 0;
+  int extra_bytes = (is_native) ? 2 * sizeof(address*) : 0;
   int extra_words = align_size_up(extra_bytes, BytesPerWord) / BytesPerWord;
   return align_object_size(header_size() + extra_words);
 }
@@ -310,11 +339,11 @@ void Method::remove_unshareable_info() {
 }
 
 void Method::set_vtable_index(int index) {
-  D_WARN_Unimplement;
+  _vtable_index = index;
 }
 
 void Method::set_itable_index(int index) {
-  D_WARN_Unimplement;
+  _vtable_index = itable_index_max - index;
 }
 
 
@@ -553,15 +582,6 @@ void Method::set_native_function(address function, bool post_event_flag) {
   D_WARN_Unimplement;
 }
 
-void Method::set_enclave_native_function(address func) {
-  *enclave_native_function_addr() = func;
-}
-
-void Method::set_enclave_signature_handler(address func) {
-    *enclave_signature_handler_addr() = func;
-}
-
-
 bool Method::has_native_function() const {
   D_WARN_Unimplement;
 }
@@ -637,7 +657,14 @@ void Method::set_not_osr_compilable(int comp_level, bool report, const char* rea
 
 // Revert to using the interpreter and clear out the nmethod
 void Method::clear_code(bool acquire_lock /* = true */) {
-  D_WARN_Unimplement;
+  MutexLockerEx pl(acquire_lock ? Patching_lock : NULL, Mutex::_no_safepoint_check_flag);
+  // this may be NULL if c2i adapters have not been made yet
+  // Only should happen at allocate time.
+  _from_compiled_entry    = NULL;
+  OrderAccess::storestore();
+  _from_interpreted_entry = _i2i_entry;
+  OrderAccess::storestore();
+  _code = NULL;
 }
 
 // Called by class data sharing to remove any entry points (which are not shared)
@@ -668,7 +695,54 @@ void Method::unlink_method() {
 // Called when the method_holder is getting linked. Setup entrypoints so the method
 // is ready to be called from interpreter, compiler, and vtables.
 void Method::link_method(methodHandle h_method, TRAPS) {
-  D_WARN_Unimplement;
+  // If the code cache is full, we may reenter this function for the
+  // leftover methods that weren't linked.
+  if (_i2i_entry != NULL) return;
+
+  assert(_adapter == NULL, "init'd to NULL" );
+  assert( _code == NULL, "nothing compiled yet" );
+
+  // Setup interpreter entrypoint
+  assert(this == h_method(), "wrong h_method()" );
+  address entry = Interpreter::entry_for_method(h_method);
+  _method_kind = Interpreter::method_kind(h_method);
+  assert(entry != NULL, "interpreter entry must be non-null");
+  // Sets both _i2i_entry and _from_interpreted_entry
+  set_interpreter_entry(entry);
+  // int sgx_flags = is_sgx_interface(this);
+  // if ((sgx_flags & sgx_ecall_flag) == sgx_ecall_flag || strncmp(name()->as_C_string(), "sgx_hook", 8) == 0) {
+  //   {
+  //     _i2i_entry = get_non_null_point();
+  //     _from_interpreted_entry = _i2i_entry;
+  //   }
+  //   if ((sgx_flags & sgx_func_flag) == sgx_func_flag) {
+  //     AccessFlags f = this->access_flags();
+  //     f.set_flags(f.get_flags() | JVM_SGX_FUNC);
+  //     this->set_access_flags(f);
+  //   }
+  // } else if ((sgx_flags & sgx_ocall_flag) == sgx_ocall_flag || strncmp(name()->as_C_string(), "sgx_unhook", 10) == 0) {
+  //     this->_method_kind = AbstractInterpreter::sgx_ocall_entry;
+  // }
+
+  // Don't overwrite already registered native entries.
+  // if (is_native() && !has_native_function()) {
+  //   set_native_function(
+  //     SharedRuntime::native_method_throw_unsatisfied_link_error_entry(),
+  //     !native_bind_event_is_interesting);
+  // }
+
+  // Setup compiler entrypoint.  This is made eagerly, so we do not need
+  // special handling of vtables.  An alternative is to make adapters more
+  // lazily by calling make_adapter() from from_compiled_entry() for the
+  // normal calls.  For vtable calls life gets more complicated.  When a
+  // call-site goes mega-morphic we need adapters in all methods which can be
+  // called from the vtable.  We need adapters on such methods that get loaded
+  // later.  Ditto for mega-morphic itable calls.  If this proves to be a
+  // problem we'll make these lazily later.
+  // (void) make_adapters(h_method, CHECK);
+
+  // ONLY USE the h_method now as make_adapter may have blocked
+
 }
 
 address Method::make_adapters(methodHandle mh, TRAPS) {
@@ -780,11 +854,15 @@ bool Method::is_compiled_lambda_form() const {
 
 // Test if this method is an internal MH primitive method.
 bool Method::is_method_handle_intrinsic() const {
-  D_WARN_Unimplement;
+  vmIntrinsics::ID iid = intrinsic_id();
+  return (MethodHandles::is_signature_polymorphic(iid) &&
+          MethodHandles::is_signature_polymorphic_intrinsic(iid));
 }
 
 bool Method::has_member_arg() const {
-  D_WARN_Unimplement;
+  vmIntrinsics::ID iid = intrinsic_id();
+  return (MethodHandles::is_signature_polymorphic(iid) &&
+          MethodHandles::has_member_arg(iid));
 }
 
 // Make an instance of a signature-polymorphic internal MH primitive.
@@ -825,7 +903,60 @@ vmSymbols::SID Method::klass_id_for_intrinsics(Klass* holder) {
 }
 
 void Method::init_intrinsic_id() {
-  D_WARN_Unimplement;
+  assert(_intrinsic_id == vmIntrinsics::_none, "do this just once");
+  const uintptr_t max_id_uint = right_n_bits((int)(sizeof(_intrinsic_id) * BitsPerByte));
+  assert((uintptr_t)vmIntrinsics::ID_LIMIT <= max_id_uint, "else fix size");
+  assert(intrinsic_id_size_in_bytes() == sizeof(_intrinsic_id), "");
+
+  // the klass name is well-known:
+  vmSymbols::SID klass_id = klass_id_for_intrinsics(method_holder());
+  assert(klass_id != vmSymbols::NO_SID, "caller responsibility");
+
+  // ditto for method and signature:
+  vmSymbols::SID  name_id = vmSymbols::find_sid(name());
+  if (klass_id != vmSymbols::VM_SYMBOL_ENUM_NAME(java_lang_invoke_MethodHandle)
+      && name_id == vmSymbols::NO_SID)
+    return;
+  vmSymbols::SID   sig_id = vmSymbols::find_sid(signature());
+  if (klass_id != vmSymbols::VM_SYMBOL_ENUM_NAME(java_lang_invoke_MethodHandle)
+      && sig_id == vmSymbols::NO_SID)  return;
+  jshort flags = access_flags().as_short();
+
+  vmIntrinsics::ID id = vmIntrinsics::find_id(klass_id, name_id, sig_id, flags);
+  if (id != vmIntrinsics::_none) {
+    set_intrinsic_id(id);
+    return;
+  }
+
+  // A few slightly irregular cases:
+  switch (klass_id) {
+  case vmSymbols::VM_SYMBOL_ENUM_NAME(java_lang_StrictMath):
+    // Second chance: check in regular Math.
+    switch (name_id) {
+    case vmSymbols::VM_SYMBOL_ENUM_NAME(min_name):
+    case vmSymbols::VM_SYMBOL_ENUM_NAME(max_name):
+    case vmSymbols::VM_SYMBOL_ENUM_NAME(sqrt_name):
+      // pretend it is the corresponding method in the non-strict class:
+      klass_id = vmSymbols::VM_SYMBOL_ENUM_NAME(java_lang_Math);
+      id = vmIntrinsics::find_id(klass_id, name_id, sig_id, flags);
+      break;
+    }
+    break;
+
+  // Signature-polymorphic methods: MethodHandle.invoke*, InvokeDynamic.*.
+  case vmSymbols::VM_SYMBOL_ENUM_NAME(java_lang_invoke_MethodHandle):
+    if (!is_native())  break;
+    id = MethodHandles::signature_polymorphic_name_id(method_holder(), name());
+    if (is_static() != MethodHandles::is_signature_polymorphic_static(id))
+      id = vmIntrinsics::_none;
+    break;
+  }
+
+  if (id != vmIntrinsics::_none) {
+    // Set up its iid.  It is an alias method.
+    set_intrinsic_id(id);
+    return;
+  }
 }
 
 // These two methods are static since a GC may move the Method
@@ -863,7 +994,21 @@ static int method_comparator(Method* a, Method* b) {
 // This is only done during class loading, so it is OK to assume method_idnum matches the methods() array
 // default_methods also uses this without the ordering for fast find_method
 void Method::sort_methods(Array<Method*>* methods, bool idempotent, bool set_idnums) {
-  D_WARN_Unimplement;
+  int length = methods->length();
+  if (length > 1) {
+    {
+      // No_Safepoint_Verifier nsv;
+      QuickSort::sort<Method*>(methods->data(), length, method_comparator, idempotent);
+    }
+    // Reset method ordering
+    if (set_idnums) {
+      for (int i = 0; i < length; i++) {
+        Method* m = methods->at(i);
+        m->set_method_idnum(i);
+        m->set_orig_method_idnum(i);
+      }
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------------
@@ -925,6 +1070,47 @@ void Method::print_codes_on(int from, int to, outputStream* st) const {
 // between (bci,line) pairs since they are smaller. If (bci delta, line delta) fits in (5-bit unsigned, 3-bit unsigned)
 // we save it as one byte, otherwise we write a 0xFF escape character and use regular compression. 0x0 is used
 // as end-of-stream terminator.
+
+void CompressedLineNumberWriteStream::write_pair_regular(int bci_delta, int line_delta) {
+    // bci and line number does not compress into single byte.
+    // Write out escape character and use regular compression for bci and line number.
+    write_byte((jubyte)0xFF);
+    write_signed_int(bci_delta);
+    write_signed_int(line_delta);
+}
+
+// See comment in method.hpp which explains why this exists.
+#if defined(_M_AMD64) && _MSC_VER >= 1400
+#pragma optimize("", off)
+void CompressedLineNumberWriteStream::write_pair(int bci, int line) {
+    write_pair_inline(bci, line);
+}
+#pragma optimize("", on)
+#endif
+
+CompressedLineNumberReadStream::CompressedLineNumberReadStream(u_char* buffer) : CompressedReadStream(buffer) {
+    _bci = 0;
+    _line = 0;
+};
+
+
+bool CompressedLineNumberReadStream::read_pair() {
+    jubyte next = read_byte();
+    // Check for terminator
+    if (next == 0) return false;
+    if (next == 0xFF) {
+        // Escape character, regular compression used
+        _bci += read_signed_int();
+        _line += read_signed_int();
+    }
+    else {
+        // Single byte compression used
+        _bci += next >> 3;
+        _line += next & 0x7;
+    }
+    return true;
+}
+
 
 // See comment in method.hpp which explains why this exists.
 #if defined(_M_AMD64) && _MSC_VER >= 1400

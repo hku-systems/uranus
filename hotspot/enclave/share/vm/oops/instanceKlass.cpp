@@ -30,13 +30,13 @@
 //#include "classfile/verifier.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "interpreter/oopMapCache.hpp"
-//#include "interpreter/rewriter.hpp"
+#include "interpreter/rewriter.hpp"
 //#include "memory/genOopClosures.inline.hpp"
 //#include "memory/heapInspection.hpp"
 //#include "memory/iterator.inline.hpp"
 //#include "memory/metadataFactory.hpp"
 //#include "memory/oopFactory.hpp"
-//#include "oops/fieldStreams.hpp"
+#include "oops/fieldStreams.hpp"
 //#include "oops/instanceClassLoaderKlass.hpp"
 #include "oops/instanceKlass.hpp"
 //#include "oops/instanceMirrorKlass.hpp"
@@ -166,7 +166,7 @@ InstanceKlass* InstanceKlass::allocate_instance_klass(
 
   // Allocation
   InstanceKlass* ik;
-/*  if (rt == REF_NONE) {
+  if (rt == REF_NONE) {
     if (name == vmSymbols::java_lang_Class()) {
       ik = new (loader_data, size, THREAD) InstanceMirrorKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
@@ -175,7 +175,7 @@ InstanceKlass* InstanceKlass::allocate_instance_klass(
           (SystemDictionary::ClassLoader_klass_loaded() &&
           super_klass != NULL &&
           super_klass->is_subtype_of(SystemDictionary::ClassLoader_klass()))) {
-      ik = new (loader_data, size, THREAD) InstanceClassLoaderKlass(
+      ik = new (loader_data, size, THREAD) InstanceKlass(
         vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
         access_flags, is_anonymous);
     } else {
@@ -185,11 +185,12 @@ InstanceKlass* InstanceKlass::allocate_instance_klass(
         access_flags, is_anonymous);
     }
   } else {
+    D_WARN_Unimplement;
     // reference klass
-    ik = new (loader_data, size, THREAD) InstanceRefKlass(
-        vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
-        access_flags, is_anonymous);
-  }*/
+    // ik = new (loader_data, size, THREAD) InstanceRefKlass(
+        // vtable_len, itable_len, static_field_size, nonstatic_oop_map_size, rt,
+        // access_flags, is_anonymous);
+  }
 
   // Check for pending exception before adding to the loader data and incrementing
   // class count.  Can get OOM here.
@@ -208,7 +209,7 @@ InstanceKlass* InstanceKlass::allocate_instance_klass(
 
 // copy method ordering from resource area to Metaspace
 void InstanceKlass::copy_method_ordering(intArray* m, TRAPS) {
- /* if (m != NULL) {
+  if (m != NULL) {
     // allocate a new array and copy contents (memcpy?)
     _method_ordering = MetadataFactory::new_array<int>(class_loader_data(), m->length(), CHECK);
     for (int i = 0; i < m->length(); i++) {
@@ -216,15 +217,15 @@ void InstanceKlass::copy_method_ordering(intArray* m, TRAPS) {
     }
   } else {
     _method_ordering = Universe::the_empty_int_array();
-  }*/
+  }
 }
 
 // create a new array of vtable_indices for default methods
 Array<int>* InstanceKlass::create_new_default_vtable_indices(int len, TRAPS) {
-/*  Array<int>* vtable_indices = MetadataFactory::new_array<int>(class_loader_data(), len, CHECK_NULL);
+  Array<int>* vtable_indices = MetadataFactory::new_array<int>(class_loader_data(), len, CHECK_NULL);
   assert(default_vtable_indices() == NULL, "only create once");
   set_default_vtable_indices(vtable_indices);
-  return vtable_indices;*/
+  return vtable_indices;
 }
 
 InstanceKlass::InstanceKlass(int vtable_len,
@@ -234,7 +235,7 @@ InstanceKlass::InstanceKlass(int vtable_len,
                              ReferenceType rt,
                              AccessFlags access_flags,
                              bool is_anonymous) {
- /* No_Safepoint_Verifier no_safepoint; // until k becomes parsable
+  // No_Safepoint_Verifier no_safepoint; // until k becomes parsable
 
   int iksize = InstanceKlass::size(vtable_len, itable_len, nonstatic_oop_map_size,
                                    access_flags.is_interface(), is_anonymous);
@@ -296,13 +297,13 @@ InstanceKlass::InstanceKlass(int vtable_len,
 
   // Set temporary value until parseClassFile updates it with the real instance
   // size.
-  set_layout_helper(Klass::instance_layout_helper(0, true));*/
+  set_layout_helper(Klass::instance_layout_helper(0, true));
 }
 
 
 void InstanceKlass::deallocate_methods(ClassLoaderData* loader_data,
                                        Array<Method*>* methods) {
-/*  if (methods != NULL && methods != Universe::the_empty_method_array() &&
+  if (methods != NULL && methods != Universe::the_empty_method_array() &&
       !methods->is_shared()) {
     for (int i = 0; i < methods->length(); i++) {
       Method* method = methods->at(i);
@@ -313,7 +314,7 @@ void InstanceKlass::deallocate_methods(ClassLoaderData* loader_data,
       MetadataFactory::free_metadata(loader_data, method);
     }
     MetadataFactory::free_array<Method*>(loader_data, methods);
-  }*/
+  }
 }
 
 void InstanceKlass::deallocate_interfaces(ClassLoaderData* loader_data,
@@ -322,7 +323,7 @@ void InstanceKlass::deallocate_interfaces(ClassLoaderData* loader_data,
                                           Array<Klass*>* transitive_interfaces) {
   // Only deallocate transitive interfaces if not empty, same as super class
   // or same as local interfaces.  See code in parseClassFile.
-/*  Array<Klass*>* ti = transitive_interfaces;
+  Array<Klass*>* ti = transitive_interfaces;
   if (ti != Universe::the_empty_klass_array() && ti != local_interfaces) {
     // check that the interfaces don't come from super class
     Array<Klass*>* sti = (super_klass == NULL) ? NULL :
@@ -336,7 +337,7 @@ void InstanceKlass::deallocate_interfaces(ClassLoaderData* loader_data,
   if (local_interfaces != Universe::the_empty_klass_array() &&
       local_interfaces != NULL && !local_interfaces->is_shared()) {
     MetadataFactory::free_array<Klass*>(loader_data, local_interfaces);
-  }*/
+  }
 }
 
 // This function deallocates the metadata and C heap pointers that the
@@ -344,7 +345,7 @@ void InstanceKlass::deallocate_interfaces(ClassLoaderData* loader_data,
 void InstanceKlass::deallocate_contents(ClassLoaderData* loader_data) {
 
   // Orphan the mirror first, CMS thinks it's still live.
-/*  if (java_mirror() != NULL) {
+  if (java_mirror() != NULL) {
     java_lang_Class::set_klass(java_mirror(), NULL);
   }
 
@@ -432,7 +433,7 @@ void InstanceKlass::deallocate_contents(ClassLoaderData* loader_data) {
   if (annotations() != NULL && !annotations()->is_shared()) {
     MetadataFactory::free_metadata(loader_data, annotations());
   }
-  set_annotations(NULL);*/
+  set_annotations(NULL);
 }
 
 bool InstanceKlass::should_be_initialized() const {
@@ -503,6 +504,7 @@ void InstanceKlass::fence_and_clear_init_lock() {
 }
 
 void InstanceKlass::eager_initialize_impl(instanceKlassHandle this_oop) {
+  D_WARN_Unimplement;
 /*  EXCEPTION_MARK;
   oop init_lock = this_oop->init_lock();
   ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
@@ -591,7 +593,117 @@ bool InstanceKlass::link_class_or_fail(TRAPS) {
 
 bool InstanceKlass::link_class_impl(
     instanceKlassHandle this_oop, bool throw_verifyerror, TRAPS) {
- D_WARN_Unimplement;
+  // check for error state.
+  // This is checking for the wrong state.  If the state is initialization_error,
+  // then this class *was* linked.  The CDS code does a try_link_class and uses
+  // initialization_error to mark classes to not include in the archive during
+  // DumpSharedSpaces.  This should be removed when the CDS bug is fixed.
+  if (this_oop->is_in_error_state()) {
+    ResourceMark rm(THREAD);
+    THROW_MSG_(vmSymbols::java_lang_NoClassDefFoundError(),
+               this_oop->external_name(), false);
+  }
+  // return if already verified
+  if (this_oop->is_linked()) {
+    return true;
+  }
+
+  // Timing
+  // timer handles recursion
+  assert(THREAD->is_Java_thread(), "non-JavaThread in link_class_impl");
+  JavaThread* jt = (JavaThread*)THREAD;
+
+  // link super class before linking this class
+  instanceKlassHandle super(THREAD, this_oop->super());
+  if (super.not_null()) {
+    if (super->is_interface()) {  // check if super class is an interface
+      ResourceMark rm(THREAD);
+      Exceptions::fthrow(
+        THREAD_AND_LOCATION,
+        vmSymbols::java_lang_IncompatibleClassChangeError(),
+        "class %s has interface %s as super class",
+        this_oop->external_name(),
+        super->external_name()
+      );
+      return false;
+    }
+
+    link_class_impl(super, throw_verifyerror, CHECK_false);
+  }
+
+  // link all interfaces implemented by this class before linking this class
+  Array<Klass*>* interfaces = this_oop->local_interfaces();
+  int num_interfaces = interfaces->length();
+  for (int index = 0; index < num_interfaces; index++) {
+    HandleMark hm(THREAD);
+    instanceKlassHandle ih(THREAD, interfaces->at(index));
+    link_class_impl(ih, throw_verifyerror, CHECK_false);
+  }
+
+  // in case the class is linked in the process of linking its superclasses
+  if (this_oop->is_linked()) {
+    return true;
+  }
+
+  // verification & rewriting
+  {
+    oop init_lock = this_oop->init_lock();
+    // ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
+    // rewritten will have been set if loader constraint error found
+    // on an earlier link attempt
+    // don't verify or rewrite if already rewritten
+
+    if (!this_oop->is_linked()) {
+      if (!this_oop->is_rewritten()) {
+        {
+          bool verify_ok = verify_code(this_oop, throw_verifyerror, THREAD);
+          if (!verify_ok) {
+            return false;
+          }
+        }
+
+        // Just in case a side-effect of verify linked this class already
+        // (which can sometimes happen since the verifier loads classes
+        // using custom class loaders, which are free to initialize things)
+        if (this_oop->is_linked()) {
+          return true;
+        }
+
+        // also sets rewritten
+        this_oop->rewrite_class(CHECK_false);
+      } else if (this_oop()->is_shared()) {
+        ResourceMark rm(THREAD);
+        char* message_buffer; // res-allocated by check_verification_dependencies
+        Handle loader = this_oop()->class_loader();
+        Handle pd     = this_oop()->protection_domain();
+        bool verified = SystemDictionaryShared::check_verification_dependencies(this_oop(),
+                        loader, pd, &message_buffer, THREAD);
+        if (!verified) {
+          THROW_MSG_(vmSymbols::java_lang_VerifyError(), message_buffer, false);
+        }
+      }
+
+      // relocate jsrs and link methods after they are all rewritten
+      this_oop->link_methods(CHECK_false);
+
+      // Initialize the vtable and interface table after
+      // methods have been rewritten since rewrite may
+      // fabricate new Method*s.
+      // also does loader constraint checking
+      //
+      // Initialize_vtable and initialize_itable need to be rerun for
+      // a shared class if the class is not loaded by the NULL classloader.
+      ClassLoaderData * loader_data = this_oop->class_loader_data();
+      if (!(this_oop()->is_shared() &&
+            loader_data->is_the_null_class_loader_data())) {
+        ResourceMark rm(THREAD);
+        this_oop->vtable()->initialize_vtable(true, CHECK_false);
+        this_oop->itable()->initialize_itable(true, CHECK_false);
+      }
+      this_oop->set_init_state(linked);
+    }
+  }
+  return true;
 }
 
 
@@ -599,14 +711,14 @@ bool InstanceKlass::link_class_impl(
 // The rewriter must be called exactly once. Rewriting must happen after
 // verification but before the first method of the class is executed.
 void InstanceKlass::rewrite_class(TRAPS) {
-/*  assert(is_loaded(), "must be loaded");
+  assert(is_loaded(), "must be loaded");
   instanceKlassHandle this_oop(THREAD, this);
   if (this_oop->is_rewritten()) {
     assert(this_oop()->is_shared(), "rewriting an unshared class?");
     return;
   }
   Rewriter::rewrite(this_oop, CHECK);
-  this_oop->set_rewritten();*/
+  this_oop->set_rewritten();
 }
 
 // Now relocate and link method entry points after class is rewritten.
@@ -663,7 +775,7 @@ void InstanceKlass::initialize_super_interfaces(instanceKlassHandle this_k, TRAP
 void InstanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) {
   // Make sure klass is linked (verified) before initialization
   // A class could already be verified, since it has been reflected upon.
-/*  this_oop->link_class(CHECK);
+  this_oop->link_class(CHECK);
 
   DTRACE_CLASSINIT_PROBE(required, InstanceKlass::cast(this_oop()), -1);
 
@@ -673,7 +785,7 @@ void InstanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) {
   // Step 1
   {
     oop init_lock = this_oop->init_lock();
-    ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
+    // ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
 
     Thread *self = THREAD; // it's passed the current thread
 
@@ -681,10 +793,10 @@ void InstanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) {
     // If we were to use wait() instead of waitInterruptibly() then
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
-    while(this_oop->is_being_initialized() && !this_oop->is_reentrant_initialization(self)) {
-        wait = true;
-      ol.waitUninterruptibly(CHECK);
-    }
+    // while(this_oop->is_being_initialized() && !this_oop->is_reentrant_initialization(self)) {
+    //     wait = true;
+    //   ol.waitUninterruptibly(CHECK);
+    // }
 
     // Step 3
     if (this_oop->is_being_initialized() && this_oop->is_reentrant_initialization(self)) {
@@ -758,12 +870,12 @@ void InstanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) {
     DTRACE_CLASSINIT_PROBE_WAIT(clinit, InstanceKlass::cast(this_oop()), -1,wait);
     // Timer includes any side effects of class initialization (resolution,
     // etc), but not recursive entry into call_class_initializer().
-    PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),
-                             ClassLoader::perf_class_init_selftime(),
-                             ClassLoader::perf_classes_inited(),
-                             jt->get_thread_stat()->perf_recursion_counts_addr(),
-                             jt->get_thread_stat()->perf_timers_addr(),
-                             PerfClassTraceTime::CLASS_CLINIT);
+    // PerfClassTraceTime timer(ClassLoader::perf_class_init_time(),
+    //                          ClassLoader::perf_class_init_selftime(),
+    //                          ClassLoader::perf_classes_inited(),
+    //                          jt->get_thread_stat()->perf_recursion_counts_addr(),
+    //                          jt->get_thread_stat()->perf_timers_addr(),
+    //                          PerfClassTraceTime::CLASS_CLINIT);
     this_oop->call_class_initializer(THREAD);
   }
 
@@ -780,26 +892,27 @@ void InstanceKlass::initialize_impl(instanceKlassHandle this_oop, TRAPS) {
     CLEAR_PENDING_EXCEPTION;
     // JVMTI has already reported the pending exception
     // JVMTI internal flag reset is needed in order to report ExceptionInInitializerError
-    JvmtiExport::clear_detected_exception((JavaThread*)THREAD);
+    // JvmtiExport::clear_detected_exception((JavaThread*)THREAD);
     {
       EXCEPTION_MARK;
       this_oop->set_initialization_state_and_notify(initialization_error, THREAD);
       CLEAR_PENDING_EXCEPTION;   // ignore any exception thrown, class initialization error is thrown below
       // JVMTI has already reported the pending exception
       // JVMTI internal flag reset is needed in order to report ExceptionInInitializerError
-      JvmtiExport::clear_detected_exception((JavaThread*)THREAD);
+      // JvmtiExport::clear_detected_exception((JavaThread*)THREAD);
     }
     DTRACE_CLASSINIT_PROBE_WAIT(error, InstanceKlass::cast(this_oop()), -1,wait);
     if (e->is_a(SystemDictionary::Error_klass())) {
       THROW_OOP(e());
     } else {
-      JavaCallArguments args(e);
-      THROW_ARG(vmSymbols::java_lang_ExceptionInInitializerError(),
-                vmSymbols::throwable_void_signature(),
-                &args);
+      D_WARN_Unimplement;
+      // JavaCallArguments args(e);
+      // THROW_ARG(vmSymbols::java_lang_ExceptionInInitializerError(),
+      //           vmSymbols::throwable_void_signature(),
+      //           &args);
     }
   }
-  DTRACE_CLASSINIT_PROBE_WAIT(end, InstanceKlass::cast(this_oop()), -1,wait);*/
+  DTRACE_CLASSINIT_PROBE_WAIT(end, InstanceKlass::cast(this_oop()), -1,wait);
 }
 
 
@@ -966,18 +1079,19 @@ instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
 }
 
 instanceOop InstanceKlass::allocate_instance(TRAPS) {
-/*  bool has_finalizer_flag = has_finalizer(); // Query before possible GC
+  bool has_finalizer_flag = has_finalizer(); // Query before possible GC
   int size = size_helper();  // Query before forming handle.
 
   KlassHandle h_k(THREAD, this);
 
   instanceOop i;
 
-  i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
+  // i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
+  i = (instanceOop)EnclaveMemory::enclaveMemory->vm_new_obj(JavaThread::current(), h_k());
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
   }
-  return i;*/
+  return i;
 }
 
 void InstanceKlass::check_valid_for_instantiation(bool throwError, TRAPS) {
@@ -990,7 +1104,7 @@ Klass* InstanceKlass::array_klass_impl(bool or_null, int n, TRAPS) {
 }
 
 Klass* InstanceKlass::array_klass_impl(instanceKlassHandle this_oop, bool or_null, int n, TRAPS) {
-/*  if (this_oop->array_klasses() == NULL) {
+  if (this_oop->array_klasses() == NULL) {
     if (or_null) return NULL;
 
     ResourceMark rm;
@@ -1012,7 +1126,7 @@ Klass* InstanceKlass::array_klass_impl(instanceKlassHandle this_oop, bool or_nul
   if (or_null) {
     return oak->array_klass_or_null(n);
   }
-  return oak->array_klass(n, CHECK_NULL);*/
+  return oak->array_klass(n, CHECK_NULL);
 }
 
 Klass* InstanceKlass::array_klass_impl(bool or_null, TRAPS) {
@@ -1079,7 +1193,7 @@ void InstanceKlass::mask_for(methodHandle method, int bci,
 
 
 bool InstanceKlass::find_local_field(Symbol* name, Symbol* sig, fieldDescriptor* fd) const {
-/*  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
+  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
     Symbol* f_name = fs.name();
     Symbol* f_sig  = fs.signature();
     if (f_name == name && f_sig == sig) {
@@ -1087,7 +1201,7 @@ bool InstanceKlass::find_local_field(Symbol* name, Symbol* sig, fieldDescriptor*
       return true;
     }
   }
-  return false;*/
+  return false;
 }
 
 

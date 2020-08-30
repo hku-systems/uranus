@@ -133,10 +133,10 @@ klassVtable* ArrayKlass::vtable() const {
 
 objArrayOop ArrayKlass::allocate_arrayArray(int n, int length, TRAPS) {
   if (length < 0) {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_IndexOutOfBoundsException);
+    THROW_0(vmSymbols::java_lang_IndexOutOfBoundsException());
   }
   if (length > arrayOopDesc::max_array_length(T_ARRAY)) {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+    THROW_0(vmSymbols::java_lang_OutOfMemoryError());
   }
   int size = objArrayOopDesc::object_size(length);
   Klass* k = array_klass(n+dimension(), CHECK_0);

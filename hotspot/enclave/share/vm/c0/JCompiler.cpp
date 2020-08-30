@@ -69,6 +69,6 @@ bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {
 }
 
 bool JCompiler::is_compile(Method *method) {
-    address method_entry = *method->enclave_native_function_addr();
+    address method_entry = method->_from_compiled_entry;
     return sgx_is_within_enclave(method_entry, 1);
 }

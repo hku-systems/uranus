@@ -45,18 +45,48 @@ ConstMethod::ConstMethod(int byte_code_size,
                          InlineTableSizes* sizes,
                          MethodType method_type,
                          int size) {
-  D_WARN_Unimplement;
+  // No_Safepoint_Verifier no_safepoint;
+  init_fingerprint();
+  set_constants(NULL);
+  set_stackmap_data(NULL);
+  set_code_size(byte_code_size);
+  set_constMethod_size(size);
+  set_inlined_tables_length(sizes); // sets _flags
+  set_method_type(method_type);
+  assert(this->size() == size, "wrong size for object");
+  set_name_index(0);
+  set_signature_index(0);
+  set_constants(NULL);
+  set_max_stack(0);
+  set_max_locals(0);
+  set_method_idnum(0);
+  set_size_of_parameters(0);
+  set_result_type(T_VOID);
 }
 
 // Accessor that copies to metadata.
 void ConstMethod::copy_stackmap_data(ClassLoaderData* loader_data,
                                      u1* sd, int length, TRAPS) {
-  D_WARN_Unimplement;
+  _stackmap_data = MetadataFactory::new_array<u1>(loader_data, length, CHECK);
+  memcpy((void*)_stackmap_data->adr_at(0), (void*)sd, length);
 }
 
 // Deallocate metadata fields associated with ConstMethod*
 void ConstMethod::deallocate_contents(ClassLoaderData* loader_data) {
-  D_WARN_Unimplement;
+  if (stackmap_data() != NULL) {
+    MetadataFactory::free_array<u1>(loader_data, stackmap_data());
+  }
+  set_stackmap_data(NULL);
+
+  // deallocate annotation arrays
+  if (has_method_annotations())
+    MetadataFactory::free_array<u1>(loader_data, method_annotations());
+  if (has_parameter_annotations())
+    MetadataFactory::free_array<u1>(loader_data, parameter_annotations());
+  if (has_type_annotations())
+    MetadataFactory::free_array<u1>(loader_data, type_annotations());
+  if (has_default_annotations())
+    MetadataFactory::free_array<u1>(loader_data, default_annotations());
 }
 
 // How big must this constMethodObject be?

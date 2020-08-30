@@ -219,7 +219,171 @@ void initialize_basic_type_klass(Klass* k, TRAPS) {
 }
 
 void Universe::genesis(TRAPS) {
-  D_WARN_Unimplement;
+  ResourceMark rm;
+
+  { FlagSetting fs(_bootstrapping, true);
+
+    { MutexLocker mc(Compile_lock);
+
+      // determine base vtable size; without that we cannot create the array klasses
+      compute_base_vtable_size();
+
+      if (!UseSharedSpaces) {
+        _boolArrayKlassObj      = TypeArrayKlass::create_klass(T_BOOLEAN, sizeof(jboolean), CHECK);
+        _charArrayKlassObj      = TypeArrayKlass::create_klass(T_CHAR,    sizeof(jchar),    CHECK);
+        _singleArrayKlassObj    = TypeArrayKlass::create_klass(T_FLOAT,   sizeof(jfloat),   CHECK);
+        _doubleArrayKlassObj    = TypeArrayKlass::create_klass(T_DOUBLE,  sizeof(jdouble),  CHECK);
+        _byteArrayKlassObj      = TypeArrayKlass::create_klass(T_BYTE,    sizeof(jbyte),    CHECK);
+        _shortArrayKlassObj     = TypeArrayKlass::create_klass(T_SHORT,   sizeof(jshort),   CHECK);
+        _intArrayKlassObj       = TypeArrayKlass::create_klass(T_INT,     sizeof(jint),     CHECK);
+        _longArrayKlassObj      = TypeArrayKlass::create_klass(T_LONG,    sizeof(jlong),    CHECK);
+
+        _typeArrayKlassObjs[T_BOOLEAN] = _boolArrayKlassObj;
+        _typeArrayKlassObjs[T_CHAR]    = _charArrayKlassObj;
+        _typeArrayKlassObjs[T_FLOAT]   = _singleArrayKlassObj;
+        _typeArrayKlassObjs[T_DOUBLE]  = _doubleArrayKlassObj;
+        _typeArrayKlassObjs[T_BYTE]    = _byteArrayKlassObj;
+        _typeArrayKlassObjs[T_SHORT]   = _shortArrayKlassObj;
+        _typeArrayKlassObjs[T_INT]     = _intArrayKlassObj;
+        _typeArrayKlassObjs[T_LONG]    = _longArrayKlassObj;
+
+        ClassLoaderData* null_cld = ClassLoaderData::the_null_class_loader_data();
+
+        _the_array_interfaces_array = MetadataFactory::new_array<Klass*>(null_cld, 2, NULL, CHECK);
+        _the_empty_int_array        = MetadataFactory::new_array<int>(null_cld, 0, CHECK);
+        _the_empty_short_array      = MetadataFactory::new_array<u2>(null_cld, 0, CHECK);
+        _the_empty_method_array     = MetadataFactory::new_array<Method*>(null_cld, 0, CHECK);
+        _the_empty_klass_array      = MetadataFactory::new_array<Klass*>(null_cld, 0, CHECK);
+      }
+    }
+
+    vmSymbols::initialize(CHECK);
+
+    SystemDictionary::initialize(CHECK);
+
+    Klass* ok = SystemDictionary::Object_klass();
+
+    _the_null_string            = StringTable::intern("null", CHECK);
+    _the_min_jint_string       = StringTable::intern("-2147483648", CHECK);
+
+    if (UseSharedSpaces) {
+      // Verify shared interfaces array.
+      assert(_the_array_interfaces_array->at(0) ==
+             SystemDictionary::Cloneable_klass(), "u3");
+      assert(_the_array_interfaces_array->at(1) ==
+             SystemDictionary::Serializable_klass(), "u3");
+    } else {
+      // Set up shared interfaces array.  (Do this before supers are set up.)
+      _the_array_interfaces_array->at_put(0, SystemDictionary::Cloneable_klass());
+      _the_array_interfaces_array->at_put(1, SystemDictionary::Serializable_klass());
+    }
+
+    initialize_basic_type_klass(boolArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(charArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(singleArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(doubleArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(byteArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(shortArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(intArrayKlassObj(), CHECK);
+    initialize_basic_type_klass(longArrayKlassObj(), CHECK);
+  } // end of core bootstrapping
+
+  // Maybe this could be lifted up now that object array can be initialized
+  // during the bootstrapping.
+
+  // OLD
+  // Initialize _objectArrayKlass after core bootstraping to make
+  // sure the super class is set up properly for _objectArrayKlass.
+  // ---
+  // NEW
+  // Since some of the old system object arrays have been converted to
+  // ordinary object arrays, _objectArrayKlass will be loaded when
+  // SystemDictionary::initialize(CHECK); is run. See the extra check
+  // for Object_klass_loaded in objArrayKlassKlass::allocate_objArray_klass_impl.
+  _objectArrayKlassObj = InstanceKlass::
+    cast(SystemDictionary::Object_klass())->array_klass(1, CHECK);
+  // OLD
+  // Add the class to the class hierarchy manually to make sure that
+  // its vtable is initialized after core bootstrapping is completed.
+  // ---
+  // New
+  // Have already been initialized.
+  _objectArrayKlassObj->append_to_sibling_list();
+
+  // Compute is_jdk version flags.
+  // Only 1.3 or later has the java.lang.Shutdown class.
+  // Only 1.4 or later has the java.lang.CharSequence interface.
+  // Only 1.5 or later has the java.lang.management.MemoryUsage class.
+  if (JDK_Version::is_partially_initialized()) {
+    uint8_t jdk_version;
+    Klass* k = SystemDictionary::resolve_or_null(
+        vmSymbols::java_lang_management_MemoryUsage(), THREAD);
+    CLEAR_PENDING_EXCEPTION; // ignore exceptions
+    if (k == NULL) {
+      k = SystemDictionary::resolve_or_null(
+          vmSymbols::java_lang_CharSequence(), THREAD);
+      CLEAR_PENDING_EXCEPTION; // ignore exceptions
+      if (k == NULL) {
+        k = SystemDictionary::resolve_or_null(
+            vmSymbols::java_lang_Shutdown(), THREAD);
+        CLEAR_PENDING_EXCEPTION; // ignore exceptions
+        if (k == NULL) {
+          jdk_version = 2;
+        } else {
+          jdk_version = 3;
+        }
+      } else {
+        jdk_version = 4;
+      }
+    } else {
+      jdk_version = 5;
+    }
+    JDK_Version::fully_initialize(jdk_version);
+  }
+
+  #ifdef ASSERT
+  if (FullGCALot) {
+    // Allocate an array of dummy objects.
+    // We'd like these to be at the bottom of the old generation,
+    // so that when we free one and then collect,
+    // (almost) the whole heap moves
+    // and we find out if we actually update all the oops correctly.
+    // But we can't allocate directly in the old generation,
+    // so we allocate wherever, and hope that the first collection
+    // moves these objects to the bottom of the old generation.
+    // We can allocate directly in the permanent generation, so we do.
+    int size;
+    if (UseConcMarkSweepGC) {
+      warning("Using +FullGCALot with concurrent mark sweep gc "
+              "will not force all objects to relocate");
+      size = FullGCALotDummies;
+    } else {
+      size = FullGCALotDummies * 2;
+    }
+    objArrayOop    naked_array = oopFactory::new_objArray(SystemDictionary::Object_klass(), size, CHECK);
+    objArrayHandle dummy_array(THREAD, naked_array);
+    int i = 0;
+    while (i < size) {
+        // Allocate dummy in old generation
+      oop dummy = InstanceKlass::cast(SystemDictionary::Object_klass())->allocate_instance(CHECK);
+      dummy_array->obj_at_put(i++, dummy);
+    }
+    {
+      // Only modify the global variable inside the mutex.
+      // If we had a race to here, the other dummy_array instances
+      // and their elements just get dropped on the floor, which is fine.
+      MutexLocker ml(FullGCALot_lock);
+      if (_fullgc_alot_dummy_array == NULL) {
+        _fullgc_alot_dummy_array = dummy_array();
+      }
+    }
+    assert(i == _fullgc_alot_dummy_array->length(), "just checking");
+  }
+  #endif
+
+  // Initialize dependency array for null class loader
+  ClassLoaderData::the_null_class_loader_data()->init_dependencies(CHECK);
+
 }
 
 // CDS support for patching vtables in metadata in the shared archive.
@@ -273,6 +437,7 @@ void Universe::initialize_basic_type_mirrors(TRAPS) {
 }
 
 void Universe::fixup_mirrors(TRAPS) {
+  printf("%lx %lx\n", THREAD, JavaThread::current());
   // Bootstrap problem: all classes gets a mirror (java.lang.Class instance) assigned eagerly,
   // but we cannot do that for classes created before java.lang.Class is loaded. Here we simply
   // walk over permanent objects created so far (mostly classes) and fixup their mirrors. Note
@@ -287,6 +452,7 @@ void Universe::fixup_mirrors(TRAPS) {
   for (int i = 0; i < list_length; i++) {
     Klass* k = list->at(i);
     assert(k->is_klass(), "List should only hold classes");
+    printf("%lx %lx\n", k, THREAD);
     EXCEPTION_MARK;
     KlassHandle kh(THREAD, k);
     java_lang_Class::fixup_mirror(kh, CATCH);

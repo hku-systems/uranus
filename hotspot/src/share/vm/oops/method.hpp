@@ -98,6 +98,7 @@ class KlassSizeStats;
 class Method : public Metadata {
  friend class VMStructs;
  private:
+  int               _method_kind;
   ConstMethod*      _constMethod;                // Method read-only data.
   MethodData*       _method_data;
   MethodCounters*   _method_counters;

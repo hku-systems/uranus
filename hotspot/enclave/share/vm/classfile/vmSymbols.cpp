@@ -391,7 +391,22 @@ vmIntrinsics::ID vmIntrinsics::find_id_impl(vmSymbols::SID holder,
                                             vmSymbols::SID name,
                                             vmSymbols::SID sig,
                                             jshort flags) {
-  D_WARN_Unimplement;
+  assert((int)vmSymbols::SID_LIMIT <= (1<<vmSymbols::log2_SID_LIMIT), "must fit");
+
+  // Let the C compiler build the decision tree.
+
+#define VM_INTRINSIC_CASE(id, klass, name, sig, fcode) \
+  case ID3(SID_ENUM(klass), SID_ENUM(name), SID_ENUM(sig)): \
+    if (!match_##fcode(flags))  break; \
+    return id;
+
+  switch (ID3(holder, name, sig)) {
+    VM_INTRINSICS_DO(VM_INTRINSIC_CASE,
+                     VM_SYMBOL_IGNORE, VM_SYMBOL_IGNORE, VM_SYMBOL_IGNORE, VM_ALIAS_IGNORE);
+  }
+  return vmIntrinsics::_none;
+
+#undef VM_INTRINSIC_CASE
 }
 
 

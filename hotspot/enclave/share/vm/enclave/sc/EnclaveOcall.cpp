@@ -244,3 +244,9 @@ void KLASS_compute_oopmap(void* klass, void* method, int bci OCallCallerArgs) {
     // TODO: do computation at need / in encalve?
     DO_OCALL_CHECK(ocall_klass_compute_oopmap(klass, method, bci));
 }
+
+void* JVM_CLASSFILE_BUFFER(const char* name, int *size) {
+    char* ret = NULL;
+    DO_OCALL_CHECK(ocall_classfile_buffer(&ret, name, size));
+    return ret;
+}

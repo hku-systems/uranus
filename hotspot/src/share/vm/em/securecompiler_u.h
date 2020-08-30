@@ -73,6 +73,7 @@ void* SGX_UBRIDGE(SGX_NOCONVENTION, ocall_array_klass, (void* klass, int rank, i
 void* SGX_UBRIDGE(SGX_NOCONVENTION, ocall_multi_array_klass_get, (void* pool, int index));
 void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_jvm_pre_native, (void* method, int resolve));
 void* SGX_UBRIDGE(SGX_NOCONVENTION, ocall_jvm_malloc, (int size));
+void* SGX_UBRIDGE(SGX_NOCONVENTION, ocall_classfile_buffer, (const char* name, int* size));
 int SGX_UBRIDGE(SGX_NOCONVENTION, ocall_pthread_create, (pthread_t* new_thread, SGX_WRAPPER_PTHREAD_ATTRIBUTE __attr, unsigned long int job_id, sgx_enclave_id_t eid));
 pthread_t SGX_UBRIDGE(SGX_NOCONVENTION, ocall_pthread_self, ());
 int SGX_UBRIDGE(SGX_NOCONVENTION, ocall_pthread_join, (pthread_t pt, void** thread_result));

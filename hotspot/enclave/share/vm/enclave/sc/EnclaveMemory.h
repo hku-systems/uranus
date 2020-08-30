@@ -70,9 +70,9 @@ public:
 
     static bool print_copy;
 
-    static void* _type_array_klass;
+    // static void* _type_array_klass;
 
-    static Klass** wk_classes;
+    // static Klass** wk_classes;
 
     static std::list<void*> *thread_local_mem;
 

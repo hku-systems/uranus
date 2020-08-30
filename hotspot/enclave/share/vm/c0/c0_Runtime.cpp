@@ -449,7 +449,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
         case compile_method_patching_id:
         {
             Label compile_start;
-            __ str(r0, Address(rfp, Method::enclave_native_function_offset()));
+            __ str(r0, Address(rfp, Method::from_compiled_offset()));
             //and operation and test zero
             __ andr(r0, r0, r0);
             __ cbz(r0, compile_start);

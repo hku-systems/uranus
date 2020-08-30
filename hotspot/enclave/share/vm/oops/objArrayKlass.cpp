@@ -51,7 +51,89 @@ ObjArrayKlass* ObjArrayKlass::allocate(ClassLoaderData* loader_data, int n, Klas
 
 Klass* ObjArrayKlass::allocate_objArray_klass(ClassLoaderData* loader_data,
                                                 int n, KlassHandle element_klass, TRAPS) {
-  D_WARN_Unimplement;
+  // Eagerly allocate the direct array supertype.
+  KlassHandle super_klass = KlassHandle();
+  if (!Universe::is_bootstrapping() || SystemDictionary::Object_klass_loaded()) {
+    KlassHandle element_super (THREAD, element_klass->super());
+    if (element_super.not_null()) {
+      // The element type has a direct super.  E.g., String[] has direct super of Object[].
+      super_klass = KlassHandle(THREAD, element_super->array_klass_or_null());
+      bool supers_exist = super_klass.not_null();
+      // Also, see if the element has secondary supertypes.
+      // We need an array type for each.
+      Array<Klass*>* element_supers = element_klass->secondary_supers();
+      for( int i = element_supers->length()-1; i >= 0; i-- ) {
+        Klass* elem_super = element_supers->at(i);
+        if (elem_super->array_klass_or_null() == NULL) {
+          supers_exist = false;
+          break;
+        }
+      }
+      if (!supers_exist) {
+        // Oops.  Not allocated yet.  Back out, allocate it, and retry.
+        KlassHandle ek;
+        {
+          MutexUnlocker mu(MultiArray_lock);
+          MutexUnlocker mc(Compile_lock);   // for vtables
+          Klass* sk = element_super->array_klass(CHECK_0);
+          super_klass = KlassHandle(THREAD, sk);
+          for( int i = element_supers->length()-1; i >= 0; i-- ) {
+            KlassHandle elem_super (THREAD, element_supers->at(i));
+            elem_super->array_klass(CHECK_0);
+          }
+          // Now retry from the beginning
+          Klass* klass_oop = element_klass->array_klass(n, CHECK_0);
+          // Create a handle because the enclosing brace, when locking
+          // can cause a gc.  Better to have this function return a Handle.
+          ek = KlassHandle(THREAD, klass_oop);
+        }  // re-lock
+        return ek();
+      }
+    } else {
+      // The element type is already Object.  Object[] has direct super of Object.
+      super_klass = KlassHandle(THREAD, SystemDictionary::Object_klass());
+    }
+  }
+
+  // Create type name for klass.
+  Symbol* name = NULL;
+  if (!element_klass->oop_is_instance() ||
+      (name = InstanceKlass::cast(element_klass())->array_name()) == NULL) {
+
+    ResourceMark rm(THREAD);
+    char *name_str = element_klass->name()->as_C_string();
+    int len = element_klass->name()->utf8_length();
+    char *new_str = NEW_RESOURCE_ARRAY(char, len + 4);
+    int idx = 0;
+    new_str[idx++] = '[';
+    if (element_klass->oop_is_instance()) { // it could be an array or simple type
+      new_str[idx++] = 'L';
+    }
+    memcpy(&new_str[idx], name_str, len * sizeof(char));
+    idx += len;
+    if (element_klass->oop_is_instance()) {
+      new_str[idx++] = ';';
+    }
+    new_str[idx++] = '\0';
+    name = SymbolTable::new_permanent_symbol(new_str, CHECK_0);
+    if (element_klass->oop_is_instance()) {
+      InstanceKlass* ik = InstanceKlass::cast(element_klass());
+      ik->set_array_name(name);
+    }
+  }
+
+  // Initialize instance variables
+  ObjArrayKlass* oak = ObjArrayKlass::allocate(loader_data, n, element_klass, name, CHECK_0);
+
+  // Add all classes to our internal class loader list here,
+  // including classes in the bootstrap (NULL) class loader.
+  // GC walks these as strong roots.
+  loader_data->add_class(oak);
+
+  // Call complete_create_array_klass after all instance variables has been initialized.
+  ArrayKlass::complete_create_array_klass(oak, super_klass, CHECK_0);
+
+  return oak;
 }
 
 ObjArrayKlass::ObjArrayKlass(int n, KlassHandle element_klass, Symbol* name) : ArrayKlass(name) {
@@ -83,13 +165,51 @@ int ObjArrayKlass::oop_size(oop obj) const {
 }
 
 objArrayOop ObjArrayKlass::allocate(int length, TRAPS) {
-  D_WARN_Unimplement;
+  if (length >= 0) {
+    if (length <= arrayOopDesc::max_array_length(T_OBJECT)) {
+      int size = objArrayOopDesc::object_size(length);
+      KlassHandle h_k(THREAD, this);
+      return (objArrayOop)EnclaveMemory::enclaveMemory->klass_obj_array((JavaThread*)THREAD, this, length);
+    } else {
+      // report_java_out_of_memory("Requested array size exceeds VM limit");
+      // JvmtiExport::post_array_size_exhausted();
+      THROW_OOP_0(Universe::out_of_memory_error_array_size());
+    }
+  } else {
+    THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
+  }
 }
 
 static int multi_alloc_counter = 0;
 
 oop ObjArrayKlass::multi_allocate(int rank, jint* sizes, TRAPS) {
-  D_WARN_Unimplement;
+  int length = *sizes;
+  // Call to lower_dimension uses this pointer, so most be called before a
+  // possible GC
+  KlassHandle h_lower_dimension(THREAD, lower_dimension());
+  // If length < 0 allocate will throw an exception.
+  objArrayOop array = allocate(length, CHECK_NULL);
+  objArrayHandle h_array (THREAD, array);
+  if (rank > 1) {
+    if (length != 0) {
+      for (int index = 0; index < length; index++) {
+        ArrayKlass* ak = ArrayKlass::cast(h_lower_dimension());
+        oop sub_array = ak->multi_allocate(rank-1, &sizes[1], CHECK_NULL);
+        h_array->obj_at_put(index, sub_array);
+      }
+    } else {
+      // Since this array dimension has zero length, nothing will be
+      // allocated, however the lower dimension values must be checked
+      // for illegal values.
+      for (int i = 0; i < rank - 1; ++i) {
+        sizes += 1;
+        if (*sizes < 0) {
+          THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
+        }
+      }
+    }
+  }
+  return h_array();
 }
 
 // Either oop or narrowOop depending on UseCompressedOops.
@@ -106,7 +226,42 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
 
 Klass* ObjArrayKlass::array_klass_impl(bool or_null, int n, TRAPS) {
 
-  D_WARN_Unimplement;
+  assert(dimension() <= n, "check order of chain");
+  int dim = dimension();
+  if (dim == n) return this;
+
+  if (higher_dimension() == NULL) {
+    if (or_null)  return NULL;
+
+    ResourceMark rm;
+    JavaThread *jt = (JavaThread *)THREAD;
+    {
+      MutexLocker mc(Compile_lock, THREAD);   // for vtables
+      // Ensure atomic creation of higher dimensions
+      MutexLocker mu(MultiArray_lock, THREAD);
+
+      // Check if another thread beat us
+      if (higher_dimension() == NULL) {
+
+        // Create multi-dim klass object and link them together
+        Klass* k =
+          ObjArrayKlass::allocate_objArray_klass(class_loader_data(), dim + 1, this, CHECK_NULL);
+        ObjArrayKlass* ak = ObjArrayKlass::cast(k);
+        ak->set_lower_dimension(this);
+        OrderAccess::storestore();
+        set_higher_dimension(ak);
+        assert(ak->oop_is_objArray(), "incorrect initialization of ObjArrayKlass");
+      }
+    }
+  } else {
+    CHECK_UNHANDLED_OOPS_ONLY(Thread::current()->clear_unhandled_oops());
+  }
+
+  ObjArrayKlass *ak = ObjArrayKlass::cast(higher_dimension());
+  if (or_null) {
+    return ak->array_klass_or_null(n);
+  }
+  return ak->array_klass(n, CHECK_NULL);
 }
 
 Klass* ObjArrayKlass::array_klass_impl(bool or_null, TRAPS) {
@@ -288,6 +443,7 @@ int ObjArrayKlass::oop_adjust_pointers(oop obj) {
   D_WARN_Unimplement;
 }
 
+#if INCLUDE_ALL_GCS
 void ObjArrayKlass::oop_push_contents(PSPromotionManager* pm, oop obj) {
   D_WARN_Unimplement;
 }
@@ -321,6 +477,7 @@ void ObjArrayKlass::oop_copy_contents(ObjArrayKlass* klass, oop obj, std::queue<
 int ObjArrayKlass::oop_update_pointers(ParCompactionManager* cm, oop obj) {
   D_WARN_Unimplement;
 }
+#endif // INCLUDE_ALL_GCS
 
 // JVM support
 

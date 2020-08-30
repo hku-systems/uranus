@@ -51,25 +51,26 @@
 class NativeCallStack {};
 NativeCallStack EMPTY_STACK;
 
-void* StackObj::operator new (std::size_t size)     throw() { ShouldNotCallThis(); return 0; }
+void* StackObj::operator new(size_t size)     throw() { ShouldNotCallThis(); return 0; }
 void  StackObj::operator delete(void* p)              { ShouldNotCallThis(); }
-void* StackObj::operator new [](std::size_t size)  throw() { ShouldNotCallThis(); return 0; }
+void* StackObj::operator new [](size_t size)  throw() { ShouldNotCallThis(); return 0; }
 void  StackObj::operator delete [](void* p)           { ShouldNotCallThis(); }
 
-void* _ValueObj::operator new (std::size_t size)    throw() { ShouldNotCallThis(); return 0; }
+void* _ValueObj::operator new(size_t size)    throw() { ShouldNotCallThis(); return 0; }
 void  _ValueObj::operator delete(void* p)             { ShouldNotCallThis(); }
-void* _ValueObj::operator new [](std::size_t size) throw() { ShouldNotCallThis(); return 0; }
+void* _ValueObj::operator new [](size_t size) throw() { ShouldNotCallThis(); return 0; }
 void  _ValueObj::operator delete [](void* p)          { ShouldNotCallThis(); }
 
-void* MetaspaceObj::operator new (std::size_t size, ClassLoaderData* loader_data,
+void* MetaspaceObj::operator new(size_t size, ClassLoaderData* loader_data,
                                  size_t word_size, bool read_only,
                                  MetaspaceObj::Type type, TRAPS) throw() {
   // Klass has it's own operator new
-  return malloc(size * sizeof(char*));
+  return malloc(word_size * sizeof(char*));
 }
 
 bool MetaspaceObj::is_shared() const {
   D_WARN_Unimplement;
+  return false;
 }
 
 bool MetaspaceObj::is_metaspace_object() const {
@@ -80,7 +81,7 @@ void MetaspaceObj::print_address_on(outputStream* st) const {
   st->print(" {" INTPTR_FORMAT "}", p2i(this));
 }
 
-void* ResourceObj::operator new (std::size_t size, allocation_type type, MEMFLAGS flags) throw() {
+void* ResourceObj::operator new(size_t size, allocation_type type, MEMFLAGS flags) throw() {
   address res = NULL;
   switch (type) {
    case C_HEAP:
@@ -97,11 +98,11 @@ void* ResourceObj::operator new (std::size_t size, allocation_type type, MEMFLAG
   return res;
 }
 
-void* ResourceObj::operator new [](std::size_t size, allocation_type type, MEMFLAGS flags) throw() {
+void* ResourceObj::operator new [](size_t size, allocation_type type, MEMFLAGS flags) throw() {
   return (address) operator new(size, type, flags);
 }
 
-void* ResourceObj::operator new (std::size_t size, const std::nothrow_t&  nothrow_constant,
+void* ResourceObj::operator new(size_t size, const std::nothrow_t&  nothrow_constant,
     allocation_type type, MEMFLAGS flags) throw() {
   // should only call this with std::nothrow, use other operator new() otherwise
   address res = NULL;
@@ -120,7 +121,7 @@ void* ResourceObj::operator new (std::size_t size, const std::nothrow_t&  nothro
   return res;
 }
 
-void* ResourceObj::operator new [](std::size_t size, const std::nothrow_t&  nothrow_constant,
+void* ResourceObj::operator new [](size_t size, const std::nothrow_t&  nothrow_constant,
     allocation_type type, MEMFLAGS flags) throw() {
   return (address)operator new(size, nothrow_constant, type, flags);
 }
@@ -278,7 +279,7 @@ Chunk::clean_chunk_pool() {
 //--------------------------------------------------------------------------------------
 // Chunk implementation
 
-void* Chunk::operator new (std::size_t requested_size, AllocFailType alloc_failmode, size_t length) throw() {
+void* Chunk::operator new (size_t requested_size, AllocFailType alloc_failmode, size_t length) throw() {
   // requested_size is equal to sizeof(Chunk) but in order for the arena
   // allocations to come out aligned as expected the size must be aligned
   // to expected arena alignment.
@@ -375,22 +376,22 @@ Arena::~Arena() {
   destruct_contents();
 }
 
-void* Arena::operator new (std::size_t size) throw() {
+void* Arena::operator new(size_t size) throw() {
   assert(false, "Use dynamic memory type binding");
   return NULL;
 }
 
-void* Arena::operator new (std::size_t size, const std::nothrow_t&  nothrow_constant) throw() {
+void* Arena::operator new (size_t size, const std::nothrow_t&  nothrow_constant) throw() {
   assert(false, "Use dynamic memory type binding");
   return NULL;
 }
 
   // dynamic memory type binding
-void* Arena::operator new (std::size_t size, MEMFLAGS flags) throw() {
+void* Arena::operator new(size_t size, MEMFLAGS flags) throw() {
   return (void *) AllocateHeap(size, flags, CALLER_PC);
 }
 
-void* Arena::operator new (std::size_t size, const std::nothrow_t& nothrow_constant, MEMFLAGS flags) throw() {
+void* Arena::operator new(size_t size, const std::nothrow_t& nothrow_constant, MEMFLAGS flags) throw() {
   return os::malloc(size, flags, CALLER_PC);
 }
 

@@ -54,19 +54,19 @@ IRT_ENTRY(oop, InterpreterRuntime::create_klass_exception(JavaThread* thread, ch
 IRT_END
 
 IRT_ENTRY(void, InterpreterRuntime::throw_ClassCastException(JavaThread* thread, oopDesc* obj))
-  ENCLAVE_THROW(EnclaveException::java_lang_ClassCastException);
+  THROW(vmSymbols::java_lang_ClassCastException());
 IRT_END
 
 IRT_ENTRY(void, InterpreterRuntime::throw_ArrayIndexOutOfBoundsException(JavaThread* thread, char* name, jint index))
-  ENCLAVE_THROW(EnclaveException::java_lang_ArrayIndexOutOfBoundsException);
+  THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException());
 IRT_END
 
 IRT_ENTRY(void, InterpreterRuntime::throw_StackOverflowError(JavaThread* thread))
-  ENCLAVE_THROW(EnclaveException::java_lang_StackOverflowError);
+  THROW(vmSymbols::java_lang_StackOverflowError());
 IRT_END
 
 IRT_ENTRY(void, InterpreterRuntime::throw_AbstractMethodError(JavaThread* thread))
-  ENCLAVE_THROW(EnclaveException::java_lang_AbstractMethodError);
+  THROW(vmSymbols::java_lang_AbstractMethodError());
 IRT_END
 
 IRT_ENTRY(address, InterpreterRuntime::exception_handler_for_exception(JavaThread* thread, oopDesc* exception))
@@ -175,7 +175,7 @@ address SignatureHandlerLibrary::set_handler(CodeBuffer* buffer) {
 }
 
 void SignatureHandlerLibrary::add(methodHandle method) {
-  if (method->enclave_signature_handler() == NULL) {
+  if (method->signature_handler() == NULL) {
     // use slow signature handler if we can't do better
     int handler_index = -1;
     // check if we can use customized (fast) signature handler
@@ -210,10 +210,10 @@ void SignatureHandlerLibrary::add(methodHandle method) {
       // Set handler under SignatureHandlerLibrary_lock
     if (handler_index < 0) {
       // use generic signature handler
-      method->set_enclave_signature_handler(Interpreter::slow_signature_handler());
+      method->set_signature_handler(Interpreter::slow_signature_handler());
     } else {
       // set handler
-      method->set_enclave_signature_handler(_handlers->at(handler_index));
+      method->set_signature_handler(_handlers->at(handler_index));
     }
     } else {
       CHECK_UNHANDLED_OOPS_ONLY(Thread::current()->clear_unhandled_oops());

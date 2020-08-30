@@ -78,7 +78,7 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
 
     //call to blr
     if (entry == (address)-1) {
-      lea(r0, Address(method, Method::enclave_native_function_offset()));
+      lea(r0, Address(method, Method::from_compiled_offset()));
       blr(r0);
     } else if (entry != NULL) {
          emit_int8((unsigned char)0xE8);
@@ -88,7 +88,7 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         // jump to the compile stub, if it is not a interface, remove the patch after
         stub = new PatchingStub(this, PatchingStub::compile_method_id, force_compile);
         stub->install();
-        lea(r0, Address(method, Method::enclave_native_function_offset()));
+        lea(r0, Address(method, Method::from_compiled_offset()));
         blr(r0);
     }
 }

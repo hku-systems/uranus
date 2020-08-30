@@ -66,7 +66,7 @@
 
 // To call default constructor the placement operator new() is used.
 // It should be empty (it only returns the passed void* pointer).
-// The definition of placement operator new (std::size_t, void*) in the <new>.
+// The definition of placement operator new(size_t, void*) in the <new>.
 
 
 // Need the correct linkage to call qsort without warnings
@@ -98,11 +98,7 @@ class GenericGrowableArray : public ResourceObj {
 
   // Where are we going to allocate memory?
   bool on_C_heap() {
-#ifndef ENCLAVE_UNIX
       return _arena == (Arena*)1;
-#else
-      return true;
-#endif
   }
   bool on_stack () { return _arena == NULL;      }
   bool on_arena () { return _arena >  (Arena*)1;  }

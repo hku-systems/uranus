@@ -120,14 +120,14 @@ int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
 void jio_print(const char* s) {
   // Try to make this function as atomic as possible.
     // Make an unused local variable to avoid warning from gcc 4.x compiler.
-  size_t count = ::write(0, s, (int)strlen(s));
+  size_t count = ::write(stdout, s, (int)strlen(s));
 }
 
 } // Extern C
 
 void array_set(jvalue* value, arrayOop a, int index, BasicType value_type, TRAPS) {
   if (!a->is_within_bounds(index)) {
-    ENCLAVE_THROW(EnclaveException::java_lang_IndexOutOfBoundsException);
+    THROW(vmSymbols::java_lang_IndexOutOfBoundsException());
   }
   if (a->is_objArray()) {
     if (value_type == T_OBJECT) {
@@ -135,7 +135,7 @@ void array_set(jvalue* value, arrayOop a, int index, BasicType value_type, TRAPS
       if (obj != NULL) {
         Klass* element_klass = ObjArrayKlass::cast(a->klass())->element_klass();
         if (!obj->is_a(element_klass)) {
-          ENCLAVE_THROW(EnclaveException::java_lang_IllegalArgumentException);
+          THROW(vmSymbols::java_lang_IllegalArgumentException());
         }
       }
       objArrayOop(a)->obj_at_put(index, obj);
@@ -175,18 +175,18 @@ void array_set(jvalue* value, arrayOop a, int index, BasicType value_type, TRAPS
         typeArrayOop(a)->long_at_put(index, value->j);
             break;
       default:
-      ENCLAVE_THROW(EnclaveException::java_lang_IllegalArgumentException);
+      THROW(vmSymbols::java_lang_IllegalArgumentException());
     }
   }
 }
 
 static inline arrayOop check_array(JNIEnv *env, jobject arr, bool type_array_only, TRAPS) {
   if (arr == NULL) {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_NullPointerException);
+    THROW_0(vmSymbols::java_lang_NullPointerException());
   }
   oop a = JNIHandles::resolve_non_null(arr);
   if (!a->is_array() || (type_array_only && !a->is_typeArray())) {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_IllegalArgumentException);;
+    THROW_0(vmSymbols::java_lang_IllegalArgumentException());;
   }
   return arrayOop(a);
 }
@@ -195,7 +195,7 @@ JVM_ENTRY(void, JVM_ArrayCopy(JNIEnv *env, jclass ignored, jobject src, jint src
                               jobject dst, jint dst_pos, jint length))
 // Check if we have null pointers
   if (src == NULL || dst == NULL) {
-    ENCLAVE_THROW(EnclaveException::java_lang_NullPointerException);
+    THROW(vmSymbols::java_lang_NullPointerException());
   }
   arrayOop s = arrayOop(JNIHandles::resolve_non_null(src));
   arrayOop d = arrayOop(JNIHandles::resolve_non_null(dst));
@@ -271,7 +271,7 @@ JVM_ENTRY(void, JVM_EnclaveSetArrayElement(JNIEnv *env, jclass ignore, jobject a
     value_type = T_OBJECT;
   } else {
     if (box == NULL) {
-      ENCLAVE_THROW(EnclaveException::java_lang_IllegalArgumentException);
+      THROW(vmSymbols::java_lang_IllegalArgumentException());
     }
     value_type = java_lang_boxing_object::get_value(box, &value);
   }
@@ -360,7 +360,7 @@ JVM_ENTRY(jobjectArray, JVM_GetClassInterfaces(JNIEnv *env, jclass cls))
 
   // Allocate result array
   objArrayOop r = (objArrayOop) EnclaveMemory::heapMemory->klass_new_array(THREAD,
-                                 EnclaveMemory::wk_classes[SystemDictionary::java_lang_Class_knum]->java_mirror(), size);
+                                 SystemDictionary::Class_klass()->java_mirror(), size);
   objArrayHandle result (THREAD, r);
   // Fill in result
   if (klass->oop_is_instance()) {
@@ -371,8 +371,8 @@ JVM_ENTRY(jobjectArray, JVM_GetClassInterfaces(JNIEnv *env, jclass cls))
     }
   } else {
     // All arrays implement java.lang.Cloneable and java.io.Serializable
-    result->obj_at_put(0, EnclaveMemory::wk_classes[SystemDictionary::java_lang_Cloneable_knum]->java_mirror());
-    result->obj_at_put(1, EnclaveMemory::wk_classes[SystemDictionary::java_io_Serializable_knum]->java_mirror());
+    result->obj_at_put(0, SystemDictionary::Cloneable_klass()->java_mirror());
+    result->obj_at_put(1, SystemDictionary::Serializable_klass()->java_mirror());
   }
   return (jobjectArray) JNIHandles::make_local(env, result());
 JVM_END

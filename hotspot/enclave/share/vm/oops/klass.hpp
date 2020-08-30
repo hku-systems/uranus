@@ -185,7 +185,7 @@ protected:
   // Constructor
   Klass();
 
-  void* operator new (std::size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw();
+  void* operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw();
 
  public:
   jint        _layout_helper;

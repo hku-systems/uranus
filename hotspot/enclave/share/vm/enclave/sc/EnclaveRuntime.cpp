@@ -45,6 +45,8 @@ void pre_set_object_alignment() {
 
 }
 
+void mutex_init();
+
 void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, void** klass_list, int db) {
 
     debug_bit = db;
@@ -59,8 +61,10 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     UseCompressedClassPointers = false;
     UseCompressedOops = false;
     UseTLAB = false;
+    UseSharedSpaces = false;
     pre_set_object_alignment();
 
+    mutex_init();
     chunkpool_init();
 
     JavaThread javaThread;
@@ -76,8 +80,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     EnclaveMemory::heap_bottom = heap_bottom;
     os::set_memory_serialize_page((address)EnclaveMemory::new_page());
     os::set_polling_page((address)EnclaveMemory::new_page());
-    SystemDictionary::_box_klasses = (Klass**)KLASS_get_type_klass();
-    EnclaveMemory::wk_classes = (Klass**)klass_list;
+    // SystemDictionary::_box_klasses = (Klass**)KLASS_get_type_klass();
+    // EnclaveMemory::wk_classes = (Klass**)klass_list;
 
     Abstract_VM_Version::initialize();
     Bytecodes::initialize();
@@ -90,7 +94,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     Interpreter::initialize();
     EnclaveABI::init();
 
-    vmSymbols::initialize(&javaThread);
+    // vmSymbols::initialize(&javaThread);
+    Universe::genesis(&javaThread);
 
     is_init = true;
     EnclaveNative::init();
@@ -143,6 +148,16 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
 //        delete clean_pointer;
 //    }
 
+    const char* classname = "TestSuit";
+    Symbol *csym = SymbolTable::new_symbol(classname, &javaThread);
+    // ClassLoader::load_classfile(csym, &javaThread);
+    Klass *c = SystemDictionary::resolve_or_null(csym, Handle(), Handle(), &javaThread);
+
+    CallInfo info;
+    KlassHandle kh(c);
+    Symbol *signature = SymbolTable::new_symbol(((Method*)m)->signature()->as_C_string(), &javaThread);
+    Symbol *name = SymbolTable::new_symbol(((Method*)m)->name()->as_C_string(), &javaThread);
+    LinkResolver::resolve_static_call(info, kh, name, signature, KlassHandle(), false, true, &javaThread);
     u_char* r = NULL;
     {
         r = (u_char*)call_compiler(rbx_buf, (Method*)m);

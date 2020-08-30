@@ -112,7 +112,7 @@ class Universe: AllStatic {
   friend void  universe2_init();
   friend bool  universe_post_init();
 
- private:
+ public:
   // Known classes in the VM
   static Klass* _boolArrayKlassObj;
   static Klass* _byteArrayKlassObj;

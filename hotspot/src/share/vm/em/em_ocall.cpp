@@ -3,6 +3,7 @@
 
 #include "em_ocall.h"
 #include <stdio.h>
+#include <malloc.h>
 
 #define CACHE_ENTRY(method, bcp) method->constants()->cache()->entry_at(Bytes::get_native_u2((address)bcp + 1))
 #define CODE_AT(method, bcp) Bytecodes::code_at(method, bcp)
@@ -27,7 +28,7 @@ OCALL_ENTRY(void*, ocall_interpreter(void* r14, int size, void* method, void* th
 OCALL_END
 
 OCALL_ENTRY(void*,ocall_jvm_malloc(int size))
-
+    return malloc(size);
 OCALL_END
 
 OCALL_ENTRY(int, ocall_jvm_resolve_get_put(int byte, void* mh, int idx, void* bcp))
@@ -104,4 +105,33 @@ OCALL_END
 
 OCALL_ENTRY(void*, ocall_jvm_resolve_invoke_C(void* recv, void* constants, int bidx, int bc, void* recv_klass))
 
+OCALL_END
+
+OCALL_ENTRY(void*, ocall_classfile_buffer(const char* name, int* size))
+    int len = 0, r = 0;
+    void *buffer = NULL;
+    
+    printf("opening file %s\n", name);
+
+    FILE* f = fopen(name, "rb");
+
+    if (f == NULL) {
+        return NULL;
+    }
+
+    fseek(f, 0, SEEK_END);
+
+    len = ftell(f);
+
+    // reset
+    rewind(f);
+
+    buffer = (void*) malloc(len);
+    r = fread(buffer, sizeof(char), len, f);
+    if (r <= 0) {
+        free(buffer);
+        return NULL;
+    }
+    *size = len;
+    return buffer;
 OCALL_END

@@ -704,7 +704,7 @@ public:
   static Klass* volatile _abstract_ownable_synchronizer_klass;
 
   // table of box klasses (int_klass, etc.)
-  static Klass** _box_klasses;
+  static Klass* _box_klasses[T_VOID+1];
 
   static oop  _java_system_loader;
 

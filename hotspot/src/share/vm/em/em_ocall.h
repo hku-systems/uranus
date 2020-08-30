@@ -26,6 +26,7 @@ void ocall_jvm_pre_native(void*, int);
 void* ocall_klass_resolve_or_fail(const char*);
 void* ocall_klass_find_or_null(const char*);
 void ocall_klass_compute_oopmap(void*, void*, int);
+void* ocall_classfile_buffer(const char* name, int* size);
 #if defined(__cplusplus)
 }
 #endif

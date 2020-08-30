@@ -102,7 +102,7 @@
 #endif // INCLUDE_SERVICES
 
 #ifndef INCLUDE_CDS
-#define INCLUDE_CDS 1
+#define INCLUDE_CDS 0
 #endif
 
 #if INCLUDE_CDS
@@ -161,7 +161,7 @@
 #endif // INCLUDE_NMT
 
 #ifndef INCLUDE_TRACE
-#define INCLUDE_TRACE 1
+#define INCLUDE_TRACE 0
 #endif // INCLUDE_TRACE
 
 // COMPILER1 variant

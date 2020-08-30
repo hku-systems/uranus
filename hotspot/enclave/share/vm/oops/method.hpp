@@ -26,6 +26,7 @@
 #define SHARE_VM_OOPS_METHODOOP_HPP
 
 #include "classfile/vmSymbols.hpp"
+#include "code/compressedStream.hpp"
 #include "oops/annotations.hpp"
 #include "oops/constantPool.hpp"
 #include "oops/instanceKlass.hpp"
@@ -98,7 +99,8 @@ int is_sgx_interface(const Method* m);
 
 class Method : public Metadata {
  friend class VMStructs;
- private:
+ public:
+  int               _method_kind;
   ConstMethod*      _constMethod;                // Method read-only data.
   MethodData*       _method_data;
   MethodCounters*   _method_counters;
@@ -166,16 +168,13 @@ class Method : public Metadata {
 
   static address make_adapters(methodHandle mh, TRAPS);
   volatile address from_compiled_entry() const   {
-      if (strncmp(name()->as_C_string(), "sgx_hook", 8) == 0) {
-          printf("compile entry\n");
-          return Method::_hook_method_entry_point;
-      }
       return (address)OrderAccess::load_ptr_acquire(&_from_compiled_entry);
   }
   volatile address from_interpreted_entry() const{
       return (address)OrderAccess::load_ptr_acquire(&_from_interpreted_entry);
   }
 
+  int method_kind() const               { return _method_kind;  }
   // access flag
   AccessFlags access_flags() const               { return _access_flags;  }
   void set_access_flags(AccessFlags flags)       { _access_flags = flags; }
@@ -289,7 +288,7 @@ class Method : public Metadata {
   }
 
   int  interpreter_throwout_count() const        {
-    return -1;
+
   }
 
   // size of parameters
@@ -404,10 +403,8 @@ class Method : public Metadata {
   static MethodCounters* build_method_counters(Method* m, TRAPS);
 
   int interpreter_invocation_count() {
-    return -1;
   }
   int increment_interpreter_invocation_count(TRAPS) {
-    return -1;
   }
 
 #ifndef PRODUCT
@@ -454,7 +451,6 @@ class Method : public Metadata {
   bool has_itable_index() const                  { return _vtable_index <= itable_index_max; }
   int  itable_index() const                      { assert(valid_itable_index(), "");
                                                    return itable_index_max - _vtable_index; }
-
   void set_itable_index(int index);
 
   // interpreter entry
@@ -484,9 +480,7 @@ class Method : public Metadata {
 
   // signature handler (used for native methods only)
   address signature_handler() const              { return *(signature_handler_addr()); }
-  address enclave_signature_handler() const              { return *(enclave_signature_handler_addr()); }
   void set_signature_handler(address handler);
-  void set_enclave_signature_handler(address handler);
 
   // Interpreter oopmap support
   void mask_for(int bci, InterpreterOopMap* mask);
@@ -632,6 +626,7 @@ class Method : public Metadata {
 #endif
 
   // interpreter support
+  static ByteSize kind_offset()                  { return byte_offset_of(Method, _method_kind       ); }
   static ByteSize const_offset()                 { return byte_offset_of(Method, _constMethod       ); }
   static ByteSize access_flags_offset()          { return byte_offset_of(Method, _access_flags      ); }
   static ByteSize from_compiled_offset()         { return byte_offset_of(Method, _from_compiled_entry); }
@@ -646,12 +641,9 @@ class Method : public Metadata {
   static ByteSize compiled_invocation_counter_offset() { return byte_offset_of(Method, _compiled_invocation_count); }
 #endif // not PRODUCT
   static ByteSize native_function_offset()       { return in_ByteSize(sizeof(Method));                 }
-  static ByteSize enclave_native_function_offset()       { return in_ByteSize(sizeof(Method) + wordSize * 2); }
   static ByteSize from_interpreted_offset()      { return byte_offset_of(Method, _from_interpreted_entry ); }
   static ByteSize interpreter_entry_offset()     { return byte_offset_of(Method, _i2i_entry ); }
   static ByteSize signature_handler_offset()     { return in_ByteSize(sizeof(Method) + wordSize);      }
-  static ByteSize enclave_signature_handler_offset()     { return in_ByteSize(sizeof(Method) + wordSize * 3);      }
-  static ByteSize itable_index_offset()          { return byte_offset_of(Method, _vtable_index ); }
 
   // for code generation
   static int method_data_offset_in_bytes()       { return offset_of(Method, _method_data); }
@@ -890,8 +882,6 @@ class Method : public Metadata {
   // Inlined elements
   address* native_function_addr() const          { assert(is_native(), "must be native"); return (address*) (this+1); }
   address* signature_handler_addr() const        { return native_function_addr() + 1; }
-  address* enclave_native_function_addr() const  { return (address*)(this + 1) + 2; }
-  address* enclave_signature_handler_addr() const  { return (address*)(this + 1) + 3; }
 };
 
 
@@ -1000,5 +990,73 @@ class ExceptionTable : public StackObj {
     _table[idx].catch_type_index = value;
   }
 };
+
+// Utility class for compressing line number tables
+
+class CompressedLineNumberWriteStream : public CompressedWriteStream {
+private:
+    int _bci;
+    int _line;
+public:
+    // Constructor
+    CompressedLineNumberWriteStream(int initial_size) : CompressedWriteStream(initial_size), _bci(0), _line(0) {}
+    CompressedLineNumberWriteStream(u_char* buffer, int initial_size) : CompressedWriteStream(buffer, initial_size), _bci(0), _line(0) {}
+
+    // Write (bci, line number) pair to stream
+    void write_pair_regular(int bci_delta, int line_delta);
+
+    inline void write_pair_inline(int bci, int line) {
+        int bci_delta = bci - _bci;
+        int line_delta = line - _line;
+        _bci = bci;
+        _line = line;
+        // Skip (0,0) deltas - they do not add information and conflict with terminator.
+        if (bci_delta == 0 && line_delta == 0) return;
+        // Check if bci is 5-bit and line number 3-bit unsigned.
+        if (((bci_delta & ~0x1F) == 0) && ((line_delta & ~0x7) == 0)) {
+            // Compress into single byte.
+            jubyte value = ((jubyte)bci_delta << 3) | (jubyte)line_delta;
+            // Check that value doesn't match escape character.
+            if (value != 0xFF) {
+                write_byte(value);
+                return;
+            }
+        }
+        write_pair_regular(bci_delta, line_delta);
+    }
+
+    // Windows AMD64 + Apr 2005 PSDK with /O2 generates bad code for write_pair.
+    // Disabling optimization doesn't work for methods in header files
+    // so we force it to call through the non-optimized version in the .cpp.
+    // It's gross, but it's the only way we can ensure that all callers are
+    // fixed.  _MSC_VER is defined by the windows compiler
+#if defined(_M_AMD64) && _MSC_VER >= 1400
+    void write_pair(int bci, int line);
+#else
+    void write_pair(int bci, int line) { write_pair_inline(bci, line); }
+#endif
+
+    // Write end-of-stream marker
+    void write_terminator() { write_byte(0); }
+};
+
+
+// Utility class for decompressing line number tables
+
+class CompressedLineNumberReadStream : public CompressedReadStream {
+private:
+    int _bci;
+    int _line;
+public:
+    // Constructor
+    CompressedLineNumberReadStream(u_char* buffer);
+    // Read (bci, line number) pair from stream. Returns false at end-of-stream.
+    bool read_pair();
+    // Accessing bci and line number (after calling read_pair)
+    int bci() const { return _bci; }
+    int line() const { return _line; }
+};
+
+
 
 #endif // SHARE_VM_OOPS_METHODOOP_HPP

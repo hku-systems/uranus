@@ -26,6 +26,7 @@
 #include "interpreter/bytecode.hpp"
 #include "oops/constantPool.hpp"
 #include "oops/oop.inline.hpp"
+#include "interpreter/linkResolver.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/signature.hpp"
 
@@ -74,8 +75,7 @@ methodHandle Bytecode_invoke::static_target(TRAPS) {
   constantPoolHandle constants(THREAD, this->constants());
 
   Bytecodes::Code bc = invoke_code();
-  // TODO:
-//  LinkResolver::resolve_method_statically(m, resolved_klass, bc, constants, index(), CHECK_(methodHandle()));
+  LinkResolver::resolve_method_statically(m, resolved_klass, bc, constants, index(), CHECK_(methodHandle()));
   return m;
 }
 

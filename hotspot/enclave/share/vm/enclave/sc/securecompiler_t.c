@@ -178,6 +178,12 @@ typedef struct ms_ocall_jvm_malloc_t {
 	int ms_size;
 } ms_ocall_jvm_malloc_t;
 
+typedef struct ms_ocall_classfile_buffer_t {
+	void* ms_retval;
+	char* ms_name;
+	int* ms_size;
+} ms_ocall_classfile_buffer_t;
+
 typedef struct ms_ocall_pthread_create_t {
 	int ms_retval;
 	pthread_t* ms_new_thread;
@@ -1841,10 +1847,11 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[287][6];
+	uint8_t entry_table[288][6];
 } g_dyn_entry_table = {
-	287,
+	288,
 	{
+		{0, 0, 0, 0, 0, 0, },
 		{0, 0, 0, 0, 0, 0, },
 		{0, 0, 0, 0, 0, 0, },
 		{0, 0, 0, 0, 0, 0, },
@@ -2407,6 +2414,21 @@ sgx_status_t SGX_CDECL ocall_jvm_malloc(void** retval, int size)
 	if (retval) *retval = ms->ms_retval;
 	return status;
 }
+sgx_status_t SGX_CDECL ocall_classfile_buffer(void** retval, const char* name, int* size)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	size_t _len_name = name ? strlen(name) + 1 : 0;
+	size_t _len_size = 4 * sizeof(*size);
+
+	ms_ocall_classfile_buffer_t ms_o;
+	ms_ocall_classfile_buffer_t* ms = &ms_o;
+	ms->ms_name = SGX_CAST(char*, name);
+	ms->ms_size = SGX_CAST(int*, size);
+	status = sgx_ocall(21, ms);
+
+	if (retval) *retval = ms->ms_retval;
+	return status;
+}
 sgx_status_t SGX_CDECL ocall_pthread_create(int* retval, pthread_t* new_thread, SGX_WRAPPER_PTHREAD_ATTRIBUTE __attr, unsigned long int job_id, sgx_enclave_id_t eid)
 {
 	sgx_status_t status = SGX_SUCCESS;
@@ -2417,7 +2439,7 @@ sgx_status_t SGX_CDECL ocall_pthread_create(int* retval, pthread_t* new_thread, 
 	ms->ms___attr = __attr;
 	ms->ms_job_id = job_id;
 	ms->ms_eid = eid;
-	status = sgx_ocall(21, ms);
+	status = sgx_ocall(22, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2428,7 +2450,7 @@ sgx_status_t SGX_CDECL ocall_pthread_self(pthread_t* retval)
 
 	ms_ocall_pthread_self_t ms_o;
 	ms_ocall_pthread_self_t* ms = &ms_o;
-	status = sgx_ocall(22, ms);
+	status = sgx_ocall(23, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2441,7 +2463,7 @@ sgx_status_t SGX_CDECL ocall_pthread_join(int* retval, pthread_t pt, void** thre
 	ms_ocall_pthread_join_t* ms = &ms_o;
 	ms->ms_pt = pt;
 	ms->ms_thread_result = SGX_CAST(void**, thread_result);
-	status = sgx_ocall(23, ms);
+	status = sgx_ocall(24, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2453,7 +2475,7 @@ sgx_status_t SGX_CDECL ocall_pthread_detach(int* retval, pthread_t pt)
 	ms_ocall_pthread_detach_t ms_o;
 	ms_ocall_pthread_detach_t* ms = &ms_o;
 	ms->ms_pt = pt;
-	status = sgx_ocall(24, ms);
+	status = sgx_ocall(25, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2466,7 +2488,7 @@ sgx_status_t SGX_CDECL ocall_pthread_equal(int* retval, pthread_t pt1, pthread_t
 	ms_ocall_pthread_equal_t* ms = &ms_o;
 	ms->ms_pt1 = pt1;
 	ms->ms_pt2 = pt2;
-	status = sgx_ocall(25, ms);
+	status = sgx_ocall(26, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2478,7 +2500,7 @@ sgx_status_t SGX_CDECL ocall_pthread_exit(void* retval)
 	ms_ocall_pthread_exit_t ms_o;
 	ms_ocall_pthread_exit_t* ms = &ms_o;
 	ms->ms_retval = SGX_CAST(void*, retval);
-	status = sgx_ocall(26, ms);
+	status = sgx_ocall(27, ms);
 
 	return status;
 }
@@ -2489,7 +2511,7 @@ sgx_status_t SGX_CDECL ocall_pthread_cancel(int* retval, pthread_t th)
 	ms_ocall_pthread_cancel_t ms_o;
 	ms_ocall_pthread_cancel_t* ms = &ms_o;
 	ms->ms_th = th;
-	status = sgx_ocall(27, ms);
+	status = sgx_ocall(28, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2497,7 +2519,7 @@ sgx_status_t SGX_CDECL ocall_pthread_cancel(int* retval, pthread_t th)
 sgx_status_t SGX_CDECL ocall_pthread_testcancel()
 {
 	sgx_status_t status = SGX_SUCCESS;
-	status = sgx_ocall(28, NULL);
+	status = sgx_ocall(29, NULL);
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_pthread_attr_init(int* retval, SGX_WRAPPER_PTHREAD_ATTRIBUTE* __attr)
@@ -2508,7 +2530,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_init(int* retval, SGX_WRAPPER_PTHREAD_
 	ms_ocall_pthread_attr_init_t ms_o;
 	ms_ocall_pthread_attr_init_t* ms = &ms_o;
 	ms->ms___attr = SGX_CAST(SGX_WRAPPER_PTHREAD_ATTRIBUTE*, __attr);
-	status = sgx_ocall(29, ms);
+	status = sgx_ocall(30, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2520,7 +2542,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_destroy(int* retval, SGX_WRAPPER_PTHRE
 	ms_ocall_pthread_attr_destroy_t ms_o;
 	ms_ocall_pthread_attr_destroy_t* ms = &ms_o;
 	ms->ms___attr = __attr;
-	status = sgx_ocall(30, ms);
+	status = sgx_ocall(31, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2534,7 +2556,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_getdetachstate(int* retval, SGX_WRAPPE
 	ms_ocall_pthread_attr_getdetachstate_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___detachstate = SGX_CAST(int*, __detachstate);
-	status = sgx_ocall(31, ms);
+	status = sgx_ocall(32, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2547,7 +2569,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_setdetachstate(int* retval, SGX_WRAPPE
 	ms_ocall_pthread_attr_setdetachstate_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___detachstate = __detachstate;
-	status = sgx_ocall(32, ms);
+	status = sgx_ocall(33, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2561,7 +2583,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_getguardsize(int* retval, SGX_WRAPPER_
 	ms_ocall_pthread_attr_getguardsize_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___guardsize = SGX_CAST(size_t*, __guardsize);
-	status = sgx_ocall(33, ms);
+	status = sgx_ocall(34, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2574,7 +2596,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_setguardsize(int* retval, SGX_WRAPPER_
 	ms_ocall_pthread_attr_setguardsize_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___guardsize = __guardsize;
-	status = sgx_ocall(34, ms);
+	status = sgx_ocall(35, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2588,7 +2610,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_getschedpolicy(int* retval, SGX_WRAPPE
 	ms_ocall_pthread_attr_getschedpolicy_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___policy = SGX_CAST(int*, __policy);
-	status = sgx_ocall(35, ms);
+	status = sgx_ocall(36, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2601,7 +2623,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_setschedpolicy(int* retval, SGX_WRAPPE
 	ms_ocall_pthread_attr_setschedpolicy_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___policy = __policy;
-	status = sgx_ocall(36, ms);
+	status = sgx_ocall(37, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2615,7 +2637,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_getstacksize(int* retval, SGX_WRAPPER_
 	ms_ocall_pthread_attr_getstacksize_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___stacksize = SGX_CAST(size_t*, __stacksize);
-	status = sgx_ocall(37, ms);
+	status = sgx_ocall(38, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2628,7 +2650,7 @@ sgx_status_t SGX_CDECL ocall_pthread_attr_setstacksize(int* retval, SGX_WRAPPER_
 	ms_ocall_pthread_attr_setstacksize_t* ms = &ms_o;
 	ms->ms___attr = __attr;
 	ms->ms___stacksize = __stacksize;
-	status = sgx_ocall(38, ms);
+	status = sgx_ocall(39, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2641,7 +2663,7 @@ sgx_status_t SGX_CDECL ocall_pthread_setspecific(int* retval, pthread_key_t key,
 	ms_ocall_pthread_setspecific_t* ms = &ms_o;
 	ms->ms_key = key;
 	ms->ms_value = SGX_CAST(void*, value);
-	status = sgx_ocall(39, ms);
+	status = sgx_ocall(40, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2653,7 +2675,7 @@ sgx_status_t SGX_CDECL ocall_pthread_getspecific(void** retval, pthread_key_t ke
 	ms_ocall_pthread_getspecific_t ms_o;
 	ms_ocall_pthread_getspecific_t* ms = &ms_o;
 	ms->ms_key = key;
-	status = sgx_ocall(40, ms);
+	status = sgx_ocall(41, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2667,7 +2689,7 @@ sgx_status_t SGX_CDECL ocall_pthread_key_create(int* retval, pthread_key_t* key,
 	ms_ocall_pthread_key_create_t* ms = &ms_o;
 	ms->ms_key = SGX_CAST(pthread_key_t*, key);
 	ms->ms_destructor = SGX_CAST(void*, destructor);
-	status = sgx_ocall(41, ms);
+	status = sgx_ocall(42, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2680,7 +2702,7 @@ sgx_status_t SGX_CDECL ocall_time(time_t* retval, time_t* t)
 	ms_ocall_time_t ms_o;
 	ms_ocall_time_t* ms = &ms_o;
 	ms->ms_t = SGX_CAST(time_t*, t);
-	status = sgx_ocall(42, ms);
+	status = sgx_ocall(43, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2697,7 +2719,7 @@ sgx_status_t SGX_CDECL ocall_gettimeofday(int* retval, void* tv, int tv_size, vo
 	ms->ms_tv_size = tv_size;
 	ms->ms_tz = SGX_CAST(void*, tz);
 	ms->ms_tz_size = tz_size;
-	status = sgx_ocall(43, ms);
+	status = sgx_ocall(44, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2711,7 +2733,7 @@ sgx_status_t SGX_CDECL ocall_gettimeofday2(int* retval, void* tv, int tv_size)
 	ms_ocall_gettimeofday2_t* ms = &ms_o;
 	ms->ms_tv = SGX_CAST(void*, tv);
 	ms->ms_tv_size = tv_size;
-	status = sgx_ocall(44, ms);
+	status = sgx_ocall(45, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2722,7 +2744,7 @@ sgx_status_t SGX_CDECL ocall_clock(clock_t* retval)
 
 	ms_ocall_clock_t ms_o;
 	ms_ocall_clock_t* ms = &ms_o;
-	status = sgx_ocall(45, ms);
+	status = sgx_ocall(46, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2737,7 +2759,7 @@ sgx_status_t SGX_CDECL ocall_gmtime_r(struct tm** retval, const time_t* timer, s
 	ms_ocall_gmtime_r_t* ms = &ms_o;
 	ms->ms_timer = SGX_CAST(time_t*, timer);
 	ms->ms_tp = SGX_CAST(struct tm*, tp);
-	status = sgx_ocall(46, ms);
+	status = sgx_ocall(47, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2752,7 +2774,7 @@ sgx_status_t SGX_CDECL ocall_localtime_r(struct tm** retval, const time_t* timer
 	ms_ocall_localtime_r_t* ms = &ms_o;
 	ms->ms_timer = SGX_CAST(time_t*, timer);
 	ms->ms_tp = SGX_CAST(struct tm*, tp);
-	status = sgx_ocall(47, ms);
+	status = sgx_ocall(48, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2765,7 +2787,7 @@ sgx_status_t SGX_CDECL ocall_mktime(time_t* retval, struct tm* tp)
 	ms_ocall_mktime_t ms_o;
 	ms_ocall_mktime_t* ms = &ms_o;
 	ms->ms_tp = SGX_CAST(struct tm*, tp);
-	status = sgx_ocall(48, ms);
+	status = sgx_ocall(49, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2777,7 +2799,7 @@ sgx_status_t SGX_CDECL ocall_getpwuid(struct passwd** retval, uid_t uid)
 	ms_ocall_getpwuid_t ms_o;
 	ms_ocall_getpwuid_t* ms = &ms_o;
 	ms->ms_uid = uid;
-	status = sgx_ocall(49, ms);
+	status = sgx_ocall(50, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2790,7 +2812,7 @@ sgx_status_t SGX_CDECL ocall_getpwnam(struct passwd** retval, const char* name)
 	ms_ocall_getpwnam_t ms_o;
 	ms_ocall_getpwnam_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(50, ms);
+	status = sgx_ocall(51, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2810,7 +2832,7 @@ sgx_status_t SGX_CDECL ocall_getpwnam_r(int* retval, const char* name, struct pa
 	ms->ms_buf = SGX_CAST(char*, buf);
 	ms->ms_buflen = buflen;
 	ms->ms_result = SGX_CAST(struct passwd**, result);
-	status = sgx_ocall(51, ms);
+	status = sgx_ocall(52, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2822,7 +2844,7 @@ sgx_status_t SGX_CDECL ocall_getgrgid(struct group** retval, gid_t gid)
 	ms_ocall_getgrgid_t ms_o;
 	ms_ocall_getgrgid_t* ms = &ms_o;
 	ms->ms_gid = gid;
-	status = sgx_ocall(52, ms);
+	status = sgx_ocall(53, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2836,7 +2858,7 @@ sgx_status_t SGX_CDECL ocall_initgroups(int* retval, const char* user, gid_t gro
 	ms_ocall_initgroups_t* ms = &ms_o;
 	ms->ms_user = SGX_CAST(char*, user);
 	ms->ms_group = group;
-	status = sgx_ocall(53, ms);
+	status = sgx_ocall(54, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2849,7 +2871,7 @@ sgx_status_t SGX_CDECL ocall_uname(int* retval, struct utsname* name)
 	ms_ocall_uname_t ms_o;
 	ms_ocall_uname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(struct utsname*, name);
-	status = sgx_ocall(54, ms);
+	status = sgx_ocall(55, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2864,7 +2886,7 @@ sgx_status_t SGX_CDECL wrapper_getopt(int* retval, int argc, char** argv, const 
 	ms->ms_argc = argc;
 	ms->ms_argv = SGX_CAST(char**, argv);
 	ms->ms_optstring = SGX_CAST(char*, optstring);
-	status = sgx_ocall(55, ms);
+	status = sgx_ocall(56, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2876,7 +2898,7 @@ sgx_status_t SGX_CDECL set_optind(int oi)
 	ms_set_optind_t ms_o;
 	ms_set_optind_t* ms = &ms_o;
 	ms->ms_oi = oi;
-	status = sgx_ocall(56, ms);
+	status = sgx_ocall(57, ms);
 
 	return status;
 }
@@ -2887,7 +2909,7 @@ sgx_status_t SGX_CDECL set_opterr(int oe)
 	ms_set_opterr_t ms_o;
 	ms_set_opterr_t* ms = &ms_o;
 	ms->ms_oe = oe;
-	status = sgx_ocall(57, ms);
+	status = sgx_ocall(58, ms);
 
 	return status;
 }
@@ -2898,7 +2920,7 @@ sgx_status_t SGX_CDECL set_optopt(int oo)
 	ms_set_optopt_t ms_o;
 	ms_set_optopt_t* ms = &ms_o;
 	ms->ms_oo = oo;
-	status = sgx_ocall(58, ms);
+	status = sgx_ocall(59, ms);
 
 	return status;
 }
@@ -2909,7 +2931,7 @@ sgx_status_t SGX_CDECL set_optreset(int ors)
 	ms_set_optreset_t ms_o;
 	ms_set_optreset_t* ms = &ms_o;
 	ms->ms_ors = ors;
-	status = sgx_ocall(59, ms);
+	status = sgx_ocall(60, ms);
 
 	return status;
 }
@@ -2919,7 +2941,7 @@ sgx_status_t SGX_CDECL get_optarg(char** retval)
 
 	ms_get_optarg_t ms_o;
 	ms_get_optarg_t* ms = &ms_o;
-	status = sgx_ocall(60, ms);
+	status = sgx_ocall(61, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2932,7 +2954,7 @@ sgx_status_t SGX_CDECL ocall_getenv(char** retval, const char* name)
 	ms_ocall_getenv_t ms_o;
 	ms_ocall_getenv_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(61, ms);
+	status = sgx_ocall(62, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2945,7 +2967,7 @@ sgx_status_t SGX_CDECL ocall_putenv(int* retval, char* string)
 	ms_ocall_putenv_t ms_o;
 	ms_ocall_putenv_t* ms = &ms_o;
 	ms->ms_string = SGX_CAST(char*, string);
-	status = sgx_ocall(62, ms);
+	status = sgx_ocall(63, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2956,7 +2978,7 @@ sgx_status_t SGX_CDECL ocall_clearenv(int* retval)
 
 	ms_ocall_clearenv_t ms_o;
 	ms_ocall_clearenv_t* ms = &ms_o;
-	status = sgx_ocall(63, ms);
+	status = sgx_ocall(64, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2972,7 +2994,7 @@ sgx_status_t SGX_CDECL ocall_setenv(int* retval, const char* name, const char* v
 	ms->ms_name = SGX_CAST(char*, name);
 	ms->ms_value = SGX_CAST(char*, value);
 	ms->ms_replace = replace;
-	status = sgx_ocall(64, ms);
+	status = sgx_ocall(65, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2985,7 +3007,7 @@ sgx_status_t SGX_CDECL ocall_unsetenv(int* retval, const char* name)
 	ms_ocall_unsetenv_t ms_o;
 	ms_ocall_unsetenv_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(65, ms);
+	status = sgx_ocall(66, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -2998,7 +3020,7 @@ sgx_status_t SGX_CDECL ocall_mkstemp(int* retval, char* temp)
 	ms_ocall_mkstemp_t ms_o;
 	ms_ocall_mkstemp_t* ms = &ms_o;
 	ms->ms_temp = SGX_CAST(char*, temp);
-	status = sgx_ocall(66, ms);
+	status = sgx_ocall(67, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3011,7 +3033,7 @@ sgx_status_t SGX_CDECL ocall_mkdtemp(char** retval, char* temp)
 	ms_ocall_mkdtemp_t ms_o;
 	ms_ocall_mkdtemp_t* ms = &ms_o;
 	ms->ms_temp = SGX_CAST(char*, temp);
-	status = sgx_ocall(67, ms);
+	status = sgx_ocall(68, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3025,7 +3047,7 @@ sgx_status_t SGX_CDECL ocall_open1(int* retval, const char* pathname, int flags)
 	ms_ocall_open1_t* ms = &ms_o;
 	ms->ms_pathname = SGX_CAST(char*, pathname);
 	ms->ms_flags = flags;
-	status = sgx_ocall(68, ms);
+	status = sgx_ocall(69, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3040,7 +3062,7 @@ sgx_status_t SGX_CDECL ocall_open2(int* retval, const char* pathname, int flags,
 	ms->ms_pathname = SGX_CAST(char*, pathname);
 	ms->ms_flags = flags;
 	ms->ms_mode = mode;
-	status = sgx_ocall(69, ms);
+	status = sgx_ocall(70, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3054,7 +3076,7 @@ sgx_status_t SGX_CDECL ocall_creat(int* retval, const char* pathname, unsigned i
 	ms_ocall_creat_t* ms = &ms_o;
 	ms->ms_pathname = SGX_CAST(char*, pathname);
 	ms->ms_mode = mode;
-	status = sgx_ocall(70, ms);
+	status = sgx_ocall(71, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3069,7 +3091,7 @@ sgx_status_t SGX_CDECL ocall_openat1(int* retval, int dirfd, const char* pathnam
 	ms->ms_dirfd = dirfd;
 	ms->ms_pathname = SGX_CAST(char*, pathname);
 	ms->ms_flags = flags;
-	status = sgx_ocall(71, ms);
+	status = sgx_ocall(72, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3085,7 +3107,7 @@ sgx_status_t SGX_CDECL ocall_openat2(int* retval, int dirfd, const char* pathnam
 	ms->ms_pathname = SGX_CAST(char*, pathname);
 	ms->ms_flags = flags;
 	ms->ms_mode = mode;
-	status = sgx_ocall(72, ms);
+	status = sgx_ocall(73, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3098,7 +3120,7 @@ sgx_status_t SGX_CDECL ocall_fcntl1(int* retval, int fd, int cmd)
 	ms_ocall_fcntl1_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_cmd = cmd;
-	status = sgx_ocall(73, ms);
+	status = sgx_ocall(74, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3112,7 +3134,7 @@ sgx_status_t SGX_CDECL ocall_fcntl2(int* retval, int fd, int cmd, long int arg)
 	ms->ms_fd = fd;
 	ms->ms_cmd = cmd;
 	ms->ms_arg = arg;
-	status = sgx_ocall(74, ms);
+	status = sgx_ocall(75, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3128,7 +3150,7 @@ sgx_status_t SGX_CDECL ocall_fcntl3(int* retval, int fd, int cmd, void* arg, int
 	ms->ms_cmd = cmd;
 	ms->ms_arg = SGX_CAST(void*, arg);
 	ms->ms_size = size;
-	status = sgx_ocall(75, ms);
+	status = sgx_ocall(76, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3142,7 +3164,7 @@ sgx_status_t SGX_CDECL ocall_dlopen(void** retval, const char* __file, int __mod
 	ms_ocall_dlopen_t* ms = &ms_o;
 	ms->ms___file = SGX_CAST(char*, __file);
 	ms->ms___mode = __mode;
-	status = sgx_ocall(76, ms);
+	status = sgx_ocall(77, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3154,7 +3176,7 @@ sgx_status_t SGX_CDECL ocall_dlclose(int* retval, void* __handle)
 	ms_ocall_dlclose_t ms_o;
 	ms_ocall_dlclose_t* ms = &ms_o;
 	ms->ms___handle = SGX_CAST(void*, __handle);
-	status = sgx_ocall(77, ms);
+	status = sgx_ocall(78, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3167,7 +3189,7 @@ sgx_status_t SGX_CDECL ocall_dlsym(void** retval, void* __handle, const char* __
 	ms_ocall_dlsym_t* ms = &ms_o;
 	ms->ms___handle = SGX_CAST(void*, __handle);
 	ms->ms___name = SGX_CAST(char*, __name);
-	status = sgx_ocall(78, ms);
+	status = sgx_ocall(79, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3180,7 +3202,7 @@ sgx_status_t SGX_CDECL ocall_dladdr(int* retval, const void* __address, void* __
 	ms_ocall_dladdr_t* ms = &ms_o;
 	ms->ms___address = SGX_CAST(void*, __address);
 	ms->ms___info = SGX_CAST(void*, __info);
-	status = sgx_ocall(79, ms);
+	status = sgx_ocall(80, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3195,7 +3217,7 @@ sgx_status_t SGX_CDECL ocall_dladdr1(int* retval, const void* __address, void* _
 	ms->ms___info = SGX_CAST(void*, __info);
 	ms->ms___extra_info = SGX_CAST(void**, __extra_info);
 	ms->ms___flags = __flags;
-	status = sgx_ocall(80, ms);
+	status = sgx_ocall(81, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3209,7 +3231,7 @@ sgx_status_t SGX_CDECL ocall_dlinfo(int* retval, void* __handle, int __request, 
 	ms->ms___handle = SGX_CAST(void*, __handle);
 	ms->ms___request = __request;
 	ms->ms___arg = SGX_CAST(void*, __arg);
-	status = sgx_ocall(81, ms);
+	status = sgx_ocall(82, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3222,7 +3244,7 @@ sgx_status_t SGX_CDECL ocall_syscall(long int* retval, long int __sysno, void* v
 	ms_ocall_syscall_t* ms = &ms_o;
 	ms->ms___sysno = __sysno;
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(82, ms);
+	status = sgx_ocall(83, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3236,7 +3258,7 @@ sgx_status_t SGX_CDECL ocall_gethostname(int* retval, char* name, size_t len)
 	ms_ocall_gethostname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
 	ms->ms_len = len;
-	status = sgx_ocall(83, ms);
+	status = sgx_ocall(84, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3250,7 +3272,7 @@ sgx_status_t SGX_CDECL ocall_sethostname(int* retval, const char* name, size_t l
 	ms_ocall_sethostname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
 	ms->ms_len = len;
-	status = sgx_ocall(84, ms);
+	status = sgx_ocall(85, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3264,7 +3286,7 @@ sgx_status_t SGX_CDECL ocall_lseek(off_t* retval, int fd, off_t offset, int when
 	ms->ms_fd = fd;
 	ms->ms_offset = offset;
 	ms->ms_whence = whence;
-	status = sgx_ocall(85, ms);
+	status = sgx_ocall(86, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3276,7 +3298,7 @@ sgx_status_t SGX_CDECL ocall_fsync(int* retval, int fd)
 	ms_ocall_fsync_t ms_o;
 	ms_ocall_fsync_t* ms = &ms_o;
 	ms->ms_fd = fd;
-	status = sgx_ocall(86, ms);
+	status = sgx_ocall(87, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3291,7 +3313,7 @@ sgx_status_t SGX_CDECL ocall_read(off_t* retval, int fd, void* buf, size_t count
 	ms->ms_fd = fd;
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_count = count;
-	status = sgx_ocall(87, ms);
+	status = sgx_ocall(88, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3306,7 +3328,7 @@ sgx_status_t SGX_CDECL ocall_write(off_t* retval, int fd, const void* buf, size_
 	ms->ms_fd = fd;
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_count = count;
-	status = sgx_ocall(88, ms);
+	status = sgx_ocall(89, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3318,7 +3340,7 @@ sgx_status_t SGX_CDECL ocall_close(int* retval, int fd)
 	ms_ocall_close_t ms_o;
 	ms_ocall_close_t* ms = &ms_o;
 	ms->ms_fd = fd;
-	status = sgx_ocall(89, ms);
+	status = sgx_ocall(90, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3329,7 +3351,7 @@ sgx_status_t SGX_CDECL ocall_getpid(pid_t* retval)
 
 	ms_ocall_getpid_t ms_o;
 	ms_ocall_getpid_t* ms = &ms_o;
-	status = sgx_ocall(90, ms);
+	status = sgx_ocall(91, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3340,7 +3362,7 @@ sgx_status_t SGX_CDECL ocall_getppid(pid_t* retval)
 
 	ms_ocall_getppid_t ms_o;
 	ms_ocall_getppid_t* ms = &ms_o;
-	status = sgx_ocall(91, ms);
+	status = sgx_ocall(92, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3356,7 +3378,7 @@ sgx_status_t SGX_CDECL ocall_pread(ssize_t* retval, int fd, void* buf, size_t nb
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_nbytes = nbytes;
 	ms->ms_offset = offset;
-	status = sgx_ocall(92, ms);
+	status = sgx_ocall(93, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3372,7 +3394,7 @@ sgx_status_t SGX_CDECL ocall_pwrite(ssize_t* retval, int fd, const void* buf, si
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_n = n;
 	ms->ms_offset = offset;
-	status = sgx_ocall(93, ms);
+	status = sgx_ocall(94, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3384,7 +3406,7 @@ sgx_status_t SGX_CDECL ocall_pipe(int* retval, int pipedes[2])
 	ms_ocall_pipe_t ms_o;
 	ms_ocall_pipe_t* ms = &ms_o;
 	ms->ms_pipedes = SGX_CAST(int*, pipedes);
-	status = sgx_ocall(94, ms);
+	status = sgx_ocall(95, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3397,7 +3419,7 @@ sgx_status_t SGX_CDECL ocall_pipe2(int* retval, int pipedes[2], int flag)
 	ms_ocall_pipe2_t* ms = &ms_o;
 	ms->ms_pipedes = SGX_CAST(int*, pipedes);
 	ms->ms_flag = flag;
-	status = sgx_ocall(95, ms);
+	status = sgx_ocall(96, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3409,7 +3431,7 @@ sgx_status_t SGX_CDECL ocall_sleep(unsigned int* retval, unsigned int seconds)
 	ms_ocall_sleep_t ms_o;
 	ms_ocall_sleep_t* ms = &ms_o;
 	ms->ms_seconds = seconds;
-	status = sgx_ocall(96, ms);
+	status = sgx_ocall(97, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3421,7 +3443,7 @@ sgx_status_t SGX_CDECL ocall_usleep(unsigned int* retval, unsigned int seconds)
 	ms_ocall_usleep_t ms_o;
 	ms_ocall_usleep_t* ms = &ms_o;
 	ms->ms_seconds = seconds;
-	status = sgx_ocall(97, ms);
+	status = sgx_ocall(98, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3436,7 +3458,7 @@ sgx_status_t SGX_CDECL ocall_chown(int* retval, const char* file, uid_t owner, g
 	ms->ms_file = SGX_CAST(char*, file);
 	ms->ms_owner = owner;
 	ms->ms_group = group;
-	status = sgx_ocall(98, ms);
+	status = sgx_ocall(99, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3450,7 +3472,7 @@ sgx_status_t SGX_CDECL ocall_fchown(int* retval, int fd, uid_t owner, gid_t grou
 	ms->ms_fd = fd;
 	ms->ms_owner = owner;
 	ms->ms_group = group;
-	status = sgx_ocall(99, ms);
+	status = sgx_ocall(100, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3465,7 +3487,7 @@ sgx_status_t SGX_CDECL ocall_lchown(int* retval, const char* file, uid_t owner, 
 	ms->ms_file = SGX_CAST(char*, file);
 	ms->ms_owner = owner;
 	ms->ms_group = group;
-	status = sgx_ocall(100, ms);
+	status = sgx_ocall(101, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3478,7 +3500,7 @@ sgx_status_t SGX_CDECL ocall_chdir(int* retval, const char* path)
 	ms_ocall_chdir_t ms_o;
 	ms_ocall_chdir_t* ms = &ms_o;
 	ms->ms_path = SGX_CAST(char*, path);
-	status = sgx_ocall(101, ms);
+	status = sgx_ocall(102, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3490,7 +3512,7 @@ sgx_status_t SGX_CDECL ocall_fchdir(int* retval, int fd)
 	ms_ocall_fchdir_t ms_o;
 	ms_ocall_fchdir_t* ms = &ms_o;
 	ms->ms_fd = fd;
-	status = sgx_ocall(102, ms);
+	status = sgx_ocall(103, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3501,7 +3523,7 @@ sgx_status_t SGX_CDECL ocall_get_current_dir_name(char** retval)
 
 	ms_ocall_get_current_dir_name_t ms_o;
 	ms_ocall_get_current_dir_name_t* ms = &ms_o;
-	status = sgx_ocall(103, ms);
+	status = sgx_ocall(104, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3513,7 +3535,7 @@ sgx_status_t SGX_CDECL ocall_dup(int* retval, int fd)
 	ms_ocall_dup_t ms_o;
 	ms_ocall_dup_t* ms = &ms_o;
 	ms->ms_fd = fd;
-	status = sgx_ocall(104, ms);
+	status = sgx_ocall(105, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3526,7 +3548,7 @@ sgx_status_t SGX_CDECL ocall_dup2(int* retval, int fd, int fd2)
 	ms_ocall_dup2_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_fd2 = fd2;
-	status = sgx_ocall(105, ms);
+	status = sgx_ocall(106, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3540,7 +3562,7 @@ sgx_status_t SGX_CDECL ocall_dup3(int* retval, int fd, int fd2, int flags)
 	ms->ms_fd = fd;
 	ms->ms_fd2 = fd2;
 	ms->ms_flags = flags;
-	status = sgx_ocall(106, ms);
+	status = sgx_ocall(107, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3551,7 +3573,7 @@ sgx_status_t SGX_CDECL ocall_getuid(uid_t* retval)
 
 	ms_ocall_getuid_t ms_o;
 	ms_ocall_getuid_t* ms = &ms_o;
-	status = sgx_ocall(107, ms);
+	status = sgx_ocall(108, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3562,7 +3584,7 @@ sgx_status_t SGX_CDECL ocall_geteuid(uid_t* retval)
 
 	ms_ocall_geteuid_t ms_o;
 	ms_ocall_geteuid_t* ms = &ms_o;
-	status = sgx_ocall(108, ms);
+	status = sgx_ocall(109, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3573,7 +3595,7 @@ sgx_status_t SGX_CDECL ocall_getgid(gid_t* retval)
 
 	ms_ocall_getgid_t ms_o;
 	ms_ocall_getgid_t* ms = &ms_o;
-	status = sgx_ocall(109, ms);
+	status = sgx_ocall(110, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3584,7 +3606,7 @@ sgx_status_t SGX_CDECL ocall_getegid(gid_t* retval)
 
 	ms_ocall_getegid_t ms_o;
 	ms_ocall_getegid_t* ms = &ms_o;
-	status = sgx_ocall(110, ms);
+	status = sgx_ocall(111, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3595,7 +3617,7 @@ sgx_status_t SGX_CDECL ocall_getpagesize(int* retval)
 
 	ms_ocall_getpagesize_t ms_o;
 	ms_ocall_getpagesize_t* ms = &ms_o;
-	status = sgx_ocall(111, ms);
+	status = sgx_ocall(112, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3609,7 +3631,7 @@ sgx_status_t SGX_CDECL ocall_getcwd(char** retval, char* buf, size_t size)
 	ms_ocall_getcwd_t* ms = &ms_o;
 	ms->ms_buf = SGX_CAST(char*, buf);
 	ms->ms_size = size;
-	status = sgx_ocall(112, ms);
+	status = sgx_ocall(113, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3622,7 +3644,7 @@ sgx_status_t SGX_CDECL ocall_unlink(int* retval, const char* name)
 	ms_ocall_unlink_t ms_o;
 	ms_ocall_unlink_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(113, ms);
+	status = sgx_ocall(114, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3635,7 +3657,7 @@ sgx_status_t SGX_CDECL ocall_rmdir(int* retval, const char* name)
 	ms_ocall_rmdir_t ms_o;
 	ms_ocall_rmdir_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(114, ms);
+	status = sgx_ocall(115, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3647,7 +3669,7 @@ sgx_status_t SGX_CDECL ocall__exit(int stat)
 	ms_ocall__exit_t ms_o;
 	ms_ocall__exit_t* ms = &ms_o;
 	ms->ms_stat = stat;
-	status = sgx_ocall(115, ms);
+	status = sgx_ocall(116, ms);
 
 	return status;
 }
@@ -3658,7 +3680,7 @@ sgx_status_t SGX_CDECL ocall_sysconf(long int* retval, int name)
 	ms_ocall_sysconf_t ms_o;
 	ms_ocall_sysconf_t* ms = &ms_o;
 	ms->ms_name = name;
-	status = sgx_ocall(116, ms);
+	status = sgx_ocall(117, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3670,7 +3692,7 @@ sgx_status_t SGX_CDECL ocall_setgid(int* retval, gid_t gid)
 	ms_ocall_setgid_t ms_o;
 	ms_ocall_setgid_t* ms = &ms_o;
 	ms->ms_gid = gid;
-	status = sgx_ocall(117, ms);
+	status = sgx_ocall(118, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3682,7 +3704,7 @@ sgx_status_t SGX_CDECL ocall_setuid(int* retval, uid_t uid)
 	ms_ocall_setuid_t ms_o;
 	ms_ocall_setuid_t* ms = &ms_o;
 	ms->ms_uid = uid;
-	status = sgx_ocall(118, ms);
+	status = sgx_ocall(119, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3696,7 +3718,7 @@ sgx_status_t SGX_CDECL ocall_execvp(int* retval, const char* file, const char** 
 	ms_ocall_execvp_t* ms = &ms_o;
 	ms->ms_file = SGX_CAST(char*, file);
 	ms->ms_argv = SGX_CAST(char**, argv);
-	status = sgx_ocall(119, ms);
+	status = sgx_ocall(120, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3709,7 +3731,7 @@ sgx_status_t SGX_CDECL ocall_ftruncate(int* retval, int fd, off_t len)
 	ms_ocall_ftruncate_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_len = len;
-	status = sgx_ocall(120, ms);
+	status = sgx_ocall(121, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3722,7 +3744,7 @@ sgx_status_t SGX_CDECL ocall_ftruncate64(int* retval, int fd, __off64_t length)
 	ms_ocall_ftruncate64_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_length = length;
-	status = sgx_ocall(121, ms);
+	status = sgx_ocall(122, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3734,7 +3756,7 @@ sgx_status_t SGX_CDECL ocall_free(void* p)
 	ms_ocall_free_t ms_o;
 	ms_ocall_free_t* ms = &ms_o;
 	ms->ms_p = SGX_CAST(void*, p);
-	status = sgx_ocall(122, ms);
+	status = sgx_ocall(123, ms);
 
 	return status;
 }
@@ -3744,7 +3766,7 @@ sgx_status_t SGX_CDECL ocall_geterrno(int* retval)
 
 	ms_ocall_geterrno_t ms_o;
 	ms_ocall_geterrno_t* ms = &ms_o;
-	status = sgx_ocall(123, ms);
+	status = sgx_ocall(124, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3759,7 +3781,7 @@ sgx_status_t SGX_CDECL ocall_fopen(SGX_WRAPPER_FILE* retval, const char* filenam
 	ms_ocall_fopen_t* ms = &ms_o;
 	ms->ms_filename = SGX_CAST(char*, filename);
 	ms->ms_mode = SGX_CAST(char*, mode);
-	status = sgx_ocall(124, ms);
+	status = sgx_ocall(125, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3771,7 +3793,7 @@ sgx_status_t SGX_CDECL ocall_fclose(int* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_fclose_t ms_o;
 	ms_ocall_fclose_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(125, ms);
+	status = sgx_ocall(126, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3785,7 +3807,7 @@ sgx_status_t SGX_CDECL ocall_fputs(int* retval, const char* str, SGX_WRAPPER_FIL
 	ms_ocall_fputs_t* ms = &ms_o;
 	ms->ms_str = SGX_CAST(char*, str);
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(126, ms);
+	status = sgx_ocall(127, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3797,7 +3819,7 @@ sgx_status_t SGX_CDECL ocall_feof(int* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_feof_t ms_o;
 	ms_ocall_feof_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(127, ms);
+	status = sgx_ocall(128, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3809,7 +3831,7 @@ sgx_status_t SGX_CDECL ocall_rewind(SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_rewind_t ms_o;
 	ms_ocall_rewind_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(128, ms);
+	status = sgx_ocall(129, ms);
 
 	return status;
 }
@@ -3820,7 +3842,7 @@ sgx_status_t SGX_CDECL ocall_fflush(int* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_fflush_t ms_o;
 	ms_ocall_fflush_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(129, ms);
+	status = sgx_ocall(130, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3836,7 +3858,7 @@ sgx_status_t SGX_CDECL ocall_fread(size_t* retval, void* ptr, size_t size, size_
 	ms->ms_size = size;
 	ms->ms_nmemb = nmemb;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(130, ms);
+	status = sgx_ocall(131, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3852,7 +3874,7 @@ sgx_status_t SGX_CDECL ocall_fwrite(size_t* retval, const void* ptr, size_t size
 	ms->ms_size = size;
 	ms->ms_count = count;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(131, ms);
+	status = sgx_ocall(132, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3867,7 +3889,7 @@ sgx_status_t SGX_CDECL ocall_fgets(char** retval, char* str, int num, SGX_WRAPPE
 	ms->ms_str = SGX_CAST(char*, str);
 	ms->ms_num = num;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(132, ms);
+	status = sgx_ocall(133, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3879,7 +3901,7 @@ sgx_status_t SGX_CDECL ocall_getc_unlocked(int* retval, SGX_WRAPPER_FILE FILESTR
 	ms_ocall_getc_unlocked_t ms_o;
 	ms_ocall_getc_unlocked_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(133, ms);
+	status = sgx_ocall(134, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3891,7 +3913,7 @@ sgx_status_t SGX_CDECL ocall_flockfile(SGX_WRAPPER_FILE filehandle)
 	ms_ocall_flockfile_t ms_o;
 	ms_ocall_flockfile_t* ms = &ms_o;
 	ms->ms_filehandle = filehandle;
-	status = sgx_ocall(134, ms);
+	status = sgx_ocall(135, ms);
 
 	return status;
 }
@@ -3902,7 +3924,7 @@ sgx_status_t SGX_CDECL ocall_funlockfile(SGX_WRAPPER_FILE filehandle)
 	ms_ocall_funlockfile_t ms_o;
 	ms_ocall_funlockfile_t* ms = &ms_o;
 	ms->ms_filehandle = filehandle;
-	status = sgx_ocall(135, ms);
+	status = sgx_ocall(136, ms);
 
 	return status;
 }
@@ -3913,7 +3935,7 @@ sgx_status_t SGX_CDECL ocall_ftello(off_t* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_ftello_t ms_o;
 	ms_ocall_ftello_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(136, ms);
+	status = sgx_ocall(137, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3927,7 +3949,7 @@ sgx_status_t SGX_CDECL ocall_fseeko(int* retval, SGX_WRAPPER_FILE FILESTREAM, of
 	ms->ms_FILESTREAM = FILESTREAM;
 	ms->ms_offset = offset;
 	ms->ms_whence = whence;
-	status = sgx_ocall(137, ms);
+	status = sgx_ocall(138, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3939,7 +3961,7 @@ sgx_status_t SGX_CDECL ocall_ftell(off_t* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_ftell_t ms_o;
 	ms_ocall_ftell_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(138, ms);
+	status = sgx_ocall(139, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3953,7 +3975,7 @@ sgx_status_t SGX_CDECL ocall_fseek(int* retval, SGX_WRAPPER_FILE FILESTREAM, off
 	ms->ms_FILESTREAM = FILESTREAM;
 	ms->ms_offset = offset;
 	ms->ms_whence = whence;
-	status = sgx_ocall(139, ms);
+	status = sgx_ocall(140, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3965,7 +3987,7 @@ sgx_status_t SGX_CDECL ocall_ferror(int* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_ferror_t ms_o;
 	ms_ocall_ferror_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(140, ms);
+	status = sgx_ocall(141, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -3978,7 +4000,7 @@ sgx_status_t SGX_CDECL ocall_perror(const char* s)
 	ms_ocall_perror_t ms_o;
 	ms_ocall_perror_t* ms = &ms_o;
 	ms->ms_s = SGX_CAST(char*, s);
-	status = sgx_ocall(141, ms);
+	status = sgx_ocall(142, ms);
 
 	return status;
 }
@@ -3989,7 +4011,7 @@ sgx_status_t SGX_CDECL ocall_getc(int* retval, SGX_WRAPPER_FILE FILESTREAM)
 	ms_ocall_getc_t ms_o;
 	ms_ocall_getc_t* ms = &ms_o;
 	ms->ms_FILESTREAM = FILESTREAM;
-	status = sgx_ocall(142, ms);
+	status = sgx_ocall(143, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4001,7 +4023,7 @@ sgx_status_t SGX_CDECL ocall_putchar(int* retval, int c)
 	ms_ocall_putchar_t ms_o;
 	ms_ocall_putchar_t* ms = &ms_o;
 	ms->ms_c = c;
-	status = sgx_ocall(143, ms);
+	status = sgx_ocall(144, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4014,7 +4036,7 @@ sgx_status_t SGX_CDECL ocall_putc(int* retval, int c, SGX_WRAPPER_FILE stream)
 	ms_ocall_putc_t* ms = &ms_o;
 	ms->ms_c = c;
 	ms->ms_stream = stream;
-	status = sgx_ocall(144, ms);
+	status = sgx_ocall(145, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4027,7 +4049,7 @@ sgx_status_t SGX_CDECL ocall_fputc(int* retval, int c, SGX_WRAPPER_FILE stream)
 	ms_ocall_fputc_t* ms = &ms_o;
 	ms->ms_c = c;
 	ms->ms_stream = stream;
-	status = sgx_ocall(145, ms);
+	status = sgx_ocall(146, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4041,7 +4063,7 @@ sgx_status_t SGX_CDECL ocall_fdopen(SGX_WRAPPER_FILE* retval, int fd, const char
 	ms_ocall_fdopen_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_modes = SGX_CAST(char*, modes);
-	status = sgx_ocall(146, ms);
+	status = sgx_ocall(147, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4053,7 +4075,7 @@ sgx_status_t SGX_CDECL ocall_fileno(int* retval, SGX_WRAPPER_FILE stream)
 	ms_ocall_fileno_t ms_o;
 	ms_ocall_fileno_t* ms = &ms_o;
 	ms->ms_stream = stream;
-	status = sgx_ocall(147, ms);
+	status = sgx_ocall(148, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4068,7 +4090,7 @@ sgx_status_t SGX_CDECL ocall_rename(int* retval, const char* _old, const char* _
 	ms_ocall_rename_t* ms = &ms_o;
 	ms->ms__old = SGX_CAST(char*, _old);
 	ms->ms__new = SGX_CAST(char*, _new);
-	status = sgx_ocall(148, ms);
+	status = sgx_ocall(149, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4081,7 +4103,7 @@ sgx_status_t SGX_CDECL ocall_print_string(int* retval, const char* s)
 	ms_ocall_print_string_t ms_o;
 	ms_ocall_print_string_t* ms = &ms_o;
 	ms->ms_s = SGX_CAST(char*, s);
-	status = sgx_ocall(149, ms);
+	status = sgx_ocall(150, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4095,7 +4117,7 @@ sgx_status_t SGX_CDECL ocall_fprint_string(int* retval, SGX_WRAPPER_FILE stream,
 	ms_ocall_fprint_string_t* ms = &ms_o;
 	ms->ms_stream = stream;
 	ms->ms_s = SGX_CAST(char*, s);
-	status = sgx_ocall(150, ms);
+	status = sgx_ocall(151, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4110,7 +4132,7 @@ sgx_status_t SGX_CDECL ocall_vfscanf(int* retval, SGX_WRAPPER_FILE s, const char
 	ms->ms_s = s;
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(151, ms);
+	status = sgx_ocall(152, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4124,7 +4146,7 @@ sgx_status_t SGX_CDECL ocall_vscanf(int* retval, const char* format, void* val)
 	ms_ocall_vscanf_t* ms = &ms_o;
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(152, ms);
+	status = sgx_ocall(153, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4140,7 +4162,7 @@ sgx_status_t SGX_CDECL ocall_vsscanf(int* retval, const char* s, const char* for
 	ms->ms_s = SGX_CAST(char*, s);
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(153, ms);
+	status = sgx_ocall(154, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4155,7 +4177,7 @@ sgx_status_t SGX_CDECL ocall_vsprintf(int* retval, char* string, const char* for
 	ms->ms_string = SGX_CAST(char*, string);
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(154, ms);
+	status = sgx_ocall(155, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4170,7 +4192,7 @@ sgx_status_t SGX_CDECL ocall_vasprintf(int* retval, char** string, const char* f
 	ms->ms_string = SGX_CAST(char**, string);
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(155, ms);
+	status = sgx_ocall(156, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4185,7 +4207,7 @@ sgx_status_t SGX_CDECL ocall_vfprintf(int* retval, SGX_WRAPPER_FILE FILESTREAM, 
 	ms->ms_FILESTREAM = FILESTREAM;
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(156, ms);
+	status = sgx_ocall(157, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4199,7 +4221,7 @@ sgx_status_t SGX_CDECL ocall_vprintf(int* retval, const char* format, void* val)
 	ms_ocall_vprintf_t* ms = &ms_o;
 	ms->ms_format = SGX_CAST(char*, format);
 	ms->ms_val = SGX_CAST(void*, val);
-	status = sgx_ocall(157, ms);
+	status = sgx_ocall(158, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4212,7 +4234,7 @@ sgx_status_t SGX_CDECL ocall_eventfd(int* retval, unsigned int initval, int flag
 	ms_ocall_eventfd_t* ms = &ms_o;
 	ms->ms_initval = initval;
 	ms->ms_flags = flags;
-	status = sgx_ocall(158, ms);
+	status = sgx_ocall(159, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4226,7 +4248,7 @@ sgx_status_t SGX_CDECL ocall_socket(int* retval, int domain, int type, int proto
 	ms->ms_domain = domain;
 	ms->ms_type = type;
 	ms->ms_protocol = protocol;
-	status = sgx_ocall(159, ms);
+	status = sgx_ocall(160, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4242,7 +4264,7 @@ sgx_status_t SGX_CDECL ocall_accept(int* retval, int sockfd, struct sockaddr* ad
 	ms->ms_sockfd = sockfd;
 	ms->ms_addr = SGX_CAST(struct sockaddr*, addr);
 	ms->ms_addrlen = SGX_CAST(socklen_t*, addrlen);
-	status = sgx_ocall(160, ms);
+	status = sgx_ocall(161, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4257,7 +4279,7 @@ sgx_status_t SGX_CDECL ocall_connect(int* retval, int socket, const struct socka
 	ms->ms_socket = socket;
 	ms->ms_address = SGX_CAST(struct sockaddr*, address);
 	ms->ms_address_len = address_len;
-	status = sgx_ocall(161, ms);
+	status = sgx_ocall(162, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4275,7 +4297,7 @@ sgx_status_t SGX_CDECL ocall_sendto(ssize_t* retval, int sockfd, const void* buf
 	ms->ms_flags = flags;
 	ms->ms_dest_addr = SGX_CAST(void*, dest_addr);
 	ms->ms_addrlen = addrlen;
-	status = sgx_ocall(162, ms);
+	status = sgx_ocall(163, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4291,7 +4313,7 @@ sgx_status_t SGX_CDECL ocall_recv(ssize_t* retval, int fd, void* buf, size_t len
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_len = len;
 	ms->ms_flags = flags;
-	status = sgx_ocall(163, ms);
+	status = sgx_ocall(164, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4307,7 +4329,7 @@ sgx_status_t SGX_CDECL ocall_send(ssize_t* retval, int fd, const void* buf, size
 	ms->ms_buf = SGX_CAST(void*, buf);
 	ms->ms_len = len;
 	ms->ms_flags = flags;
-	status = sgx_ocall(164, ms);
+	status = sgx_ocall(165, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4323,7 +4345,7 @@ sgx_status_t SGX_CDECL ocall_socketpair(int* retval, int domain, int type, int p
 	ms->ms_type = type;
 	ms->ms_protocol = protocol;
 	ms->ms_sv = SGX_CAST(int*, sv);
-	status = sgx_ocall(165, ms);
+	status = sgx_ocall(166, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4340,7 +4362,7 @@ sgx_status_t SGX_CDECL ocall_setsockopt(int* retval, int sockfd, int level, int 
 	ms->ms_optname = optname;
 	ms->ms_optval = SGX_CAST(void*, optval);
 	ms->ms_optlen = optlen;
-	status = sgx_ocall(166, ms);
+	status = sgx_ocall(167, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4358,7 +4380,7 @@ sgx_status_t SGX_CDECL ocall_getsockopt(int* retval, int sockfd, int level, int 
 	ms->ms_optname = optname;
 	ms->ms_optval = SGX_CAST(void*, optval);
 	ms->ms_optlen = SGX_CAST(unsigned int*, optlen);
-	status = sgx_ocall(167, ms);
+	status = sgx_ocall(168, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4371,7 +4393,7 @@ sgx_status_t SGX_CDECL ocall_shutdown(int* retval, int fd, int how)
 	ms_ocall_shutdown_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_how = how;
-	status = sgx_ocall(168, ms);
+	status = sgx_ocall(169, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4386,7 +4408,7 @@ sgx_status_t SGX_CDECL ocall_bind(int* retval, int fd, const struct sockaddr* ad
 	ms->ms_fd = fd;
 	ms->ms_addr = SGX_CAST(struct sockaddr*, addr);
 	ms->ms_len = len;
-	status = sgx_ocall(169, ms);
+	status = sgx_ocall(170, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4399,7 +4421,7 @@ sgx_status_t SGX_CDECL ocall_listen(int* retval, int fd, int n)
 	ms_ocall_listen_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_n = n;
-	status = sgx_ocall(170, ms);
+	status = sgx_ocall(171, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4415,7 +4437,7 @@ sgx_status_t SGX_CDECL ocall_getsockname(int* retval, int fd, struct sockaddr* a
 	ms->ms_fd = fd;
 	ms->ms_addr = SGX_CAST(struct sockaddr*, addr);
 	ms->ms_len = SGX_CAST(socklen_t*, len);
-	status = sgx_ocall(171, ms);
+	status = sgx_ocall(172, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4431,7 +4453,7 @@ sgx_status_t SGX_CDECL ocall_getpeername(int* retval, int fd, struct sockaddr* a
 	ms->ms_fd = fd;
 	ms->ms_addr = SGX_CAST(struct sockaddr*, addr);
 	ms->ms_len = SGX_CAST(socklen_t*, len);
-	status = sgx_ocall(172, ms);
+	status = sgx_ocall(173, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4450,7 +4472,7 @@ sgx_status_t SGX_CDECL ocall_recvfrom(ssize_t* retval, int fd, void* buf, size_t
 	ms->ms_flags = flags;
 	ms->ms_addr = SGX_CAST(struct sockaddr*, addr);
 	ms->ms_addr_len = SGX_CAST(socklen_t*, addr_len);
-	status = sgx_ocall(173, ms);
+	status = sgx_ocall(174, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4465,7 +4487,7 @@ sgx_status_t SGX_CDECL ocall_sendmsg(ssize_t* retval, int fd, const struct msghd
 	ms->ms_fd = fd;
 	ms->ms_message = SGX_CAST(struct msghdr*, message);
 	ms->ms_flags = flags;
-	status = sgx_ocall(174, ms);
+	status = sgx_ocall(175, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4480,7 +4502,7 @@ sgx_status_t SGX_CDECL ocall_recvmsg(ssize_t* retval, int fd, struct msghdr* mes
 	ms->ms_fd = fd;
 	ms->ms_message = SGX_CAST(struct msghdr*, message);
 	ms->ms_flags = flags;
-	status = sgx_ocall(175, ms);
+	status = sgx_ocall(176, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4492,7 +4514,7 @@ sgx_status_t SGX_CDECL ocall_freeaddrinfo(void* res)
 	ms_ocall_freeaddrinfo_t ms_o;
 	ms_ocall_freeaddrinfo_t* ms = &ms_o;
 	ms->ms_res = SGX_CAST(void*, res);
-	status = sgx_ocall(176, ms);
+	status = sgx_ocall(177, ms);
 
 	return status;
 }
@@ -4510,7 +4532,7 @@ sgx_status_t SGX_CDECL ocall_getaddrinfo(int* retval, const char* node, const ch
 	ms->ms_service = SGX_CAST(char*, service);
 	ms->ms_hints = SGX_CAST(void*, hints);
 	ms->ms_res = SGX_CAST(void**, res);
-	status = sgx_ocall(177, ms);
+	status = sgx_ocall(178, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4527,7 +4549,7 @@ sgx_status_t SGX_CDECL ocall_getaddrinfo1(int* retval, const char* node, const c
 	ms->ms_service = SGX_CAST(char*, service);
 	ms->ms_hints = SGX_CAST(void*, hints);
 	ms->ms_res = SGX_CAST(void*, res);
-	status = sgx_ocall(178, ms);
+	status = sgx_ocall(179, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4539,14 +4561,14 @@ sgx_status_t SGX_CDECL ocall_sethostent(int stay_open)
 	ms_ocall_sethostent_t ms_o;
 	ms_ocall_sethostent_t* ms = &ms_o;
 	ms->ms_stay_open = stay_open;
-	status = sgx_ocall(179, ms);
+	status = sgx_ocall(180, ms);
 
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_endhostent()
 {
 	sgx_status_t status = SGX_SUCCESS;
-	status = sgx_ocall(180, NULL);
+	status = sgx_ocall(181, NULL);
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_gethostent(struct hostent** retval)
@@ -4555,7 +4577,7 @@ sgx_status_t SGX_CDECL ocall_gethostent(struct hostent** retval)
 
 	ms_ocall_gethostent_t ms_o;
 	ms_ocall_gethostent_t* ms = &ms_o;
-	status = sgx_ocall(181, ms);
+	status = sgx_ocall(182, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4570,7 +4592,7 @@ sgx_status_t SGX_CDECL ocall_gethostbyaddr(struct hostent** retval, const void* 
 	ms->ms_addr = SGX_CAST(void*, addr);
 	ms->ms_len = len;
 	ms->ms_type = type;
-	status = sgx_ocall(182, ms);
+	status = sgx_ocall(183, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4583,7 +4605,7 @@ sgx_status_t SGX_CDECL ocall_gethostbyname(struct hostent** retval, const char* 
 	ms_ocall_gethostbyname_t ms_o;
 	ms_ocall_gethostbyname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(183, ms);
+	status = sgx_ocall(184, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4595,14 +4617,14 @@ sgx_status_t SGX_CDECL ocall_setnetent(int stay_open)
 	ms_ocall_setnetent_t ms_o;
 	ms_ocall_setnetent_t* ms = &ms_o;
 	ms->ms_stay_open = stay_open;
-	status = sgx_ocall(184, ms);
+	status = sgx_ocall(185, ms);
 
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_endnetent()
 {
 	sgx_status_t status = SGX_SUCCESS;
-	status = sgx_ocall(185, NULL);
+	status = sgx_ocall(186, NULL);
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_getnetent(struct netent** retval)
@@ -4611,7 +4633,7 @@ sgx_status_t SGX_CDECL ocall_getnetent(struct netent** retval)
 
 	ms_ocall_getnetent_t ms_o;
 	ms_ocall_getnetent_t* ms = &ms_o;
-	status = sgx_ocall(186, ms);
+	status = sgx_ocall(187, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4624,7 +4646,7 @@ sgx_status_t SGX_CDECL ocall_getnetbyaddr(struct netent** retval, uint32_t net, 
 	ms_ocall_getnetbyaddr_t* ms = &ms_o;
 	ms->ms_net = net;
 	ms->ms_type = type;
-	status = sgx_ocall(187, ms);
+	status = sgx_ocall(188, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4637,7 +4659,7 @@ sgx_status_t SGX_CDECL ocall_getnetbyname(struct netent** retval, const char* na
 	ms_ocall_getnetbyname_t ms_o;
 	ms_ocall_getnetbyname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(188, ms);
+	status = sgx_ocall(189, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4649,14 +4671,14 @@ sgx_status_t SGX_CDECL ocall_setservent(int stay_open)
 	ms_ocall_setservent_t ms_o;
 	ms_ocall_setservent_t* ms = &ms_o;
 	ms->ms_stay_open = stay_open;
-	status = sgx_ocall(189, ms);
+	status = sgx_ocall(190, ms);
 
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_endservent()
 {
 	sgx_status_t status = SGX_SUCCESS;
-	status = sgx_ocall(190, NULL);
+	status = sgx_ocall(191, NULL);
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_getservent(struct servent** retval)
@@ -4665,7 +4687,7 @@ sgx_status_t SGX_CDECL ocall_getservent(struct servent** retval)
 
 	ms_ocall_getservent_t ms_o;
 	ms_ocall_getservent_t* ms = &ms_o;
-	status = sgx_ocall(191, ms);
+	status = sgx_ocall(192, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4680,7 +4702,7 @@ sgx_status_t SGX_CDECL ocall_getservbyname(struct servent** retval, const char* 
 	ms_ocall_getservbyname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
 	ms->ms_proto = SGX_CAST(char*, proto);
-	status = sgx_ocall(192, ms);
+	status = sgx_ocall(193, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4694,7 +4716,7 @@ sgx_status_t SGX_CDECL ocall_getservbyport(struct servent** retval, int port, co
 	ms_ocall_getservbyport_t* ms = &ms_o;
 	ms->ms_port = port;
 	ms->ms_proto = SGX_CAST(char*, proto);
-	status = sgx_ocall(193, ms);
+	status = sgx_ocall(194, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4706,14 +4728,14 @@ sgx_status_t SGX_CDECL ocall_setprotoent(int stay_open)
 	ms_ocall_setprotoent_t ms_o;
 	ms_ocall_setprotoent_t* ms = &ms_o;
 	ms->ms_stay_open = stay_open;
-	status = sgx_ocall(194, ms);
+	status = sgx_ocall(195, ms);
 
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_endprotoent()
 {
 	sgx_status_t status = SGX_SUCCESS;
-	status = sgx_ocall(195, NULL);
+	status = sgx_ocall(196, NULL);
 	return status;
 }
 sgx_status_t SGX_CDECL ocall_getprotoent(struct protoent** retval)
@@ -4722,7 +4744,7 @@ sgx_status_t SGX_CDECL ocall_getprotoent(struct protoent** retval)
 
 	ms_ocall_getprotoent_t ms_o;
 	ms_ocall_getprotoent_t* ms = &ms_o;
-	status = sgx_ocall(196, ms);
+	status = sgx_ocall(197, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4735,7 +4757,7 @@ sgx_status_t SGX_CDECL ocall_getprotobyname(struct protoent** retval, const char
 	ms_ocall_getprotobyname_t ms_o;
 	ms_ocall_getprotobyname_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(197, ms);
+	status = sgx_ocall(198, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4747,7 +4769,7 @@ sgx_status_t SGX_CDECL ocall_getprotobynumber(struct protoent** retval, int prot
 	ms_ocall_getprotobynumber_t ms_o;
 	ms_ocall_getprotobynumber_t* ms = &ms_o;
 	ms->ms_proto = proto;
-	status = sgx_ocall(198, ms);
+	status = sgx_ocall(199, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4759,7 +4781,7 @@ sgx_status_t SGX_CDECL ocall_gai_strerror(char** retval, int ecode)
 	ms_ocall_gai_strerror_t ms_o;
 	ms_ocall_gai_strerror_t* ms = &ms_o;
 	ms->ms_ecode = ecode;
-	status = sgx_ocall(199, ms);
+	status = sgx_ocall(200, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4777,7 +4799,7 @@ sgx_status_t SGX_CDECL ocall_getnameinfo(int* retval, const struct sockaddr* sa,
 	ms->ms_serv = SGX_CAST(char*, serv);
 	ms->ms_servlen = servlen;
 	ms->ms_flags = flags;
-	status = sgx_ocall(200, ms);
+	status = sgx_ocall(201, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4789,7 +4811,7 @@ sgx_status_t SGX_CDECL ocall_ntohl(uint32_t* retval, uint32_t netlong)
 	ms_ocall_ntohl_t ms_o;
 	ms_ocall_ntohl_t* ms = &ms_o;
 	ms->ms_netlong = netlong;
-	status = sgx_ocall(201, ms);
+	status = sgx_ocall(202, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4801,7 +4823,7 @@ sgx_status_t SGX_CDECL ocall_ntohs(uint16_t* retval, uint16_t netshort)
 	ms_ocall_ntohs_t ms_o;
 	ms_ocall_ntohs_t* ms = &ms_o;
 	ms->ms_netshort = netshort;
-	status = sgx_ocall(202, ms);
+	status = sgx_ocall(203, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4813,7 +4835,7 @@ sgx_status_t SGX_CDECL ocall_htonl(uint32_t* retval, uint32_t hostlong)
 	ms_ocall_htonl_t ms_o;
 	ms_ocall_htonl_t* ms = &ms_o;
 	ms->ms_hostlong = hostlong;
-	status = sgx_ocall(203, ms);
+	status = sgx_ocall(204, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4825,7 +4847,7 @@ sgx_status_t SGX_CDECL ocall_htons(uint16_t* retval, uint16_t hostshort)
 	ms_ocall_htons_t ms_o;
 	ms_ocall_htons_t* ms = &ms_o;
 	ms->ms_hostshort = hostshort;
-	status = sgx_ocall(204, ms);
+	status = sgx_ocall(205, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4839,7 +4861,7 @@ sgx_status_t SGX_CDECL ocall_ioctl(int* retval, int fd, unsigned long int reques
 	ms->ms_fd = fd;
 	ms->ms_request = request;
 	ms->ms_arguments = SGX_CAST(void*, arguments);
-	status = sgx_ocall(205, ms);
+	status = sgx_ocall(206, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4855,7 +4877,7 @@ sgx_status_t SGX_CDECL ocall_readv(ssize_t* retval, int __fd, const void* __iove
 	ms->ms___iovec = SGX_CAST(void*, __iovec);
 	ms->ms_iovec_size = iovec_size;
 	ms->ms___count = __count;
-	status = sgx_ocall(206, ms);
+	status = sgx_ocall(207, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4870,7 +4892,7 @@ sgx_status_t SGX_CDECL ocall_writev(ssize_t* retval, int __fd, int iovec_id, int
 	ms->ms_iovec_id = iovec_id;
 	ms->ms_iovec_size = iovec_size;
 	ms->ms___count = __count;
-	status = sgx_ocall(207, ms);
+	status = sgx_ocall(208, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4885,7 +4907,7 @@ sgx_status_t SGX_CDECL ocall_init_multiple_iovec_outside(int* retval, const void
 	ms->ms___iovec = SGX_CAST(void*, __iovec);
 	ms->ms_iovec_size = iovec_size;
 	ms->ms___count = __count;
-	status = sgx_ocall(208, ms);
+	status = sgx_ocall(209, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4901,7 +4923,7 @@ sgx_status_t SGX_CDECL ocall_copy_base_to_outside(int iovec_id, int i, const voi
 	ms->ms_i = i;
 	ms->ms_base = SGX_CAST(void*, base);
 	ms->ms_len = len;
-	status = sgx_ocall(209, ms);
+	status = sgx_ocall(210, ms);
 
 	return status;
 }
@@ -4914,7 +4936,7 @@ sgx_status_t SGX_CDECL ocall_free_iovec_outside(int iovec_id, int iovec_size, in
 	ms->ms_iovec_id = iovec_id;
 	ms->ms_iovec_size = iovec_size;
 	ms->ms___count = __count;
-	status = sgx_ocall(210, ms);
+	status = sgx_ocall(211, ms);
 
 	return status;
 }
@@ -4930,7 +4952,7 @@ sgx_status_t SGX_CDECL ocall_process_vm_readv(ssize_t* retval, pid_t __pid, cons
 	ms->ms___rvec = SGX_CAST(struct iovec*, __rvec);
 	ms->ms___riovcnt = __riovcnt;
 	ms->ms___flags = __flags;
-	status = sgx_ocall(211, ms);
+	status = sgx_ocall(212, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4947,7 +4969,7 @@ sgx_status_t SGX_CDECL ocall_process_vm_writev(ssize_t* retval, pid_t __pid, con
 	ms->ms___rvec = SGX_CAST(struct iovec*, __rvec);
 	ms->ms___riovcnt = __riovcnt;
 	ms->ms___flags = __flags;
-	status = sgx_ocall(212, ms);
+	status = sgx_ocall(213, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4964,7 +4986,7 @@ sgx_status_t SGX_CDECL ocall_mmap(void** retval, void* __addr, size_t __len, int
 	ms->ms___flags = __flags;
 	ms->ms___fd = __fd;
 	ms->ms___offset = __offset;
-	status = sgx_ocall(213, ms);
+	status = sgx_ocall(214, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4981,7 +5003,7 @@ sgx_status_t SGX_CDECL ocall_mmap64(void** retval, void* __addr, size_t __len, i
 	ms->ms___flags = __flags;
 	ms->ms___fd = __fd;
 	ms->ms___offset = __offset;
-	status = sgx_ocall(214, ms);
+	status = sgx_ocall(215, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -4994,7 +5016,7 @@ sgx_status_t SGX_CDECL ocall_munmap(int* retval, void* __addr, size_t __len)
 	ms_ocall_munmap_t* ms = &ms_o;
 	ms->ms___addr = SGX_CAST(void*, __addr);
 	ms->ms___len = __len;
-	status = sgx_ocall(215, ms);
+	status = sgx_ocall(216, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5008,7 +5030,7 @@ sgx_status_t SGX_CDECL ocall_mprotect(int* retval, void* __addr, size_t __len, i
 	ms->ms___addr = SGX_CAST(void*, __addr);
 	ms->ms___len = __len;
 	ms->ms___prot = __prot;
-	status = sgx_ocall(216, ms);
+	status = sgx_ocall(217, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5022,7 +5044,7 @@ sgx_status_t SGX_CDECL ocall_msync(int* retval, void* __addr, size_t __len, int 
 	ms->ms___addr = SGX_CAST(void*, __addr);
 	ms->ms___len = __len;
 	ms->ms___flags = __flags;
-	status = sgx_ocall(217, ms);
+	status = sgx_ocall(218, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5035,7 +5057,7 @@ sgx_status_t SGX_CDECL ocall_mlock(int* retval, const void* __addr, size_t __len
 	ms_ocall_mlock_t* ms = &ms_o;
 	ms->ms___addr = SGX_CAST(void*, __addr);
 	ms->ms___len = __len;
-	status = sgx_ocall(218, ms);
+	status = sgx_ocall(219, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5048,7 +5070,7 @@ sgx_status_t SGX_CDECL ocall_munlock(int* retval, const void* __addr, size_t __l
 	ms_ocall_munlock_t* ms = &ms_o;
 	ms->ms___addr = SGX_CAST(void*, __addr);
 	ms->ms___len = __len;
-	status = sgx_ocall(219, ms);
+	status = sgx_ocall(220, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5060,7 +5082,7 @@ sgx_status_t SGX_CDECL ocall_mlockall(int* retval, int __flags)
 	ms_ocall_mlockall_t ms_o;
 	ms_ocall_mlockall_t* ms = &ms_o;
 	ms->ms___flags = __flags;
-	status = sgx_ocall(220, ms);
+	status = sgx_ocall(221, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5071,7 +5093,7 @@ sgx_status_t SGX_CDECL ocall_munlockall(int* retval)
 
 	ms_ocall_munlockall_t ms_o;
 	ms_ocall_munlockall_t* ms = &ms_o;
-	status = sgx_ocall(221, ms);
+	status = sgx_ocall(222, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5085,7 +5107,7 @@ sgx_status_t SGX_CDECL ocall_mincore(int* retval, void* __start, size_t __len, u
 	ms->ms___start = SGX_CAST(void*, __start);
 	ms->ms___len = __len;
 	ms->ms___vec = SGX_CAST(unsigned char*, __vec);
-	status = sgx_ocall(222, ms);
+	status = sgx_ocall(223, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5100,7 +5122,7 @@ sgx_status_t SGX_CDECL ocall_shm_open(int* retval, const char* __name, int __ofl
 	ms->ms___name = SGX_CAST(char*, __name);
 	ms->ms___oflag = __oflag;
 	ms->ms___mode = __mode;
-	status = sgx_ocall(223, ms);
+	status = sgx_ocall(224, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5113,7 +5135,7 @@ sgx_status_t SGX_CDECL ocall_shm_unlink(int* retval, const char* __name)
 	ms_ocall_shm_unlink_t ms_o;
 	ms_ocall_shm_unlink_t* ms = &ms_o;
 	ms->ms___name = SGX_CAST(char*, __name);
-	status = sgx_ocall(224, ms);
+	status = sgx_ocall(225, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5128,7 +5150,7 @@ sgx_status_t SGX_CDECL ocall_poll(int* retval, struct pollfd* __fds, nfds_t __nf
 	ms->ms___fds = SGX_CAST(struct pollfd*, __fds);
 	ms->ms___nfds = __nfds;
 	ms->ms___timeout = __timeout;
-	status = sgx_ocall(225, ms);
+	status = sgx_ocall(226, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5140,7 +5162,7 @@ sgx_status_t SGX_CDECL ocall_epoll_create(int* retval, int __size)
 	ms_ocall_epoll_create_t ms_o;
 	ms_ocall_epoll_create_t* ms = &ms_o;
 	ms->ms___size = __size;
-	status = sgx_ocall(226, ms);
+	status = sgx_ocall(227, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5152,7 +5174,7 @@ sgx_status_t SGX_CDECL ocall_epoll_create1(int* retval, int __flags)
 	ms_ocall_epoll_create1_t ms_o;
 	ms_ocall_epoll_create1_t* ms = &ms_o;
 	ms->ms___flags = __flags;
-	status = sgx_ocall(227, ms);
+	status = sgx_ocall(228, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5169,7 +5191,7 @@ sgx_status_t SGX_CDECL ocall_epoll_ctl(int* retval, int __epfd, int __op, int __
 	ms->ms___fd = __fd;
 	ms->ms___event = SGX_CAST(void*, __event);
 	ms->ms_event_size = event_size;
-	status = sgx_ocall(228, ms);
+	status = sgx_ocall(229, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5186,7 +5208,7 @@ sgx_status_t SGX_CDECL ocall_epoll_wait(int* retval, int __epfd, void* __events,
 	ms->ms_event_size = event_size;
 	ms->ms___maxevents = __maxevents;
 	ms->ms___timeout = __timeout;
-	status = sgx_ocall(229, ms);
+	status = sgx_ocall(230, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5206,7 +5228,7 @@ sgx_status_t SGX_CDECL ocall_epoll_pwait(int* retval, int __epfd, void* __events
 	ms->ms___timeout = __timeout;
 	ms->ms___ss = SGX_CAST(void*, __ss);
 	ms->ms_sigset_size = sigset_size;
-	status = sgx_ocall(230, ms);
+	status = sgx_ocall(231, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5222,7 +5244,7 @@ sgx_status_t SGX_CDECL ocall_select(int* retval, int __nfds, fd_set* __readfds, 
 	ms->ms___writefds = SGX_CAST(fd_set*, __writefds);
 	ms->ms___exceptfds = SGX_CAST(fd_set*, __exceptfds);
 	ms->ms___timeout = SGX_CAST(struct timeval*, __timeout);
-	status = sgx_ocall(231, ms);
+	status = sgx_ocall(232, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5238,7 +5260,7 @@ sgx_status_t SGX_CDECL ocall_sendfile(ssize_t* retval, int out_fd, int in_fd, of
 	ms->ms_in_fd = in_fd;
 	ms->ms_offset = SGX_CAST(off_t*, offset);
 	ms->ms_count = count;
-	status = sgx_ocall(232, ms);
+	status = sgx_ocall(233, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5252,7 +5274,7 @@ sgx_status_t SGX_CDECL ocall_waitpid(__pid_t* retval, __pid_t __pid, int* __stat
 	ms->ms___pid = __pid;
 	ms->ms___stat_loc = SGX_CAST(int*, __stat_loc);
 	ms->ms___options = __options;
-	status = sgx_ocall(233, ms);
+	status = sgx_ocall(234, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5267,7 +5289,7 @@ sgx_status_t SGX_CDECL ocall_waitid(int* retval, idtype_t __idtype, __id_t __id,
 	ms->ms___id = __id;
 	ms->ms___infop = SGX_CAST(siginfo_t*, __infop);
 	ms->ms___options = __options;
-	status = sgx_ocall(234, ms);
+	status = sgx_ocall(235, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5282,7 +5304,7 @@ sgx_status_t SGX_CDECL ocall_stat(int* retval, const char* path, struct stat* bu
 	ms_ocall_stat_t* ms = &ms_o;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_buf = SGX_CAST(struct stat*, buf);
-	status = sgx_ocall(235, ms);
+	status = sgx_ocall(236, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5296,7 +5318,7 @@ sgx_status_t SGX_CDECL ocall_fstat(int* retval, int fd, struct stat* buf)
 	ms_ocall_fstat_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_buf = SGX_CAST(struct stat*, buf);
-	status = sgx_ocall(236, ms);
+	status = sgx_ocall(237, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5311,7 +5333,7 @@ sgx_status_t SGX_CDECL ocall_lstat(int* retval, const char* path, struct stat* b
 	ms_ocall_lstat_t* ms = &ms_o;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_buf = SGX_CAST(struct stat*, buf);
-	status = sgx_ocall(237, ms);
+	status = sgx_ocall(238, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5325,7 +5347,7 @@ sgx_status_t SGX_CDECL ocall_chmod(int* retval, const char* file, mode_t mode)
 	ms_ocall_chmod_t* ms = &ms_o;
 	ms->ms_file = SGX_CAST(char*, file);
 	ms->ms_mode = mode;
-	status = sgx_ocall(238, ms);
+	status = sgx_ocall(239, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5338,7 +5360,7 @@ sgx_status_t SGX_CDECL ocall_fchmod(int* retval, int fd, mode_t mode)
 	ms_ocall_fchmod_t* ms = &ms_o;
 	ms->ms_fd = fd;
 	ms->ms_mode = mode;
-	status = sgx_ocall(239, ms);
+	status = sgx_ocall(240, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5354,7 +5376,7 @@ sgx_status_t SGX_CDECL ocall_fchmodat(int* retval, int fd, const char* file, mod
 	ms->ms_file = SGX_CAST(char*, file);
 	ms->ms_mode = mode;
 	ms->ms_flag = flag;
-	status = sgx_ocall(240, ms);
+	status = sgx_ocall(241, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5366,7 +5388,7 @@ sgx_status_t SGX_CDECL ocall_umask(mode_t* retval, mode_t mask)
 	ms_ocall_umask_t ms_o;
 	ms_ocall_umask_t* ms = &ms_o;
 	ms->ms_mask = mask;
-	status = sgx_ocall(241, ms);
+	status = sgx_ocall(242, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5380,7 +5402,7 @@ sgx_status_t SGX_CDECL ocall_mkdir(int* retval, const char* path, mode_t mode)
 	ms_ocall_mkdir_t* ms = &ms_o;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_mode = mode;
-	status = sgx_ocall(242, ms);
+	status = sgx_ocall(243, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5395,7 +5417,7 @@ sgx_status_t SGX_CDECL ocall_mkdirat(int* retval, int fd, const char* path, mode
 	ms->ms_fd = fd;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_mode = mode;
-	status = sgx_ocall(243, ms);
+	status = sgx_ocall(244, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5409,7 +5431,7 @@ sgx_status_t SGX_CDECL ocall_mkfifo(int* retval, const char* path, mode_t mode)
 	ms_ocall_mkfifo_t* ms = &ms_o;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_mode = mode;
-	status = sgx_ocall(244, ms);
+	status = sgx_ocall(245, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5424,7 +5446,7 @@ sgx_status_t SGX_CDECL ocall_mkfifoat(int* retval, int fd, const char* path, mod
 	ms->ms_fd = fd;
 	ms->ms_path = SGX_CAST(char*, path);
 	ms->ms_mode = mode;
-	status = sgx_ocall(245, ms);
+	status = sgx_ocall(246, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5437,7 +5459,7 @@ sgx_status_t SGX_CDECL ocall_opendir(void** retval, const char* name)
 	ms_ocall_opendir_t ms_o;
 	ms_ocall_opendir_t* ms = &ms_o;
 	ms->ms_name = SGX_CAST(char*, name);
-	status = sgx_ocall(246, ms);
+	status = sgx_ocall(247, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5449,7 +5471,7 @@ sgx_status_t SGX_CDECL ocall_fdopendir(void** retval, int fd)
 	ms_ocall_fdopendir_t ms_o;
 	ms_ocall_fdopendir_t* ms = &ms_o;
 	ms->ms_fd = fd;
-	status = sgx_ocall(247, ms);
+	status = sgx_ocall(248, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5461,7 +5483,7 @@ sgx_status_t SGX_CDECL ocall_closedir(int* retval, void* dirp)
 	ms_ocall_closedir_t ms_o;
 	ms_ocall_closedir_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
-	status = sgx_ocall(248, ms);
+	status = sgx_ocall(249, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5473,7 +5495,7 @@ sgx_status_t SGX_CDECL ocall_readdir(struct dirent** retval, void* dirp)
 	ms_ocall_readdir_t ms_o;
 	ms_ocall_readdir_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
-	status = sgx_ocall(249, ms);
+	status = sgx_ocall(250, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5487,7 +5509,7 @@ sgx_status_t SGX_CDECL ocall_readdir_r(int* retval, void* dirp, struct dirent* e
 	ms->ms_dirp = SGX_CAST(void*, dirp);
 	ms->ms_entry = SGX_CAST(struct dirent*, entry);
 	ms->ms_result = SGX_CAST(struct dirent**, result);
-	status = sgx_ocall(250, ms);
+	status = sgx_ocall(251, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5499,7 +5521,7 @@ sgx_status_t SGX_CDECL ocall_rewinddir(void* dirp)
 	ms_ocall_rewinddir_t ms_o;
 	ms_ocall_rewinddir_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
-	status = sgx_ocall(251, ms);
+	status = sgx_ocall(252, ms);
 
 	return status;
 }
@@ -5511,7 +5533,7 @@ sgx_status_t SGX_CDECL ocall_seekdir(void* dirp, long int pos)
 	ms_ocall_seekdir_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
 	ms->ms_pos = pos;
-	status = sgx_ocall(252, ms);
+	status = sgx_ocall(253, ms);
 
 	return status;
 }
@@ -5522,7 +5544,7 @@ sgx_status_t SGX_CDECL ocall_telldir(long int* retval, void* dirp)
 	ms_ocall_telldir_t ms_o;
 	ms_ocall_telldir_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
-	status = sgx_ocall(253, ms);
+	status = sgx_ocall(254, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5534,7 +5556,7 @@ sgx_status_t SGX_CDECL ocall_dirfd(int* retval, void* dirp)
 	ms_ocall_dirfd_t ms_o;
 	ms_ocall_dirfd_t* ms = &ms_o;
 	ms->ms_dirp = SGX_CAST(void*, dirp);
-	status = sgx_ocall(254, ms);
+	status = sgx_ocall(255, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5547,7 +5569,7 @@ sgx_status_t SGX_CDECL ocall_alphasort(int* retval, const struct dirent** e1, co
 	ms_ocall_alphasort_t* ms = &ms_o;
 	ms->ms_e1 = SGX_CAST(struct dirent**, e1);
 	ms->ms_e2 = SGX_CAST(struct dirent**, e2);
-	status = sgx_ocall(255, ms);
+	status = sgx_ocall(256, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5563,7 +5585,7 @@ sgx_status_t SGX_CDECL ocall_getdirentries(ssize_t* retval, int fd, char* buf, s
 	ms->ms_buf = SGX_CAST(char*, buf);
 	ms->ms_nbytes = nbytes;
 	ms->ms_basep = SGX_CAST(off_t*, basep);
-	status = sgx_ocall(256, ms);
+	status = sgx_ocall(257, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5576,7 +5598,7 @@ sgx_status_t SGX_CDECL ocall_versionsort(int* retval, const struct dirent** e1, 
 	ms_ocall_versionsort_t* ms = &ms_o;
 	ms->ms_e1 = SGX_CAST(struct dirent**, e1);
 	ms->ms_e2 = SGX_CAST(struct dirent**, e2);
-	status = sgx_ocall(257, ms);
+	status = sgx_ocall(258, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5593,7 +5615,7 @@ sgx_status_t SGX_CDECL ocall_prlimit(int* retval, __pid_t pid, enum __rlimit_res
 	ms->ms_resource = resource;
 	ms->ms_new_limit = SGX_CAST(struct rlimit*, new_limit);
 	ms->ms_old_limit = SGX_CAST(struct rlimit*, old_limit);
-	status = sgx_ocall(258, ms);
+	status = sgx_ocall(259, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5607,7 +5629,7 @@ sgx_status_t SGX_CDECL ocall_getrlimit(int* retval, int resource, struct rlimit*
 	ms_ocall_getrlimit_t* ms = &ms_o;
 	ms->ms_resource = resource;
 	ms->ms_rlim = SGX_CAST(struct rlimit*, rlim);
-	status = sgx_ocall(259, ms);
+	status = sgx_ocall(260, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5621,7 +5643,7 @@ sgx_status_t SGX_CDECL ocall_setrlimit(int* retval, int resource, const struct r
 	ms_ocall_setrlimit_t* ms = &ms_o;
 	ms->ms_resource = resource;
 	ms->ms_rlim = SGX_CAST(struct rlimit*, rlim);
-	status = sgx_ocall(260, ms);
+	status = sgx_ocall(261, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5634,7 +5656,7 @@ sgx_status_t SGX_CDECL ocall_inet_addr(in_addr_t* retval, const char* cp)
 	ms_ocall_inet_addr_t ms_o;
 	ms_ocall_inet_addr_t* ms = &ms_o;
 	ms->ms_cp = SGX_CAST(char*, cp);
-	status = sgx_ocall(261, ms);
+	status = sgx_ocall(262, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5646,7 +5668,7 @@ sgx_status_t SGX_CDECL ocall_inet_lnaof(in_addr_t* retval, struct in_addr in)
 	ms_ocall_inet_lnaof_t ms_o;
 	ms_ocall_inet_lnaof_t* ms = &ms_o;
 	ms->ms_in = in;
-	status = sgx_ocall(262, ms);
+	status = sgx_ocall(263, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5659,7 +5681,7 @@ sgx_status_t SGX_CDECL ocall_inet_makeaddr(struct in_addr* retval, in_addr_t net
 	ms_ocall_inet_makeaddr_t* ms = &ms_o;
 	ms->ms_net = net;
 	ms->ms_host = host;
-	status = sgx_ocall(263, ms);
+	status = sgx_ocall(264, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5671,7 +5693,7 @@ sgx_status_t SGX_CDECL ocall_inet_netof(in_addr_t* retval, struct in_addr in)
 	ms_ocall_inet_netof_t ms_o;
 	ms_ocall_inet_netof_t* ms = &ms_o;
 	ms->ms_in = in;
-	status = sgx_ocall(264, ms);
+	status = sgx_ocall(265, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5684,7 +5706,7 @@ sgx_status_t SGX_CDECL ocall_inet_network(in_addr_t* retval, const char* cp)
 	ms_ocall_inet_network_t ms_o;
 	ms_ocall_inet_network_t* ms = &ms_o;
 	ms->ms_cp = SGX_CAST(char*, cp);
-	status = sgx_ocall(265, ms);
+	status = sgx_ocall(266, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5696,7 +5718,7 @@ sgx_status_t SGX_CDECL ocall_inet_ntoa(char** retval, struct in_addr in)
 	ms_ocall_inet_ntoa_t ms_o;
 	ms_ocall_inet_ntoa_t* ms = &ms_o;
 	ms->ms_in = in;
-	status = sgx_ocall(266, ms);
+	status = sgx_ocall(267, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5711,7 +5733,7 @@ sgx_status_t SGX_CDECL ocall_inet_pton(int* retval, int af, const char* cp, void
 	ms->ms_af = af;
 	ms->ms_cp = SGX_CAST(char*, cp);
 	ms->ms_buf = SGX_CAST(void*, buf);
-	status = sgx_ocall(267, ms);
+	status = sgx_ocall(268, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5727,7 +5749,7 @@ sgx_status_t SGX_CDECL ocall_inet_ntop(char** retval, int af, const void* cp, ch
 	ms->ms_cp = SGX_CAST(void*, cp);
 	ms->ms_buf = SGX_CAST(char*, buf);
 	ms->ms_len = len;
-	status = sgx_ocall(268, ms);
+	status = sgx_ocall(269, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5746,7 +5768,7 @@ sgx_status_t SGX_CDECL ocall_sysctl(int* retval, int* name, int nlen, void* oldv
 	ms->ms_oldlenp = SGX_CAST(size_t*, oldlenp);
 	ms->ms_newval = SGX_CAST(void*, newval);
 	ms->ms_newlen = newlen;
-	status = sgx_ocall(269, ms);
+	status = sgx_ocall(270, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5758,7 +5780,7 @@ sgx_status_t SGX_CDECL ocall_sigemptyset(int* retval, sigset_t* set)
 	ms_ocall_sigemptyset_t ms_o;
 	ms_ocall_sigemptyset_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
-	status = sgx_ocall(270, ms);
+	status = sgx_ocall(271, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5770,7 +5792,7 @@ sgx_status_t SGX_CDECL ocall_sigfillset(int* retval, sigset_t* set)
 	ms_ocall_sigfillset_t ms_o;
 	ms_ocall_sigfillset_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
-	status = sgx_ocall(271, ms);
+	status = sgx_ocall(272, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5783,7 +5805,7 @@ sgx_status_t SGX_CDECL ocall_sigaddset(int* retval, sigset_t* set, int signo)
 	ms_ocall_sigaddset_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
 	ms->ms_signo = signo;
-	status = sgx_ocall(272, ms);
+	status = sgx_ocall(273, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5796,7 +5818,7 @@ sgx_status_t SGX_CDECL ocall_sigdelset(int* retval, sigset_t* set, int signo)
 	ms_ocall_sigdelset_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
 	ms->ms_signo = signo;
-	status = sgx_ocall(273, ms);
+	status = sgx_ocall(274, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5809,7 +5831,7 @@ sgx_status_t SGX_CDECL ocall_sigismember(int* retval, const sigset_t* set, int s
 	ms_ocall_sigismember_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
 	ms->ms_signo = signo;
-	status = sgx_ocall(274, ms);
+	status = sgx_ocall(275, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5821,7 +5843,7 @@ sgx_status_t SGX_CDECL ocall_sigsuspend(int* retval, const sigset_t* set)
 	ms_ocall_sigsuspend_t ms_o;
 	ms_ocall_sigsuspend_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
-	status = sgx_ocall(275, ms);
+	status = sgx_ocall(276, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5835,7 +5857,7 @@ sgx_status_t SGX_CDECL ocall_sigaction(int* retval, int sig, const struct sigact
 	ms->ms_sig = sig;
 	ms->ms_act = SGX_CAST(struct sigaction*, act);
 	ms->ms_oact = SGX_CAST(struct sigaction*, oact);
-	status = sgx_ocall(276, ms);
+	status = sgx_ocall(277, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5847,7 +5869,7 @@ sgx_status_t SGX_CDECL ocall_sigpending(int* retval, sigset_t* set)
 	ms_ocall_sigpending_t ms_o;
 	ms_ocall_sigpending_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
-	status = sgx_ocall(277, ms);
+	status = sgx_ocall(278, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5860,7 +5882,7 @@ sgx_status_t SGX_CDECL ocall_sigwait(int* retval, const sigset_t* set, int* sig)
 	ms_ocall_sigwait_t* ms = &ms_o;
 	ms->ms_set = SGX_CAST(sigset_t*, set);
 	ms->ms_sig = SGX_CAST(int*, sig);
-	status = sgx_ocall(278, ms);
+	status = sgx_ocall(279, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5873,7 +5895,7 @@ sgx_status_t SGX_CDECL ocall_signal(__sighandler_t* retval, int __sig, __sighand
 	ms_ocall_signal_t* ms = &ms_o;
 	ms->ms___sig = __sig;
 	ms->ms___handler = __handler;
-	status = sgx_ocall(279, ms);
+	status = sgx_ocall(280, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5885,7 +5907,7 @@ sgx_status_t SGX_CDECL ocall_raise(int* retval, int sig)
 	ms_ocall_raise_t ms_o;
 	ms_ocall_raise_t* ms = &ms_o;
 	ms->ms_sig = sig;
-	status = sgx_ocall(280, ms);
+	status = sgx_ocall(281, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5897,7 +5919,7 @@ sgx_status_t SGX_CDECL ocall_getifaddrs(int* retval, struct ifaddrs** ifap)
 	ms_ocall_getifaddrs_t ms_o;
 	ms_ocall_getifaddrs_t* ms = &ms_o;
 	ms->ms_ifap = SGX_CAST(struct ifaddrs**, ifap);
-	status = sgx_ocall(281, ms);
+	status = sgx_ocall(282, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5909,7 +5931,7 @@ sgx_status_t SGX_CDECL ocall_freeifaddrs(struct ifaddrs* ifa)
 	ms_ocall_freeifaddrs_t ms_o;
 	ms_ocall_freeifaddrs_t* ms = &ms_o;
 	ms->ms_ifa = SGX_CAST(struct ifaddrs*, ifa);
-	status = sgx_ocall(282, ms);
+	status = sgx_ocall(283, ms);
 
 	return status;
 }
@@ -5921,7 +5943,7 @@ sgx_status_t SGX_CDECL ocall_if_nametoindex(unsigned int* retval, const char* if
 	ms_ocall_if_nametoindex_t ms_o;
 	ms_ocall_if_nametoindex_t* ms = &ms_o;
 	ms->ms_ifname = SGX_CAST(char*, ifname);
-	status = sgx_ocall(283, ms);
+	status = sgx_ocall(284, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5935,7 +5957,7 @@ sgx_status_t SGX_CDECL ocall_if_indextoname(char** retval, unsigned int ifindex,
 	ms_ocall_if_indextoname_t* ms = &ms_o;
 	ms->ms_ifindex = ifindex;
 	ms->ms_ifname = SGX_CAST(char*, ifname);
-	status = sgx_ocall(284, ms);
+	status = sgx_ocall(285, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5946,7 +5968,7 @@ sgx_status_t SGX_CDECL ocall_if_nameindex(struct if_nameindex** retval)
 
 	ms_ocall_if_nameindex_t ms_o;
 	ms_ocall_if_nameindex_t* ms = &ms_o;
-	status = sgx_ocall(285, ms);
+	status = sgx_ocall(286, ms);
 
 	if (retval) *retval = ms->ms_retval;
 	return status;
@@ -5958,7 +5980,7 @@ sgx_status_t SGX_CDECL ocall_if_freenameindex(struct if_nameindex* ptr)
 	ms_ocall_if_freenameindex_t ms_o;
 	ms_ocall_if_freenameindex_t* ms = &ms_o;
 	ms->ms_ptr = SGX_CAST(struct if_nameindex*, ptr);
-	status = sgx_ocall(286, ms);
+	status = sgx_ocall(287, ms);
 
 	return status;
 }

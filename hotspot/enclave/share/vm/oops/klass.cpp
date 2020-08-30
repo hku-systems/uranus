@@ -136,10 +136,10 @@ Method* Klass::uncached_lookup_method(Symbol* name, Symbol* signature, OverpassL
   return NULL;
 }
 
-void* Klass::operator new (std::size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw() {
+void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw() {
   // TODO allocate klass in enclave
   D_WARN_Unimplement;
-  return malloc(word_size * 8);
+  return malloc(word_size * HeapWordSize);
 }
 
 Klass::Klass() {
@@ -310,10 +310,8 @@ void Klass::initialize_supers(Klass* k, TRAPS) {
     // Combine the two arrays into a metadata object to pack the array.
     // The primaries are added in the reverse order, then the secondaries.
     int new_length = primaries->length() + secondaries->length();
-    // TODO jianyu
-    Array<Klass*>* s2;
-//    Array<Klass*>* s2 = MetadataFactory::new_array<Klass*>(
-//                                       class_loader_data(), new_length, CHECK);
+    Array<Klass*>* s2 = MetadataFactory::new_array<Klass*>(
+                                      class_loader_data(), new_length, CHECK);
     int fill_p = primaries->length();
     for (int j = 0; j < fill_p; j++) {
       s2->at_put(j, primaries->pop());  // add primaries in reverse order.

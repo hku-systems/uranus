@@ -100,7 +100,7 @@ JNI_ENTRY(jclass, jni_GetSuperclass(JNIEnv *env, jclass sub))
   // return mirror for superclass
   Klass* super;
   if (Klass::layout_helper_is_array(k->_layout_helper)) {
-      super = EnclaveMemory::wk_classes[SystemDictionary::Object_klass_knum];
+      super = SystemDictionary::Object_klass();
       printf("klass %s %lx\n", k->name()->as_C_string(), (intptr_t)super);
   } else {
       super = k->super();
@@ -165,7 +165,7 @@ jni_Get##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
              jsize len, ElementType *buf)) \
   typeArrayOop src = typeArrayOop(JNIHandles::resolve_non_null(array)); \
   if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)src->length())) { \
-    ENCLAVE_THROW(EnclaveException::java_lang_ArrayIndexOutOfBoundsException); \
+    THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
     if (len > 0) { \
       int sc = TypeArrayKlass::cast(src->klass())->log2_element_size(); \
@@ -195,7 +195,7 @@ jni_Set##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
              jsize len, const ElementType *buf)) \
   typeArrayOop dst = typeArrayOop(RESOLVE_HANDLE(array)); \
   if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)dst->length())) { \
-    ENCLAVE_THROW(EnclaveException::java_lang_ArrayIndexOutOfBoundsException); \
+    THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
     if (len > 0) { \
       int sc = TypeArrayKlass::cast(dst->klass())->log2_element_size(); \

@@ -78,6 +78,7 @@ enclave {
         void* ocall_multi_array_klass_get([user_check]void* pool, int index);
         void ocall_jvm_pre_native([user_check]void* method, int resolve);
         void* ocall_jvm_malloc(int size);
+        void* ocall_classfile_buffer([in, string]const char* name, [out, count=4]int *size);
     };
 
 };

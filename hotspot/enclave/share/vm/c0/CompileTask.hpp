@@ -22,7 +22,7 @@ public:
     void print_disassembly();
     void generate_fixed_frame(bool native_call);
     void set_compile_entry() {
-        method->set_enclave_native_function(method_entry);
+        method->_from_compiled_entry = method_entry;
     }
     void generate_gc_check(Label &l);
     void generate_gc_barrier(Label &l);

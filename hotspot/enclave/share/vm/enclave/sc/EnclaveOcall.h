@@ -49,4 +49,6 @@ void* Klass_resolve_get_put(void* thread, void* method, int index, int bytecode 
 
 void JVM_ENTRY_pre_native(void* thread, void* method, bool resolve OCallCallerDefs);
 
+void* JVM_CLASSFILE_BUFFER(const char* name, int *size);
+
 #endif

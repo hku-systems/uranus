@@ -51,7 +51,24 @@ bool TypeArrayKlass::compute_is_subtype_of(Klass* k) {
 
 TypeArrayKlass* TypeArrayKlass::create_klass(BasicType type,
                                       const char* name_str, TRAPS) {
-  D_WARN_Unimplement;
+  Symbol* sym = NULL;
+  if (name_str != NULL) {
+    sym = SymbolTable::new_permanent_symbol(name_str, CHECK_NULL);
+  }
+
+  ClassLoaderData* null_loader_data = ClassLoaderData::the_null_class_loader_data();
+
+  TypeArrayKlass* ak = TypeArrayKlass::allocate(null_loader_data, type, sym, CHECK_NULL);
+
+  // Add all classes to our internal class loader list here,
+  // including classes in the bootstrap (NULL) class loader.
+  // GC walks these as strong roots.
+  null_loader_data->add_class(ak);
+
+  // Call complete_create_array_klass after all instance variables have been initialized.
+  complete_create_array_klass(ak, ak->super(), CHECK_NULL);
+
+  return ak;
 }
 
 TypeArrayKlass* TypeArrayKlass::allocate(ClassLoaderData* loader_data, BasicType type, Symbol* name, TRAPS) {
@@ -76,7 +93,27 @@ TypeArrayKlass::TypeArrayKlass(BasicType type, Symbol* name) : ArrayKlass(name) 
 
 typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
   assert(log2_element_size() >= 0, "bad scale");
-  D_WARN_Unimplement;
+  if (length >= 0) {
+    if (length <= max_length()) {
+      size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
+      KlassHandle h_k(THREAD, this);
+      typeArrayOop t;
+      // CollectedHeap* ch = Universe::heap();
+      if (do_zero) {
+        t = (typeArrayOop) EnclaveMemory::enclaveMemory->klass_type_array(THREAD, h_k(), length);
+        // t = (typeArrayOop)CollectedHeap::array_allocate(h_k, (int)size, length, CHECK_NULL);
+      } else {
+        // t = (typeArrayOop)CollectedHeap::array_allocate_nozero(h_k, (int)size, length, CHECK_NULL);
+      }
+      return t;
+    } else {
+      // report_java_out_of_memory("Requested array size exceeds VM limit");
+      // JvmtiExport::post_array_size_exhausted();
+      THROW_OOP_0(Universe::out_of_memory_error_array_size());
+    }
+  } else {
+    THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
+  }
 }
 
 oop TypeArrayKlass::multi_allocate(int rank, jint* last_size, TRAPS) {
@@ -94,7 +131,39 @@ void TypeArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d, int dst_pos
 
 // create a klass of array holding typeArrays
 Klass* TypeArrayKlass::array_klass_impl(bool or_null, int n, TRAPS) {
-  D_WARN_Unimplement;
+  int dim = dimension();
+  assert(dim <= n, "check order of chain");
+    if (dim == n)
+      return this;
+
+  if (higher_dimension() == NULL) {
+    if (or_null)  return NULL;
+
+    ResourceMark rm;
+    JavaThread *jt = (JavaThread *)THREAD;
+    {
+      MutexLocker mc(Compile_lock, THREAD);   // for vtables
+      // Atomic create higher dimension and link into list
+      MutexLocker mu(MultiArray_lock, THREAD);
+
+      if (higher_dimension() == NULL) {
+        Klass* oak = ObjArrayKlass::allocate_objArray_klass(
+              class_loader_data(), dim + 1, this, CHECK_NULL);
+        ObjArrayKlass* h_ak = ObjArrayKlass::cast(oak);
+        h_ak->set_lower_dimension(this);
+        OrderAccess::storestore();
+        set_higher_dimension(h_ak);
+        assert(h_ak->oop_is_objArray(), "incorrect initialization of ObjArrayKlass");
+      }
+    }
+  } else {
+    CHECK_UNHANDLED_OOPS_ONLY(Thread::current()->clear_unhandled_oops());
+  }
+  ObjArrayKlass* h_ak = ObjArrayKlass::cast(higher_dimension());
+  if (or_null) {
+    return h_ak->array_klass_or_null(n);
+  }
+  return h_ak->array_klass(n, CHECK_NULL);
 }
 
 Klass* TypeArrayKlass::array_klass_impl(bool or_null, TRAPS) {
@@ -113,11 +182,13 @@ void TypeArrayKlass::oop_follow_contents(oop obj) {
   // know that Universe::TypeArrayKlass never moves.
 }
 
+#if INCLUDE_ALL_GCS
 void TypeArrayKlass::oop_follow_contents(ParCompactionManager* cm, oop obj) {
   assert(obj->is_typeArray(),"must be a type array");
   // Performance tweak: We skip iterating over the klass pointer since we
   // know that Universe::TypeArrayKlass never moves.
 }
+#endif // INCLUDE_ALL_GCS
 
 int TypeArrayKlass::oop_adjust_pointers(oop obj) {
   assert(obj->is_typeArray(),"must be a type array");
@@ -143,7 +214,7 @@ int TypeArrayKlass::oop_oop_iterate_m(oop obj, ExtendedOopClosure* blk, MemRegio
   return t->object_size();
 }
 
-
+#if INCLUDE_ALL_GCS
 void TypeArrayKlass::oop_push_contents(PSPromotionManager* pm, oop obj) {
   ShouldNotReachHere();
   assert(obj->is_typeArray(),"must be a type array");
@@ -154,7 +225,7 @@ TypeArrayKlass::oop_update_pointers(ParCompactionManager* cm, oop obj) {
   assert(obj->is_typeArray(),"must be a type array");
   return typeArrayOop(obj)->object_size();
 }
-
+#endif // INCLUDE_ALL_GCS
 
 void TypeArrayKlass::initialize(TRAPS) {
   // Nothing to do. Having this function is handy since objArrayKlasses can be

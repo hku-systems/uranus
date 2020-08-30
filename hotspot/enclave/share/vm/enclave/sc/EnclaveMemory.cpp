@@ -14,15 +14,16 @@
 #include "securecompiler.h"
 
 
-EnclaveMemory* EnclaveMemory::enclaveMemory = NULL;
+static EnclaveMemory* EnclaveMemory::enclaveMemory = NULL;
 
-EnclaveMemory* EnclaveMemory::heapMemory = NULL;
+static EnclaveMemory* EnclaveMemory::heapMemory = NULL;
 
-heap_allocator EnclaveMemory::fast_heap_alloc = NULL;
+static heap_allocator EnclaveMemory::fast_heap_alloc = NULL;
 
 void** EnclaveMemory::heap_top = NULL;
 void** EnclaveMemory::heap_bottom = NULL;
 
+pthread_spinlock_t heap_lock;
 
 #define HEAP_BUFFER_SIZE 128*M
 
@@ -90,7 +91,7 @@ oop EnclaveMemory::vm_new_basic_char_final(int length, Thread* THREAD) {
     size_t size = object_size(array_layout_helper(T_CHAR), length);
     HeapWord *obj = new HeapWord[size];
     if (obj == NULL) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+        THROW_0(vmSymbols::java_lang_OutOfMemoryError());
     }
     // init the space
     const size_t hs = oopDesc::header_size();
@@ -101,9 +102,7 @@ oop EnclaveMemory::vm_new_basic_char_final(int length, Thread* THREAD) {
 //    memset((obj) + hs, 0,(size - hs) * sizeof(char*));
 
     // TODO: set up the klass
-    if (_type_array_klass == NULL)
-        _type_array_klass = KLASS_get_type_array_klass();
-    Klass** klass_array = (Klass**)_type_array_klass;
+    Klass** klass_array = (Klass**)Universe::typeArrayKlassObj();
     Klass* array_klass = klass_array[T_CHAR];
     ((arrayOop)obj)->set_klass(array_klass);
     // setup array
@@ -115,18 +114,18 @@ oop EnclaveMemory::vm_new_basic_char_final(int length, Thread* THREAD) {
 }
 
 oop EnclaveMemory::vm_new_basic_string_final(Thread* THREAD) {
-    size_t size = layout_helper_to_size_helper(EnclaveMemory::wk_classes[SystemDictionary::String_klass_knum]->_layout_helper);
+    size_t size = layout_helper_to_size_helper(SystemDictionary::String_klass()->_layout_helper);
     MEM_TRACE(size);
     HeapWord *obj = new HeapWord[size];
     if (obj == NULL) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+        THROW_0(vmSymbols::java_lang_OutOfMemoryError());
     }
     const size_t hs = oopDesc::header_size();
 //  ((oop)obj)->set_klass_gap(0);
     Copy::fill_to_aligned_words((HeapWord*)obj + hs, size - hs);
 //    memset((obj) + hs, 0,(size - hs) * sizeof(char*));
 
-    ((oop)obj)->set_klass(EnclaveMemory::wk_classes[SystemDictionary::String_klass_knum]);
+    ((oop)obj)->set_klass(SystemDictionary::String_klass());
     ((oop)obj)->set_mark(markOopDesc::prototype());
     return (oop)obj;
 }
@@ -182,10 +181,10 @@ void* EnclaveMemory::new_page() {
     return aligned_malloc(4096, 4096);
 }
 
-void* EnclaveMemory::_type_array_klass = NULL;
+// void* EnclaveMemory::_type_array_klass = NULL;
 bool EnclaveMemory::print_copy = true;
 
-Klass** EnclaveMemory::wk_classes = NULL;
+// Klass** EnclaveMemory::wk_classes = NULL;
 //Klass* EnclaveMemory::_typeArrayKlassObjs[T_VOID+1]      = { NULL /*, NULL...*/ };
 
 int EnclaveMemory::array_layout_helper(BasicType etype) {
@@ -216,7 +215,7 @@ address EnclaveMemory::allocate_heap(int size, JavaThread* thread) {
         guarantee(heap_buffer != NULL, "heap buffer must not be NULL");
         int new_size = size * sizeof(HeapWord*);
         while (true) {
-            if ((address)heap_buffer_start + new_size < (address)heap_buffer + HEAP_BUFFER_SIZE) {
+            if (heap_buffer_start + new_size < heap_buffer + HEAP_BUFFER_SIZE) {
                 address obj = (address)heap_buffer_start;
                 address new_top = obj + new_size;
                 address result = (address)Atomic::cmpxchg_ptr(new_top, &heap_buffer_start, obj);
@@ -226,7 +225,7 @@ address EnclaveMemory::allocate_heap(int size, JavaThread* thread) {
                 return obj;
             } else {
                 address obj = (address)heap_buffer_start;
-                address new_top = (address)heap_buffer + new_size;
+                address new_top = (address)(heap_buffer + new_size);
                 address result = (address)Atomic::cmpxchg_ptr(new_top, &heap_buffer_start, obj);
                 if (result != obj) {
                     continue;
@@ -252,7 +251,7 @@ address EnclaveMemory::allocate(int size, JavaThread* THREAD) {
         }
     }
     if (ret == NULL) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+        THROW_0(vmSymbols::java_lang_OutOfMemoryError());
     }
     return ret;
 }
@@ -266,7 +265,7 @@ address EnclaveMemory::vm_new_obj(JavaThread* THREAD, Klass *klass) {
     MEM_TRACE(size);
     address obj = alloc(size, THREAD);
     if (obj == NULL) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+        THROW_0(vmSymbols::java_lang_OutOfMemoryError());
     }
     const size_t hs = oopDesc::header_size();
 //  ((oop)obj)->set_klass_gap(0);
@@ -280,7 +279,7 @@ address EnclaveMemory::vm_new_obj(JavaThread* THREAD, Klass *klass) {
 
 address EnclaveMemory::vm_type_array(JavaThread *THREAD, BasicType type, int length) {
     if (length < 0) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+        THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
     }
     MEM_TRACE(length);
     // calculate how much space should be allocate
@@ -298,9 +297,7 @@ address EnclaveMemory::vm_type_array(JavaThread *THREAD, BasicType type, int len
 //    memset((obj) + hs, 0,(size - hs) * sizeof(char*));
 
     // TODO: set up the klass
-    if (_type_array_klass == NULL)
-        _type_array_klass = KLASS_get_type_array_klass();
-    Klass** klass_array = (Klass**)_type_array_klass;
+    Klass** klass_array = (Klass**)Universe::_typeArrayKlassObjs;
     Klass* array_klass = klass_array[type];
     ((arrayOop)obj)->set_klass(array_klass);
     // setup array
@@ -320,10 +317,10 @@ void* EnclaveMemory::init() {
 
 address EnclaveMemory::cpoll_new_array(JavaThread* THREAD, void *pool, int index, int length) {
     if (length < 0) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+        THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
     }
     MEM_TRACE(length);
-    Klass* klass = (Klass*)KLASS_get_obj_array_klass(pool, index);
+    Klass* klass = (Klass*)((ConstantPool*)pool)->klass_at(index, (Thread*)THREAD);
 
     return klass_obj_array(THREAD, klass, length);
 }
@@ -357,7 +354,7 @@ address EnclaveMemory::klass_multi_array_helper(JavaThread* THREAD, Klass* klass
     MEM_TRACE(length);
 
     if (length < 0) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+        THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
     }
 
     if (is_type_oop(klass)) {
@@ -388,7 +385,7 @@ address EnclaveMemory::klass_new_array(JavaThread* THREAD, oop klass, int size) 
     MEM_TRACE(size);
     if (klass == NULL) {
         // handle null pointer exception
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NullPointerException);
+        THROW_0(vmSymbols::java_lang_NullPointerException());
     }
     // create a type array
     if (java_lang_Class::is_primitive(klass)) {
@@ -396,7 +393,7 @@ address EnclaveMemory::klass_new_array(JavaThread* THREAD, oop klass, int size) 
         return vm_type_array(THREAD, type, size);
     } else {
         Klass* k = java_lang_Class::as_Klass(klass);
-        k = (Klass*)KLASS_array_klass(k, 1, 0);
+        k->array_klass((Thread*)THREAD);
         return klass_multi_array_helper(THREAD, k, &size, 1);
     }
 
@@ -417,14 +414,14 @@ address EnclaveMemory::klass_multi_array(JavaThread *THREAD, oop element_mirror,
     for (int i = 0; i < len; i++) {
         int d = dim_array->int_at(i);
         if (d < 0) {
-            ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+            THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
         }
         dimensions[i] = d;
     }
     int rank = len;
     if (java_lang_Class::is_primitive(element_mirror)) {
         BasicType type = java_lang_Class::primitive_type(element_mirror);
-        Klass** klass_array = (Klass**)_type_array_klass;
+        Klass** klass_array = (Klass**)Universe::typeArrayKlassObj();
         klass = klass_array[type];
     } else {
         klass = java_lang_Class::as_Klass(element_mirror);
@@ -436,7 +433,7 @@ address EnclaveMemory::klass_multi_array(JavaThread *THREAD, oop element_mirror,
         }
     }
     // here we may get problem
-    klass = (Klass*)KLASS_array_klass(klass, rank, 0);
+    klass = (Klass*)klass->array_klass(rank, (Thread*)THREAD);
     return klass_multi_array_helper(NULL, klass, &dimensions[0], rank);
 }
 
@@ -449,7 +446,7 @@ address EnclaveMemory::cpoll_multi_array(JavaThread* THREAD, void *pool, int ind
         int n = - index * sizeof(char*) / sizeof(jint);
         dim_array[index] = dim_num[n];
     }
-    ArrayKlass *ak = (ArrayKlass*)KLASS_get_multi_array_klass(pool, index);
+    ArrayKlass *ak = (ArrayKlass*)((ConstantPool*)pool)->klass_at(index, (Thread*)THREAD);
     return klass_multi_array_helper(THREAD, ak, &dim_array[0], nofd);
 }
 

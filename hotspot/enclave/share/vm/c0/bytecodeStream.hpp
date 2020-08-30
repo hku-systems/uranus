@@ -38,8 +38,8 @@
 #ifdef TARGET_ARCH_zero
 # include "bytes_zero.hpp"
 #endif
-#ifdef TARGET_ARCH_aarch64
-# include "bytes_aarch64.hpp"
+#ifdef TARGET_ARCH_arm
+# include "bytes_arm.hpp"
 #endif
 #ifdef TARGET_ARCH_ppc
 # include "bytes_ppc.hpp"
@@ -129,8 +129,6 @@ class BaseBytecodeStream {
   void assert_raw_stream(bool want_raw) const NOT_DEBUG_RETURN;
 };
 
-/*
- * Useless = =||
 class RawBytecodeStream: public BaseBytecodeStream {
  public:
   // Construction
@@ -179,7 +177,7 @@ class RawBytecodeStream: public BaseBytecodeStream {
     return Bytes::get_Java_u2(p);
   }
 };
-*/
+
 
 // In BytecodeStream, non-java bytecodes will be translated into the
 // corresponding java bytecodes.

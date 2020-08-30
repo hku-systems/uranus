@@ -21,22 +21,22 @@ public class TestSuit {
 
     static public class B { int m = 10; }
 
-    int add(int a, int b) { return a + b; }
+    static int add(int a, int b) { return a + b; }
     int constance() {return 0; }
 
-    int sgx_hook_add(int a, int b) { return a + b; }
-    String sgx_hook_string() { return "hook"; }
-    int sgx_hook_invokevirtual(int a, int b) { return add(1, 2); }
-    int sgx_hook_new_invokevirtual() {
+    static int sgx_hook_add(int a, int b) { return a + b; }
+    static String sgx_hook_string() { return "hook"; }
+    static int sgx_hook_invokevirtual(int a, int b) { return add(1, 2); }
+    static int sgx_hook_new_invokevirtual() {
       TestSuit s = new TestSuit();
       return s.add(1, 2);
     }
-    void sgx_hook_invokestatic() { static_call(); }
-    int sgx_hook_invokeinterface(HelloInterface i) { return i.me(); }
-    int sgx_hook_getfield(TestSuit s) { return s.f_b; }
-    int sgx_hook_putfiled(TestSuit s, int i) { s.f_a = i; return s.f_a; }
-    int sgx_hook_newobj() { return new B().m; }
-    int sgx_hook_syn() { 
+    static void sgx_hook_invokestatic() { static_call(); }
+    static int sgx_hook_invokeinterface(HelloInterface i) { return i.me(); }
+    static int sgx_hook_getfield(TestSuit s) { return s.f_b; }
+    static int sgx_hook_putfiled(TestSuit s, int i) { s.f_a = i; return s.f_a; }
+    static int sgx_hook_newobj() { return new B().m; }
+    static int sgx_hook_syn() { 
       Object obj = new Object();
       int sum = 0;
       synchronized (obj) {
@@ -46,17 +46,17 @@ public class TestSuit {
       }
       return sum;
     }
-    int sgx_hook_newintarr() {
+    static int sgx_hook_newintarr() {
       int[] arr = new int[3];
       arr[0] = 2;
       return arr[0];
     }
-    int sgx_hook_newmultiintarr() {
+    static int sgx_hook_newmultiintarr() {
       int[][] arr = new int[3][3];
       arr[0][0] = 2;
       return arr[0][0];
     }
-    Object sgx_hook_newobjarr(Object o) {
+    static Object sgx_hook_newobjarr(Object o) {
       B[] arr_b = new B[3];
       B b = new B();
       arr_b[0] = b;
@@ -66,31 +66,31 @@ public class TestSuit {
       arr[0] = o;
       return arr[0];
     }
-    int sgx_hook_aastore(int[] m, int i) {
+    static int sgx_hook_aastore(int[] m, int i) {
       m[0] = i;
       return m[0];
     }
-    Object sgx_hook_aastore(Object[] m, Object i) {
+    static Object sgx_hook_aastore(Object[] m, Object i) {
       m[0] = i;
       return m[0];
     }
-    Object sgx_hook_putgetfield(TestSuit s, Object o) {
+    static Object sgx_hook_putgetfield(TestSuit s, Object o) {
       s.f_c = o;
       return o;
     }
-    boolean sgx_hook_instanceof(TestSuit s) {
+    static boolean sgx_hook_instanceof(TestSuit s) {
       Object o = (Object)s;
       TestSuit ss = (TestSuit)o;
       return o instanceof TestSuit;
     }
-    int sgx_hook_forloop() {
+    static int sgx_hook_forloop() {
       int sum = 0;
       for (int i = 0;i < 10;i++) {
         sum += 1;
       }
       return sum;
     }
-    void sgx_hook_exception_active() {
+    static void sgx_hook_exception_active() {
       try {
         int a = 0;
           throw new TestException();
@@ -98,7 +98,7 @@ public class TestSuit {
         // System.out.println("new");
       }
     }
-    void sgx_hook_runtime_exception() {
+    static void sgx_hook_runtime_exception() {
       try {
         int a = 0;
         int c = 1 / a;

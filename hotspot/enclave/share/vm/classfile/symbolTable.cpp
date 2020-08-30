@@ -375,7 +375,7 @@ Symbol* SymbolTable::basic_add(int index_arg, u1 *name, int len,
 
   // Don't allow symbols to be created which cannot fit in a Symbol*.
   if (len > Symbol::max_length()) {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_RuntimeException);
+    THROW_0(vmSymbols::java_lang_RuntimeException());
   }
 
 
@@ -420,7 +420,7 @@ bool SymbolTable::basic_add(ClassLoaderData* loader_data, constantPoolHandle cp,
   // Check symbol names are not too long.  If any are too long, don't add any.
   for (int i = 0; i< names_count; i++) {
     if (lengths[i] > Symbol::max_length()) {
-      ENCLAVE_THROW_0(EnclaveException::java_lang_RuntimeException);
+      THROW_0(vmSymbols::java_lang_RuntimeException());
     }
   }
 

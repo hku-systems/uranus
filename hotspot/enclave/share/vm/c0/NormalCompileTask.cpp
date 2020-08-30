@@ -2106,10 +2106,7 @@ void NormalCompileTask::newarray() {
     Register klass  = r3;
     gc_point();
     __ str(length, r0);
-    if (EnclaveMemory::_type_array_klass == NULL) {
-        EnclaveMemory::_type_array_klass = KLASS_get_type_array_klass();
-    }
-    __ str(r0, (Register)(intptr_t)EnclaveMemory::_type_array_klass);
+    __ str(r0, (Register)(intptr_t)Universe::typeArrayKlassObj());
     //__ str(klass, Address(r0, (int32_t)bs->get_index_u1(), Address::times_ptr));
     __ str(klass, Address(r0, (int32_t)bs->get_index_u1()));
 
@@ -3124,7 +3121,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                 // load Method*, if invokestatic or vfinal
                 __ str(m, (Register)(intptr_t)callee);
                 if (JCompiler::is_compile(callee)) {
-                    compiled_entry = *callee->enclave_native_function_addr();
+                    compiled_entry = callee->_from_compiled_entry;
                 }
             }
         }

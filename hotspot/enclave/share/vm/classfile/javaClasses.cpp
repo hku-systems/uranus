@@ -29,7 +29,9 @@
 #include "classfile/vmSymbols.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/oopFactory.hpp"
 #include "memory/universe.inline.hpp"
+#include "oops/fieldStreams.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceMirrorKlass.hpp"
 #include "oops/klass.hpp"
@@ -38,6 +40,7 @@
 #include "oops/typeArrayOop.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/thread.inline.hpp"
+#include "runtime/reflectionUtils.hpp"
 #include "symbolTable.hpp"
 
 PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
@@ -321,7 +324,7 @@ jchar* java_lang_String::as_unicode_string(oop java_string, int& length, TRAPS) 
       result[index] = value->char_at(index + offset);
     }
   } else {
-    ENCLAVE_THROW_0(EnclaveException::java_lang_OutOfMemoryError);
+    THROW_0(vmSymbols::java_lang_OutOfMemoryError());
   }
   return result;
 }
@@ -353,7 +356,7 @@ char* java_lang_String::as_quoted_ascii(oop java_string) {
 }
 
 bool java_lang_String::is_instance(oop obj) {
-  return obj != NULL && obj->klass() == EnclaveMemory::wk_classes[SystemDictionary::String_klass_knum];
+  return obj != NULL && obj->klass() == SystemDictionary::String_klass();
 }
 
 unsigned int java_lang_String::hash_string(oop java_string) {
@@ -521,21 +524,46 @@ static void initialize_static_field(fieldDescriptor* fd, Handle mirror, TRAPS) {
         }
         break;
       default:
-        ENCLAVE_THROW(EnclaveException::java_lang_RuntimeException);
+        THROW(vmSymbols::java_lang_RuntimeException());
     }
   }
 }
 
 
 void java_lang_Class::fixup_mirror(KlassHandle k, TRAPS) {
-  D_WARN_Unimplement;
+  assert(InstanceMirrorKlass::offset_of_static_fields() != 0, "must have been computed already");
+  // If the offset was read from the shared archive, it was fixed up already
+  if (!k->is_shared()) {
+    if (k->oop_is_instance()) {
+      // During bootstrap, java.lang.Class wasn't loaded so static field
+      // offsets were computed without the size added it.  Go back and
+      // update all the static field offsets to included the size.
+        for (JavaFieldStream fs(InstanceKlass::cast(k())); !fs.done(); fs.next()) {
+        if (fs.access_flags().is_static()) {
+          int real_offset = fs.offset() + InstanceMirrorKlass::offset_of_static_fields();
+          fs.set_offset(real_offset);
+        }
+      }
+    }
+  }
+  create_mirror(k, Handle(NULL), Handle(NULL), CHECK);
 }
 
 void java_lang_Class::initialize_mirror_fields(KlassHandle k,
                                                Handle mirror,
                                                Handle protection_domain,
                                                TRAPS) {
-  D_WARN_Unimplement;
+  // Allocate a simple java object for a lock.
+  // This needs to be a java object because during class initialization
+  // it can be held across a java call.
+  typeArrayOop r = oopFactory::new_typeArray(T_INT, 0, CHECK);
+  set_init_lock(mirror(), r);
+
+  // Set protection domain also
+  set_protection_domain(mirror(), protection_domain());
+
+  // Initialize static fields
+  InstanceKlass::cast(k())->do_local_static_fields(&initialize_static_field, mirror, CHECK);
 }
 
 void java_lang_Class::create_mirror(KlassHandle k, Handle class_loader,
@@ -3106,9 +3134,31 @@ void JavaClasses::check_offsets() {
 #endif // PRODUCT
 
 int InjectedField::compute_offset() {
-  D_WARN_Unimplement;
+  Klass* klass_oop = klass();
+  for (AllFieldStream fs(InstanceKlass::cast(klass_oop)); !fs.done(); fs.next()) {
+    if (!may_be_java && !fs.access_flags().is_internal()) {
+      // Only look at injected fields
+      continue;
+    }
+    if (fs.name() == name() && fs.signature() == signature()) {
+      return fs.offset();
+    }
+  }
+  ResourceMark rm;
+  tty->print_cr("Invalid layout of %s at %s/%s%s", InstanceKlass::cast(klass_oop)->external_name(), name()->as_C_string(), signature()->as_C_string(), may_be_java ? " (may_be_java)" : "");
+#ifndef PRODUCT
+  klass_oop->print();
+  tty->print_cr("all fields:");
+  for (AllFieldStream fs(InstanceKlass::cast(klass_oop)); !fs.done(); fs.next()) {
+    tty->print_cr("  name: %s, sig: %s, flags: %08x", fs.name()->as_C_string(), fs.signature()->as_C_string(), fs.access_flags().as_int());
+  }
+#endif //PRODUCT
+  vm_exit_during_initialization("Invalid layout of preloaded class: use -XX:+TraceClassLoading to see the origin of the problem class");
+  return -1;
 }
 
 void javaClasses_init() {
-  D_WARN_Unimplement;
+  JavaClasses::compute_offsets();
+  JavaClasses::check_offsets();
+  FilteredFieldsMap::initialize();  // must be done after computing offsets.
 }

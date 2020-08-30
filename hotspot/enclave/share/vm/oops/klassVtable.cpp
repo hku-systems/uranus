@@ -44,8 +44,8 @@ inline InstanceKlass* klassVtable::ik() const {
 }
 
 bool klassVtable::is_preinitialized_vtable() {
-  // TODO: init
-//  return _klass->is_shared() && !MetaspaceShared::remapped_readwrite();
+  // jianyu
+  return false;
 }
 
 
@@ -475,7 +475,7 @@ bool klassVtable::update_inherited_vtable(InstanceKlass* klass, methodHandle tar
               char* buf = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, char, buflen);
               jio_snprintf(buf, buflen, msg, sig, loader1, current, loader2,
                            failed_type_name);
-              ENCLAVE_THROW_0(EnclaveException::java_lang_RuntimeException);
+              THROW_0(vmSymbols::java_lang_RuntimeException());
             }
           }
        }
@@ -1237,7 +1237,7 @@ void klassItable::initialize_itable_for_interface(int method_table_offset, Klass
             char* buf = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, char, buflen);
             jio_snprintf(buf, buflen, msg, sig, loader1, current, loader2,
                          iface, failed_type_name);
-            ENCLAVE_THROW(EnclaveException::java_lang_RuntimeException);
+            THROW(vmSymbols::java_lang_RuntimeException());
           }
         }
       }

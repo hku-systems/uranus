@@ -49,7 +49,7 @@ void* EnclaveNative::resolve_function(Method* m) {
     const char* name = pure_jni_name(m);
     for (int i = 0;i < EnclaveNative::NATIVE_COUNT;i++) {
         if (strstr(name, EnclaveNative::native_name[i]) != NULL) {
-            m->set_enclave_native_function(CAST_FROM_FN_PTR(address, EnclaveNative::native_entry[i]));
+            m->set_native_function(CAST_FROM_FN_PTR(address, EnclaveNative::native_entry[i]), false);
 //            printf("set entry %s %lx\n", name, (intptr_t)EnclaveNative::native_name[i]);
             return CAST_FROM_FN_PTR(address, EnclaveNative::native_entry[i]);
         }

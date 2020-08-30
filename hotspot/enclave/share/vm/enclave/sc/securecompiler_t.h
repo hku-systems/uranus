@@ -81,6 +81,7 @@ sgx_status_t SGX_CDECL ocall_array_klass(void** retval, void* klass, int rank, i
 sgx_status_t SGX_CDECL ocall_multi_array_klass_get(void** retval, void* pool, int index);
 sgx_status_t SGX_CDECL ocall_jvm_pre_native(void* method, int resolve);
 sgx_status_t SGX_CDECL ocall_jvm_malloc(void** retval, int size);
+sgx_status_t SGX_CDECL ocall_classfile_buffer(void** retval, const char* name, int* size);
 sgx_status_t SGX_CDECL ocall_pthread_create(int* retval, pthread_t* new_thread, SGX_WRAPPER_PTHREAD_ATTRIBUTE __attr, unsigned long int job_id, sgx_enclave_id_t eid);
 sgx_status_t SGX_CDECL ocall_pthread_self(pthread_t* retval);
 sgx_status_t SGX_CDECL ocall_pthread_join(int* retval, pthread_t pt, void** thread_result);

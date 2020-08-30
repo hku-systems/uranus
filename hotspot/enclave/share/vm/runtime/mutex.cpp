@@ -350,7 +350,21 @@ int Monitor::ILocked () {
 // See synchronizer.cpp for details and rationale.
 
 int Monitor::TrySpin (Thread * const Self) {
-  D_WARN_Unimplement;
+  if (TryLock())    return 1 ;
+  if (!os::is_MP()) return 0 ;
+
+  int Probes  = 0 ;
+  int Delay   = 0 ;
+  int Steps   = 0 ;
+  for (;;) {
+    intptr_t v = _LockWord.FullWord;
+    if ((v & _LBIT) == 0) {
+      if (CASPTR (&_LockWord, v, v|_LBIT) == v) {
+        return 1 ;
+      }
+      continue ;
+    }
+  }
 }
 
 static int ParkCommon (ParkEvent * ev, jlong timo) {
@@ -369,11 +383,62 @@ inline int Monitor::AcquireOrPush (ParkEvent * ESelf) {
 // _owner is a higher-level logical concept.
 
 void Monitor::ILock (Thread * Self) {
-D_WARN_Unimplement;
+  assert (_OnDeck != Self->_MutexEvent, "invariant") ;
+
+  if (TryFast()) {
+ Exeunt:
+    assert (ILocked(), "invariant") ;
+    return ;
+  }
+
+  // As an optimization, spinners could conditionally try to set ONDECK to _LBIT
+  // Synchronizer.cpp uses a similar optimization.
+  if (TrySpin (Self)) goto Exeunt ;
+  D_WARN_Unimplement;
 }
 
 void Monitor::IUnlock (bool RelaxAssert) {
-D_WARN_Unimplement;
+  assert (ILocked(), "invariant") ;
+  // Conceptually we need a MEMBAR #storestore|#loadstore barrier or fence immediately
+  // before the store that releases the lock.  Crucially, all the stores and loads in the
+  // critical section must be globally visible before the store of 0 into the lock-word
+  // that releases the lock becomes globally visible.  That is, memory accesses in the
+  // critical section should not be allowed to bypass or overtake the following ST that
+  // releases the lock.  As such, to prevent accesses within the critical section
+  // from "leaking" out, we need a release fence between the critical section and the
+  // store that releases the lock.  In practice that release barrier is elided on
+  // platforms with strong memory models such as TSO.
+  //
+  // Note that the OrderAccess::storeload() fence that appears after unlock store
+  // provides for progress conditions and succession and is _not related to exclusion
+  // safety or lock release consistency.
+  OrderAccess::release_store(&_LockWord.Bytes[_LSBINDEX], 0); // drop outer lock
+  OrderAccess::storeload ();
+
+  intptr_t cxq = _LockWord.FullWord ;
+  if (((cxq & ~_LBIT)|UNS(_EntryList)) == 0) {
+    return ;      // normal fast-path exit - cxq and EntryList both empty
+  }
+  if (cxq & _LBIT) {
+    // Optional optimization ...
+    // Some other thread acquired the lock in the window since this
+    // thread released it.  Succession is now that thread's responsibility.
+    return ;
+  }
+
+ Succession:
+  // Slow-path exit - this thread must ensure succession and progress.
+  // OnDeck serves as lock to protect cxq and EntryList.
+  // Only the holder of OnDeck can manipulate EntryList or detach the RATs from cxq.
+  // Avoid ABA - allow multiple concurrent producers (enqueue via push-CAS)
+  // but only one concurrent consumer (detacher of RATs).
+  // Consider protecting this critical section with schedctl on Solaris.
+  // Unlike a normal lock, however, the exiting thread "locks" OnDeck,
+  // picks a successor and marks that thread as OnDeck.  That successor
+  // thread will then clear OnDeck once it eventually acquires the outer lock.
+  if (CASPTR (&_OnDeck, NULL, _LBIT) != UNS(NULL)) {
+    return ;
+  }
 }
 
 bool Monitor::notify() {
@@ -395,7 +460,7 @@ bool Monitor::notify_all() {
 }
 
 int Monitor::IWait (Thread * Self, jlong timo) {
-D_WARN_Unimplement;
+  D_WARN_Unimplement;
 }
 
 
@@ -435,7 +500,21 @@ D_WARN_Unimplement;
 // of Mutex-Monitor and instead directly address the underlying design flaw.
 
 void Monitor::lock (Thread * Self) {
-D_WARN_Unimplement;
+  debug_only(check_prelock_state(Self));
+  assert (_owner != Self              , "invariant") ;
+  assert (_OnDeck != Self->_MutexEvent, "invariant") ;
+
+  if (TryFast()) {
+ Exeunt:
+    assert (ILocked(), "invariant") ;
+    assert (owner() == NULL, "invariant");
+    set_owner (Self);
+    return ;
+  }
+
+  // Try a brief spin to avoid passing thru thread state transition ...
+  if (TrySpin (Self)) goto Exeunt ;
+  D_WARN_Unimplement;
 }
 
 void Monitor::lock() {
@@ -462,18 +541,23 @@ void Monitor::lock_without_safepoint_check () {
 // Returns true if thread succeceed [sic] in grabbing the lock, otherwise false.
 
 bool Monitor::try_lock() {
-  D_WARN_Unimplement;
+  Thread * const Self = Thread::current();
+  debug_only(check_prelock_state(Self));
+  // assert(!thread->is_inside_signal_handler(), "don't lock inside signal handler");
+
+  if (TryLock()) {
+    // We got the lock
+    assert (_owner == NULL, "invariant");
+    set_owner (Self);
+    return true;
+  }
+  return false;
 }
 
 void Monitor::unlock() {
   assert (_owner  == Thread::current(), "invariant") ;
   assert (_OnDeck != Thread::current()->_MutexEvent , "invariant") ;
   set_owner (NULL) ;
-  if (_snuck) {
-    assert(SafepointSynchronize::is_at_safepoint() && Thread::current()->is_VM_thread(), "sneak");
-    _snuck = false;
-    return ;
-  }
   IUnlock (false) ;
 }
 
@@ -514,7 +598,14 @@ void Monitor::jvm_raw_unlock() {
 }
 
 bool Monitor::wait(bool no_safepoint_check, long timeout, bool as_suspend_equivalent) {
-  D_WARN_Unimplement;
+  Thread * const Self = Thread::current() ;
+  int wait_status ;
+  if (no_safepoint_check) {
+    wait_status = IWait (Self, timeout) ;
+  } else {
+    D_WARN_Unimplement;
+  }
+  return wait_status;
 }
 
 Monitor::~Monitor() {
