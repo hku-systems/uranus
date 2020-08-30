@@ -160,7 +160,7 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
     LinkResolver::resolve_static_call(info, kh, name, signature, KlassHandle(), false, true, &javaThread);
     u_char* r = NULL;
     {
-        r = (u_char*)call_compiler(rbx_buf, (Method*)m);
+        r = (u_char*)call_compiler(rbx_buf, (Method*)info.resolved_method()());
     }
     if (javaThread.has_unhandle_exception()) {
         *has_exception = 1;

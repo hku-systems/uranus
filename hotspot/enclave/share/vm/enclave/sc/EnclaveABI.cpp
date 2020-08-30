@@ -64,6 +64,7 @@ void EnclaveABI::init() {
         __ enter();
 
         __ mov(sp, c_rarg0);
+        __ mov(rmethod, c_rarg3);
 
         int words_pushed = 0;
 
@@ -92,10 +93,8 @@ void EnclaveABI::init() {
             Address(__ post(sp, count * wordSize)));
         words_pushed += 2;
 
-        __ mov(sp, rfp);
-        __ mov(r30, ret);
-        __ mov(rscratch1, (address)Interpreter::entry_for_kind(Interpreter::zerolocals));
-        __ br(rscratch1);
+        __ ldr(rscratch1, Address(rmethod, Method::from_compiled_offset()));
+        __ blr(rscratch1);
 
         return start;
         #undef __
