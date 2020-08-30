@@ -63,7 +63,7 @@ void EnclaveABI::init() {
         start = __ pc();
         __ enter();
 
-        __ mov(sp, c_rarg0);
+        // __ mov(sp, c_rarg0);
         __ mov(rmethod, c_rarg3);
 
         int words_pushed = 0;
@@ -75,8 +75,9 @@ void EnclaveABI::init() {
             if (reg == rfp->encoding()
                 || reg == lr->encoding()
                 || reg == rthread->encoding()
+                || reg == rmethod->encoding()
                 || reg == esp->encoding()) {
-                regs[count++] = reg % 2;
+                regs[count++] = reg % 2 + 1;
             } else
                 regs[count++] = reg;
         }
@@ -85,16 +86,20 @@ void EnclaveABI::init() {
 
         for (int i = 2; i < count; i += 2) {
             __ ldp(as_Register(regs[i]), as_Register(regs[i+1]),
-                Address(sp, i * wordSize));
+                Address(c_rarg0, i * wordSize));
             words_pushed += 2;
         }
 
-        __ ldp(as_Register(regs[0]), as_Register(regs[1]),
-            Address(__ post(sp, count * wordSize)));
+        // __ ldp(as_Register(regs[0]), as_Register(regs[1]),
+        //     Address(__ post(c_rarg0, count * wordSize)));
         words_pushed += 2;
+
+        __ lea(rlocals, Address(c_rarg0, (0x20 + 0x20 + 3) * wordSize));
 
         __ ldr(rscratch1, Address(rmethod, Method::from_compiled_offset()));
         __ blr(rscratch1);
+        __ leave();
+        __ ret(lr);
 
         return start;
         #undef __

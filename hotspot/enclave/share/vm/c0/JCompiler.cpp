@@ -49,8 +49,8 @@ void JCompiler::compile_method(Method *method) {
 
     task->compile(size);
     task->set_compile_entry();
-//    if (task->method_entry != EnclaveABI::do_ocall)
-//        task->print_disassembly();
+    // if (task->method_entry != EnclaveABI::do_ocall)
+    //    task->print_disassembly();
 }
 
 bool JCompiler::setup_code_buffer(CodeBuffer *code, int call_stub_estimate) {

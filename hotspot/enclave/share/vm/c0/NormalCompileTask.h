@@ -222,7 +222,7 @@ public:
     void fast_linearswitch();
     void fast_binaryswitch();
 
-//    void narrow(Register r, TosState tos);
+    void narrow(Register r, TosState tos);
     void _return(TosState state);
     void _jmp_return();
     void adjust_tos();

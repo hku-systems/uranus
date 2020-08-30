@@ -1901,21 +1901,13 @@ void NormalCompileTask::entry() {
     if (break_method != NULL &&
         strcmp(method->name()->as_C_string(), break_method) == 0 &&
         strcmp(method->klass_name()->as_C_string(), break_klass) == 0) {
-        //__ os_breakpoint();
-        //Temporarily comment because it is for debug in macroAssembler
-        //break;
+        // __ os_breakpoint();
     }
 
-    // YYY
-//   __ incrementl(rdx);
-//   __ andl(rdx, -2);
 
     // see if we've got enough room on the stack for locals plus overhead.
 //    generate_stack_overflow_check();
 
-    // get return address
-    // Comment out because it is not in aarch64 templateInterpreter
-    //__ pop(rax);
 
     // r11 changed to r15 because all are caller saved last register
     // is ecall
@@ -1923,116 +1915,70 @@ void NormalCompileTask::entry() {
         for (int i = 0;i < size_parameters;i++)
         {
             // movptr change to str, times8 change to lsl(3)
-            __ str(r15, Address(rlocals, size_parameters - i, Address::lsl(3)));
+            __ ldr(r15, Address(rlocals, (size_parameters - i) * wordSize));
             __ push(r15);
         }
     }
 
     // compute beginning of parameters (rlocals)
-    __ add(rlocals, esp, r2, ext::uxtx, 3);
+    __ add(rlocals, esp, size_parameters * wordSize);
     __ sub(rlocals, rlocals, wordSize);
 
     //Add because it is in hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
     // Make room for locals
-    __ sub(rscratch1, esp, r3, ext::uxtx, 3);
+    __ sub(rscratch1, esp, addtional_locals * wordSize);
     __ andr(sp, rscratch1, -16);
 
     // r3 - # of additional locals
     // allocate space for locals
     // explicitly initialize locals
+    __ ands(zr, r3, r3);
     for (int i = 0;i < addtional_locals;i++)
     {
-        // for r3, hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp line 1109
         __ str(zr, Address(__ post(rscratch1, wordSize)));// initialize local variables
     }
 
     // initialize fixed part of activation frame
     generate_fixed_frame(false);
 
-    // make sure method is not native & not abstract
-
-    // Since at this point in the method invocation the exception
-    // handler would try to exit the monitor of synchronized methods
-    // which hasn't been entered yet, we set the thread local variable
-    // _do_not_unlock_if_synchronized to true. The remove_activation
-    // will check this flag.
-
-//    const Address do_not_unlock_if_synchronized(r15_thread,
-//                                                in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()));
-//    __ movbool(do_not_unlock_if_synchronized, true);
-
-    // check for synchronized interpreted methods
-//    bang_stack_shadow_pages(false);
-
-    // reset the _do_not_unlock_if_synchronized flag
-//    __ movbool(do_not_unlock_if_synchronized, false);
-
+    // check for synchronized methods
+    // Must happen AFTER invocation_counter check and stack overflow check,
+    // so method is not locked if overflows.
+    // if (synchronized) {
+    //   // Allocate monitor and lock method
+    //   __ lock_method();
+    // }
 }
 
 // address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
 void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 
-    //Change to r2 because reference to use of generate_normal_entry's use of rcx register related to parameter
-    Register parameter = r2;
-
     // Restore stack bottom in case i2c adjusted stack
     __ ldr(esp, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
     // and NULL it as marker that esp is now tos until next java call
     __ str(zr, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
+
     __ restore_bcp();
     __ restore_locals();
-    __ restore_constant_pool_cache();
-    __ get_method(rmethod);
 
-//    __ movl(parameter, parameter_size);
-    // Restore machine SP
-    __ ldr(rscratch1, Address(rmethod, Method::const_offset()));
-    __ ldrh(rscratch1, Address(rscratch1, ConstMethod::max_stack_offset()));
-    __ add(rscratch1, rscratch1, frame::interpreter_frame_monitor_size() + 2);
-    __ ldr(rscratch2,
-           Address(rfp, frame::interpreter_frame_initial_sp_offset * wordSize));
-    __ sub(rscratch1, rscratch2, rscratch1, ext::uxtw, 3);
-    __ andr(sp, rscratch1, -16);
+    __ add(esp, esp, parameter_size * wordSize);
 
     // the parameters plus the ret address
     __ current_entry->clear_bit_prev(parameter_size + 1);
 }
 //TODO: clean the code
 void NormalCompileTask::_return(TosState state) {
-    transition(state, state);
-    assert(_desc->calls_vm(),
-           "inconsistent calls_vm information"); // call in remove_activation
-
-    if (bs->code() == Bytecodes::_return_register_finalizer) {
-        assert(state == vtos, "only valid state");
-
-        __ ldr(c_rarg1, aaddress(0));
-        __ load_klass(r3, c_rarg1);
-        __ ldrw(r3, Address(r3, Klass::access_flags_offset()));
-        __ tst(r3, JVM_ACC_HAS_FINALIZER);
-        Label skip_register_finalizer;
-        __ br(Assembler::EQ, skip_register_finalizer);
-
-        __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::register_finalizer), c_rarg1);
-
-        __ bind(skip_register_finalizer);
-    }
-
-    // Issue a StoreStore barrier after all stores but before return
-    // from any constructor for any class with a final field.  We don't
-    // know if this is a finalizer, so we always do so.
-    if (bs->code() == Bytecodes::_return)
-        __ membar(MacroAssembler::StoreStore);
+    if (ret_tos == vtos)
+      __ pop(state);
 
     // Narrow result if state is itos but result type is smaller.
     // Need to narrow in the return bytecode rather than in generate_return_entry
     // since compiled code callers expect the result to already be narrowed.
-    if (state == itos) {
-        __ narrow(r0);
-    }
+    narrow(r0, state);
+    remove_activation(state, r13, true, true, true);
 
-    __ remove_activation(state);
     __ ret(lr);
+    tos = state;
 }
 
 void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
@@ -3533,29 +3479,16 @@ void NormalCompileTask::remove_activation(TosState state, Register ret_addr, boo
 }
 
 
-/*
- * comment out
+
 void NormalCompileTask::narrow(Register result, TosState tos) {
     switch (tos) {
-        case ztos:  __ andl(result, (int32_t)0x1);    break;
-        case stos:
-            LP64_ONLY(__ movswl(result, result);)
-            NOT_LP64(shll(result, 16);)      // truncate upper 16 bits
-            NOT_LP64(sarl(result, 16);)      // and sign-extend short
-            break;
-        case btos:
-            LP64_ONLY(__ movsbl(result, result);)
-            NOT_LP64(shll(result, 24);)      // truncate upper 24 bits
-            NOT_LP64(sarl(result, 24);)      // and sign-extend byte
-            break;
-        case ctos:
-            LP64_ONLY(__ movzwl(result, result);)
-            NOT_LP64(__ andl(result, 0xFFFF);)  // truncate upper 16 bits
-            break;
-        default:                break;
+        case ztos: __ andw(result, result, 0x1);    break;
+        case stos: __ sbfx(result, result, 0, 16);  break;
+        case btos: __ sbfx(result, result, 0, 8);   break;
+        case ctos: __ ubfx(result, result, 0, 16);  break;
+        default:                                    break;
     }
 }
- */
 
 //not found in templatetable aarch64
 void NormalCompileTask::_jmp_return() {
