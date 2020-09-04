@@ -675,7 +675,10 @@ oop ConstantPool::resolve_constant_at_impl(constantPoolHandle this_oop, int inde
 }
 
 oop ConstantPool::uncached_string_at(int which, TRAPS) {
-  D_WARN_Unimplement;
+  Symbol* sym = unresolved_string_at(which);
+  oop str = StringTable::intern(sym, CHECK_(NULL));
+  assert(java_lang_String::is_instance(str), "must be string");
+  return str;
 }
 
 
@@ -684,7 +687,14 @@ oop ConstantPool::resolve_bootstrap_specifier_at_impl(constantPoolHandle this_oo
 }
 
 oop ConstantPool::string_at_impl(constantPoolHandle this_oop, int which, int obj_index, TRAPS) {
-  D_WARN_Unimplement;
+  // If the string has already been interned, this entry will be non-null
+  oop str = this_oop->resolved_references()->obj_at(obj_index);
+  if (str != NULL) return str;
+  Symbol* sym = this_oop->unresolved_string_at(which);
+  str = StringTable::intern(sym, CHECK_(NULL));
+  this_oop->string_at_put(which, obj_index, str);
+  assert(java_lang_String::is_instance(str), "must be string");
+  return str;
 }
 
 

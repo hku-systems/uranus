@@ -50,9 +50,7 @@ void CompileTask::generate_fixed_frame(bool native_call) {
 
     __ stp(zr, rmethod, Address(sp, 4 * wordSize));        // save Method* (no mdp)
 
-    __ ldr(rcpool, Address(rmethod, Method::const_offset()));
-    __ ldr(rcpool, Address(rcpool, ConstMethod::constants_offset()));
-    __ ldr(rcpool, Address(rcpool, ConstantPool::cache_offset_in_bytes()));
+    __ ldr(rcpool, (intptr_t)method->constants());
     __ stp(rlocals, rcpool, Address(sp, 2 * wordSize));
 
     __ stp(rfp, lr, Address(sp, 8 * wordSize));
@@ -64,11 +62,8 @@ void CompileTask::generate_fixed_frame(bool native_call) {
 
     // Move SP out of the way
     if (! native_call) {
-        __ ldr(rscratch1, Address(rmethod, Method::const_offset()));
-        __ ldrh(rscratch1, Address(rscratch1, ConstMethod::max_stack_offset()));
-        __ add(rscratch1, rscratch1, frame::interpreter_frame_monitor_size()
-                                     + (EnableInvokeDynamic ? 2 : 0));
-        __ sub(rscratch1, sp, rscratch1, ext::uxtw, 3);
+        __ sub(rscratch1, sp, (method->max_stack() + frame::interpreter_frame_monitor_size()
+                                     + (EnableInvokeDynamic ? 2 : 0)) * wordSize);
         __ andr(sp, rscratch1, -16);
     }
 }

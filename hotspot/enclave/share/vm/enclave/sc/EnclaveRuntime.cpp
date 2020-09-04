@@ -174,7 +174,6 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
 
 void* EnclaveRuntime::call_compiler(void *rbx_buf, Method *m) {
     compile_method(m);
-    printf("call entry %lx\n", rbx_buf);
     return call_interpreter(rbx_buf, m);
 }
 

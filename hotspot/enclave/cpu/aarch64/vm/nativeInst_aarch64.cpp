@@ -91,10 +91,12 @@ intptr_t NativeMovConstReg::data() const {
 }
 
 void NativeMovConstReg::set_data(intptr_t x) {
-  if (maybe_cpool_ref(instruction_address())) {
+  printf("here\n");
+  if (maybe_cpool_ref(instruction_address()) && false) {
     address addr = MacroAssembler::target_addr_for_insn(instruction_address());
     *(intptr_t*)addr = x;
   } else {
+    printf("patch\n");
     MacroAssembler::pd_patch_instruction(instruction_address(), (address)x);
     ICache::invalidate_range(instruction_address(), instruction_size);
   }

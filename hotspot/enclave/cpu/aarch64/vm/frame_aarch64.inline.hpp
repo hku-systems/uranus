@@ -50,6 +50,7 @@ inline void frame::init(intptr_t* sp, intptr_t* fp, address pc) {
   intptr_t b = intptr_t(fp);
   _sp = sp;
   _unextended_sp = sp;
+  _cb = NULL;
   _fp = fp;
   _pc = pc;
   assert(pc != NULL, "no pc?");

@@ -646,7 +646,7 @@ int Runtime0::move_appendix_patching(JavaThread *thread) {
 void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     NOT_PRODUCT(_patch_code_slowcase_cnt++;)
 
-    JavaThread* THREAD = thread;
+    JavaThread* THREAD = JavaThread::current();
 
     ResourceMark rm(thread);
     RegisterMap reg_map(thread, false);
@@ -662,14 +662,22 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     // Note also that in the presence of inlining it is not guaranteed
     // that caller_method() == caller_code->method()
 
-    NativeGeneralJump *bci_jmp = nativeGeneralJump_at(caller_frame.pc() + PatchingStub::_patch_info_offset * 2);
-    //int bci = (int)bci_jmp->jump_destination();
-    // change to below because
-    //error: cast from 'address {aka unsigned char*}' to 'int' loses precision [-fpermissive]
-    //int bci = bci_jmp->jump_destination();
-    unsigned char* raw =bci_jmp->jump_destination();
-    uint32_t result = (raw[0] << 24 | raw[1] << 16 | raw[2] << 8 | raw[3]);
-    int bci = result;
+    int info_offset = NativeJump::instruction_size // blr
+                    + NativeMovConstReg::instruction_size // lea 
+                    + NativeInstruction::instruction_size // nop
+                    + NativeGeneralJump::instruction_size; // fake jump addr
+
+    NativeGeneralJump *bci_jmp = nativeGeneralJump_at(caller_frame.pc() - info_offset);
+    
+    int full_int = bci_jmp->jump_destination();
+    int bci = (full_int & 0xffff);
+    int bytes_to_copy = (full_int >> 16);
+
+    int copy_offset = info_offset 
+                    + NativeInstruction::instruction_size
+                    + bytes_to_copy;
+
+    // printf("bci %lx %lx %d, %d %lx\n", full_int,caller_frame.pc() - info_offset, bci, bytes_to_copy, caller_frame.pc() - copy_offset);
 
     Bytecodes::Code code = caller_method()->java_code_at(bci);
 
@@ -686,13 +694,12 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             (stub_id == Runtime0::load_klass_patching_id || stub_id == Runtime0::load_mirror_patching_id);
 
     if (stub_id == Runtime0::access_field_patching_id) {
-
         Bytecode_field field_access(caller_method, bci);
-//        fieldDescriptor result; // initialize class if needed
+        fieldDescriptor result; // initialize class if needed
         Bytecodes::Code code = field_access.code();
         constantPoolHandle constants(THREAD, caller_method->constants());
-        patch_field_offset = JVM_ENTRY_resolve_get_put_C(THREAD, constants(), field_access.index(), Bytecodes::java_code(code));
-
+        LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), CHECK);
+        patch_field_offset = result.offset();
 
         // If we're patching a field which is volatile then at compile it
         // must not have been know to be volatile, so the generated code
@@ -737,19 +744,14 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             case Bytecodes::_anewarray:
             { Bytecode_anewarray anew(caller_method(), caller_method->bcp_from(bci));
                 Klass* ek = caller_method->constants()->klass_at(anew.index(), CHECK);
-                k = (Klass*)KLASS_array_klass(ek, 1, 0);
+                k = ek->array_klass(CHECK);
             }
                 break;
             case Bytecodes::_ldc:
             case Bytecodes::_ldc_w:
             {
                 Bytecode_loadconstant cc(caller_method, bci);
-                oop m = cc.resolve_constant(JavaThread::current());
-                if (java_lang_String::is_instance(m)) {
-                    m = StringTable::intern(m, JavaThread::current());
-                } else {
-                    m = (oop)java_lang_Class::as_Klass(m);
-                }
+                oop m = cc.resolve_constant(CHECK);
                 mirror = Handle(THREAD, m);
             }
                 break;
@@ -762,40 +764,24 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         Bytecodes::Code bytecode = call.invoke_code();
         int bytecode_index = call.index();
 
-        char* recv = NULL;
+        oop recv = NULL;
         if (bytecode == Bytecodes::_invokevirtual || bytecode == Bytecodes::_invokeinterface ||
             bytecode == Bytecodes::_invokespecial) {
-            recv = (char*)caller_frame.interpreter_callee_receiver(call.signature());
+            recv = caller_frame.interpreter_callee_receiver(call.signature());
             if (recv == NULL) {
-                ENCLAVE_THROW(EnclaveException::java_lang_NullPointerException);
+              THROW(vmSymbols::java_lang_NullPointerException());
             }
         }
         // Resolve method. This is parameterized by bytecode.
         constantPoolHandle constants(THREAD, caller_method->constants());
-        mth = (Method*)JVM_ENTRY_resolve_invoke_C(recv, constants(), bytecode_index, bytecode);
-
-        if (code == Bytecodes::_invokeinterface) {
-            interface_klass = mth->method_holder();
-            interface_itable_idx = mth->itable_index();
-            oop recv_recv = (oop)recv;
-            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_itable(interface_klass, interface_itable_idx, JavaThread::current());
-            EnclaveRuntime::compile_method(method);
+        CallInfo callinfo;
+        LinkResolver::resolve_invoke(callinfo, Handle(recv), constants, bytecode_index, bytecode, THREAD, (recv == NULL)? NULL : recv->klass());
+        if (bytecode == Bytecodes::_invokeinterface || bytecode == Bytecodes::_invokevirtual) {
+            mth = callinfo.resolved_method()();
         } else {
-            if (code == Bytecodes::_invokevirtual) {
-                virtual_vtable_idx = mth->vtable_index();
-                if (virtual_vtable_idx > 0) {
-                    oop recv_recv = (oop)recv;
-                    Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_vtable(virtual_vtable_idx);
-                    EnclaveRuntime::compile_method(method);
-                } else {
-                    // final method
-                    EnclaveRuntime::compile_method(mth);
-                }
-            } else {
-                // static or special method
-                EnclaveRuntime::compile_method(mth);
-            }
+            mth = callinfo.selected_method()();
         }
+        EnclaveRuntime::compile_method(mth);
     } else if (stub_id == compile_method_patching_id) {
         Method* compiled_method = thread->compiled_method();
         EnclaveRuntime::compile_method(compiled_method);
@@ -816,6 +802,8 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         return;
     }
 
+    printf("runtime\n");
+
     {
         // Deoptimization may have happened while we waited for the lock.
         // In that case we don't bother to do any patching we just return
@@ -823,8 +811,8 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
 
         NativeGeneralJump* jump = nativeGeneralJump_at(caller_frame.pc());
         address instr_pc = jump->jump_destination();
-        NativeInstruction* ni = nativeInstruction_at(instr_pc);
-        if (ni->is_jump() ) {
+        NativeInstruction* ni = nativeInstruction_at(instr_pc + 12);
+        // if (ni->is_jump() ) {
             // the jump has not been patched yet
             // The jump destination is slow case and therefore not part of the stubs
             // (stubs are only for StaticCalls)
@@ -838,12 +826,8 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             //      n
             //    ....             <-- call destination
 
-            address stub_location = caller_frame.pc() + PatchingStub::_patch_info_offset * 2;
-            unsigned char* byte_count = (unsigned char*) (stub_location - 1);
-            unsigned char* byte_skip = (unsigned char*) (stub_location - 2);
-            unsigned char* being_initialized_entry_offset = (unsigned char*) (stub_location - 3);
-            address copy_buff = stub_location - *byte_skip - *byte_count;
-            address being_initialized_entry = stub_location - *being_initialized_entry_offset;
+            address copy_buff = caller_frame.pc() - copy_offset;
+            address being_initialized_entry = caller_frame.pc();
             // depending on the code below, do_patch says whether to copy the patch body back into the nmethod
             bool do_patch = true;
             if (stub_id == Runtime0::access_field_patching_id) {
@@ -922,25 +906,25 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
                 // replace instructions
                 // first replace the tail, then the call
 
-                for (int i = NativeCall::instruction_size; i < *byte_count; i++) {
+                for (int i = 0; i < bytes_to_copy; i++) {
                     address ptr = copy_buff + i;
                     int a_byte = (*ptr) & 0xFF;
                     address dst = instr_pc + i;
                     *(unsigned char*)dst = (unsigned char) a_byte;
                 }
-                ICache::invalidate_range(instr_pc, *byte_count);
-                NativeGeneralJump::replace_mt_safe(instr_pc, copy_buff);
+                ICache::invalidate_range(instr_pc, bytes_to_copy);
+                // NativeGeneralJump::replace_mt_safe(instr_pc, copy_buff);
 
                 if (load_klass_or_mirror_patch_id ||
                     stub_id == Runtime0::load_appendix_patching_id) {
                 }
 
             } else {
-                ICache::invalidate_range(copy_buff, *byte_count);
+                ICache::invalidate_range(copy_buff, bytes_to_copy);
                 NativeGeneralJump::insert_unconditional(instr_pc, being_initialized_entry);
             }
         }
-    }
+    // }
 
     // If we are patching in a non-perm oop, make sure the nmethod
     // is on the right list.

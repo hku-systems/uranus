@@ -12,10 +12,15 @@
 int PatchingStub::_patch_info_offset = -NativeGeneralJump::instruction_size;
 
 void PatchingStub::install() {
-    while (_masm->pc() - _pc_start < NativeCall::instruction_size) {
+    while (_masm->pc() - _pc_start < NativeGeneralJump::instruction_size) {
       _masm->nop();
     }
     _bytes_to_copy = __ pc() - _pc_start;
+    
+    if (_bytes_to_copy % 4 != 0) {
+        ShouldNotReachHere();
+    }
+
     __ bind(_patch_site_continuation);
     if (_id == PatchingStub::access_field_id) {
         // embed a fixed offset to handle long patches which need to be offset by a word.
@@ -52,7 +57,6 @@ void PatchingStub::emit() {
         address ptr = (address)(_pc_start + i);
         int a_byte = (*ptr) & 0xFF;
         __ emit_int8(a_byte);
-        *ptr = 0x90; // make the site look like a nop
     }
 
     // if (_bytes_to_copy * 2 < NativeGeneralJump::instruction_size) {
@@ -77,27 +81,33 @@ void PatchingStub::emit() {
     // emit the offsets needed to find the code to patch
     int being_initialized_entry_offset = __ pc() - being_initialized_entry + sizeof_patch_record;
 
-    __ emit_int8((unsigned char)0xB8);
-    __ emit_int8(0);
-    __ emit_int8(being_initialized_entry_offset);
-    __ emit_int8(bytes_to_skip);
-    __ emit_int8(_bytes_to_copy);
+    // __ emit_int8((unsigned char)0xB8);
+    // __ emit_int8(0);
+    // __ emit_int8(being_initialized_entry_offset);
+    // __ emit_int8(bytes_to_skip);
+    // __ emit_int8(_bytes_to_copy);
 
-    for (int i = 0;i < NativeGeneralJump::instruction_size;i++)
-    	__ nop();
-    NativeGeneralJump::insert_unconditional((address)(__ pc() - NativeGeneralJump::instruction_size), (address)_bci);
+    __ nop();
+    address st = __ pc();
+    __ nop();
+    __ nop();
+    __ nop();
+    __ nop();
 
+    NativeGeneralJump::insert_unconditional((address)st, 
+        (((_bytes_to_copy & 0xff) << 16) | (_bci & 0xffff)));
+    __ nop();
     address entry = __ pc();
-    NativeGeneralJump::insert_unconditional((address)_pc_start, entry);
+    // printf("start %lx, copy %lx, init %lx, st %lx, entry %lx, cur %lx %d\n", _pc_start, being_initialized_entry, end_of_patch, st, entry, __ pc(), _bytes_to_copy);
     address target = NULL;
 
     switch (_id) {
-        case access_field_id:   printf("access_field_id\n"); target = Runtime0::entry_for(Runtime0::access_field_patching_id);    break;
-        case load_klass_id:     printf("load_klass_id\n"); target = Runtime0::entry_for(Runtime0::load_klass_patching_id);     break;
-        case load_mirror_id:    printf("load_mirror_id\n"); target = Runtime0::entry_for(Runtime0::load_mirror_patching_id);    break;
-        case load_appendix_id:  printf("load_appendix_id\n"); target = Runtime0::entry_for(Runtime0::load_appendix_patching_id);  break;
-        case load_method_id:    printf("load_method_id\n"); target = Runtime0::entry_for(Runtime0::load_method_patching_id);    break;
-        case compile_method_id:    printf("compile_method_id\n"); target = Runtime0::entry_for(Runtime0::compile_method_patching_id);    break;
+        case access_field_id:       target = Runtime0::entry_for(Runtime0::access_field_patching_id);    break;
+        case load_klass_id:         target = Runtime0::entry_for(Runtime0::load_klass_patching_id);     break;
+        case load_mirror_id:        target = Runtime0::entry_for(Runtime0::load_mirror_patching_id);    break;
+        case load_appendix_id:      target = Runtime0::entry_for(Runtime0::load_appendix_patching_id);  break;
+        case load_method_id:        target = Runtime0::entry_for(Runtime0::load_method_patching_id);    break;
+        case compile_method_id:     target = Runtime0::entry_for(Runtime0::compile_method_patching_id);    break;
         default: ShouldNotReachHere();
     }
 
@@ -112,6 +122,8 @@ void PatchingStub::emit() {
         //jmp to b
         __ b(_patch_site_entry);
     }
+    NativeGeneralJump::insert_unconditional((address)_pc_start, entry);
+    printf("value %lx %d\n", entry, *(char*)(entry));
 }
 
 #undef __

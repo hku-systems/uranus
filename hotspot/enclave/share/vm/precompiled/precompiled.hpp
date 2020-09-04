@@ -85,6 +85,7 @@
 # include "prims/jni.h"
 # include "prims/jvm.h"
 # include "runtime/atomic.hpp"
+# include "runtime/fieldDescriptor.hpp"
 # include "runtime/frame.hpp"
 # include "runtime/frame.inline.hpp"
 # include "runtime/globals.hpp"

@@ -351,7 +351,7 @@ int NormalCompileTask::compile(int size) {
 
             case Bytecodes::_nop:			gen(nop(),		    vtos, vtos);
             case Bytecodes::_aconst_null:	gen(aconst_null(),  vtos, atos);
-            case Bytecodes::_iconst_0:      gen(iconst(0),      vtos, itos);
+            case Bytecodes::_iconst_0:    gen(iconst(0),      vtos, itos);
             case Bytecodes::_iconst_m1:		gen(iconst(-1),     vtos, itos);
             case Bytecodes::_iconst_1:		gen(iconst(1),      vtos, itos);
             case Bytecodes::_iconst_2:		gen(iconst(2),		vtos, itos);
@@ -594,9 +594,9 @@ int NormalCompileTask::compile(int size) {
         (*itr)->emit();
     }
 
-//    for (std::deque<CodeStub *>::iterator itr = slow_cases.begin(); itr != slow_cases.end();itr++) {
-//        delete (PatchingStub*)(*itr);
-//    }
+   for (std::deque<CodeStub *>::iterator itr = slow_cases.begin(); itr != slow_cases.end();itr++) {
+       delete (PatchingStub*)(*itr);
+   }
 
     /*
     if (has_interface) {
@@ -608,14 +608,10 @@ int NormalCompileTask::compile(int size) {
     }
     */
 
-    __ flush();
-
     int offset = __ offset();
 
-    if (size == 0) {
-        BufferBlob::free(stub_blob);
-        delete oopSet;
-    }
+    __ flush();
+
     return offset;
 //    oopSet->print();
 
@@ -646,11 +642,11 @@ void NormalCompileTask::aconst_null() {
   __ mov(r0, 0); 
 }
 void NormalCompileTask::iconst(int value) {
-    transition(vtos, itos);
-    __ mov(r0, value);
+  transition(vtos, itos);
+  __ mov(r0, value);
 }
 void NormalCompileTask::lconst(int value) {
-    __ mov(r0, value);
+  __ mov(r0, value);
 }
 void NormalCompileTask::fconst(int value) {
   transition(vtos, ftos);
@@ -698,79 +694,85 @@ void NormalCompileTask::sipush() {
 }
 
 void NormalCompileTask::ldc(bool wide) {
-  transition(vtos, vtos);
-  Label call_ldc, notFloat, notClass, Done;
-
+  int idx = 0;
+  int cache_idx = -1;
   if (wide) {
-    __ get_unsigned_2_byte_index_at_bcp(r1, 1);
+      idx = bs->get_index_u2();
   } else {
-    __ load_unsigned_byte(r1, at_bcp(1));
+      idx = bs->get_index_u1();
   }
-  __ get_cpool_and_tags(r2, r0);
 
-  const int base_offset = ConstantPool::header_size() * wordSize;
-
-
-  const int tags_offset = Array<u1>::base_offset_in_bytes();
-
-
-
-  // get type
-  __ add(r3, r1, tags_offset);
-  __ lea(r3, Address(r0, r3));
-  __ ldarb(r3, r3);
-
-  // unresolved class - get the resolved class
-  __ cmp(r3, JVM_CONSTANT_UnresolvedClass);
-  __ br(Assembler::EQ, call_ldc);
-
-  // unresolved class in error state - call into runtime to throw the error
-  // from the first resolution attempt
-  __ cmp(r3, JVM_CONSTANT_UnresolvedClassInError);
-  __ br(Assembler::EQ, call_ldc);
-
-  // resolved class - need to call vm to get java mirror of the class
-  __ cmp(r3, JVM_CONSTANT_Class);
-  __ br(Assembler::NE, notClass);
-
-  __ bind(call_ldc);
-  __ mov(c_rarg1, wide);
-
-  __ call_VM(r0, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
-  //above change to below
-  //PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-  //patchingStub->install();
-  //append_stub(patchingStub);
-
-  __ push_ptr(r0);
-  __ verify_oop(r0);
-  __ b(Done);
-
-  __ bind(notClass);
-  __ cmp(r3, JVM_CONSTANT_Float);
-  __ br(Assembler::NE, notFloat);
-  // ftos
-  __ adds(r1, r2, r1, Assembler::LSL, 3);
-  __ ldrs(v0, Address(r1, base_offset));
-  __ push_f();
-  __ b(Done);
-
-  __ bind(notFloat);
-#ifdef ASSERT
-  {
-    Label L;
-    __ cmp(r3, JVM_CONSTANT_Integer);
-    __ br(Assembler::EQ, L);
-    // String and Object are rewritten to fast_aldc
-    __ stop("unexpected tag type in ldc");
-    __ bind(L);
+  if (tos != vtos) {
+      __ push(tos);
   }
-#endif
-  // itos JVM_CONSTANT_Integer only
-  __ adds(r1, r2, r1, Assembler::LSL, 3);
-  __ ldrw(r0, Address(r1, base_offset));
-  __ push_i(r0);
-  __ bind(Done);    
+
+  if (Bytecodes::uses_cp_cache(bs->raw_code())) {
+      cache_idx = idx;
+      idx = method->constants()->object_to_cp_index(idx);
+  }
+
+  constantTag tag = method->constants()->tag_at(idx);
+  if (tag.is_unresolved_klass() || tag.is_unresolved_klass_in_error() || tag.is_klass()) {
+    // call ldc
+    oop resolve_constant = NULL;
+    Klass* resolve_klass = NULL;
+    if (Bytecodes::uses_cp_cache(bs->raw_code())) {
+        resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
+    }
+    if (resolve_constant == NULL) {
+        if (will_run) {
+            Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
+            resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
+            resolve_klass = java_lang_Class::as_Klass(resolve_constant);
+            __ ldr(r0, (intptr_t)resolve_klass);
+        } else {
+            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
+            __ ldr(r0, (long)this);
+            patchingStub->install();
+            append_stub(patchingStub);
+        }
+        __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
+    } else {
+        resolve_klass = java_lang_Class::as_Klass(resolve_constant);
+        __ ldr(r0, (intptr_t)resolve_klass);
+        __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
+    }
+    tos = atos;
+} else if (tag.is_string()) {
+    // call ldc
+    oop resolve_constant = NULL;
+    oop enclave_constant = NULL;
+    if (Bytecodes::uses_cp_cache(bs->raw_code())) {
+        resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
+    }
+    if (resolve_constant == NULL) {
+        if (will_run) {
+            Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
+            resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
+            enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
+            __ ldr(r0, (intptr_t)enclave_constant);
+        } else {
+            PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
+            __ ldr(r0, NULL_WORD);
+            patchingStub->install();
+            append_stub(patchingStub);
+        }
+    } else {
+        enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
+        __ ldr(r0, (intptr_t)enclave_constant);
+    }
+    tos = atos;
+  } else {
+    if (tag.is_float()) {
+        // ftos
+        __ ldrs(v0, ExternalAddress((address)method->constants()->float_at_addr(idx)) );
+        tos = ftos;
+    } else {
+        // itos JVM_CONSTANT_Integer only
+        __ ldrw(r0, method->constants()->int_at(idx));
+        tos = itos;
+    }
+  }
 }
 
 void NormalCompileTask::ldc2_w() {
@@ -813,50 +815,11 @@ void NormalCompileTask::locals_index(Register reg, int offset)
 
 void NormalCompileTask::iload() {
   transition(vtos, itos);
-  if (RewriteFrequentPairs) {
-    Label rewrite, done;
-    Register bc = r4;
-
-    // get next bytecode
-    __ load_unsigned_byte(r1, at_bcp(Bytecodes::length_for(Bytecodes::_iload)));
-
-    // if _iload, wait to rewrite to iload2.  We only want to rewrite the
-    // last two iloads in a pair.  Comparing against fast_iload means that
-    // the next bytecode is neither an iload or a caload, and therefore
-    // an iload pair.
-    __ cmpw(r1, Bytecodes::_iload);
-    __ br(Assembler::EQ, done);
-
-    // if _fast_iload rewrite to _fast_iload2
-    __ cmpw(r1, Bytecodes::_fast_iload);
-    __ movw(bc, Bytecodes::_fast_iload2);
-    __ br(Assembler::EQ, rewrite);
-
-    // if _caload rewrite to _fast_icaload
-    __ cmpw(r1, Bytecodes::_caload);
-    __ movw(bc, Bytecodes::_fast_icaload);
-    __ br(Assembler::EQ, rewrite);
-
-    // else rewrite to _fast_iload
-    __ movw(bc, Bytecodes::_fast_iload);
-
-    // rewrite
-    // bc: new bytecode
-    __ bind(rewrite);
-      //fill with 0
-    patch_bytecode(Bytecodes::_iload, bc, r1, false, 0);
-    __ bind(done);
-
-  }
-
-  // do iload, get the local value into tos
-  locals_index(r1);
-  __ ldr(r0, iaddress(r1));
-
+  __ ldr(r0, iaddress(bs->get_index_u1()));
 }
 void NormalCompileTask::iload(int n) {
-    transition(vtos, itos);
-    __ ldr(r0, iaddress(n));
+  transition(vtos, itos);
+  __ ldr(r0, iaddress(n));
 }
 void NormalCompileTask::lload() {
   transition(vtos, ltos);
@@ -891,81 +854,14 @@ void NormalCompileTask::dload(int n) {
 }
 void NormalCompileTask::aload() {
   transition(vtos, atos);
-  locals_index(r1);
-  __ ldr(r0, iaddress(r1));
+  __ ldr(r0, aaddress(bs->get_index_u1()));
 }
 void NormalCompileTask::aload(int n) {
   transition(vtos, atos);
-  __ ldr(r0, iaddress(n));
+  __ ldr(r0, aaddress(n));
 }
 void NormalCompileTask::aload_0() {
-  // According to bytecode histograms, the pairs:
-  //
-  // _aload_0, _fast_igetfield
-  // _aload_0, _fast_agetfield
-  // _aload_0, _fast_fgetfield
-  //
-  // occur frequently. If RewriteFrequentPairs is set, the (slow)
-  // _aload_0 bytecode checks if the next bytecode is either
-  // _fast_igetfield, _fast_agetfield or _fast_fgetfield and then
-  // rewrites the current bytecode into a pair bytecode; otherwise it
-  // rewrites the current bytecode into _fast_aload_0 that doesn't do
-  // the pair check anymore.
-  //
-  // Note: If the next bytecode is _getfield, the rewrite must be
-  //       delayed, otherwise we may miss an opportunity for a pair.
-  //
-  // Also rewrite frequent pairs
-  //   aload_0, aload_1
-  //   aload_0, iload_1
-  // These bytecodes with a small amount of code are most profitable
-  // to rewrite
-  if (RewriteFrequentPairs) {
-    Label rewrite, done;
-    const Register bc = r4;
-
-    // get next bytecode
-    __ load_unsigned_byte(r1, at_bcp(Bytecodes::length_for(Bytecodes::_aload_0)));
-
-    // do actual aload_0
-    aload(0);
-
-    // if _getfield then wait with rewrite
-    __ cmpw(r1, Bytecodes::Bytecodes::_getfield);
-    __ br(Assembler::EQ, done);
-
-    // if _igetfield then reqrite to _fast_iaccess_0
-    assert(Bytecodes::java_code(Bytecodes::_fast_iaccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
-    __ cmpw(r1, Bytecodes::_fast_igetfield);
-    __ movw(bc, Bytecodes::_fast_iaccess_0);
-    __ br(Assembler::EQ, rewrite);
-
-    // if _agetfield then reqrite to _fast_aaccess_0
-    assert(Bytecodes::java_code(Bytecodes::_fast_aaccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
-    __ cmpw(r1, Bytecodes::_fast_agetfield);
-    __ movw(bc, Bytecodes::_fast_aaccess_0);
-    __ br(Assembler::EQ, rewrite);
-
-    // if _fgetfield then reqrite to _fast_faccess_0
-    assert(Bytecodes::java_code(Bytecodes::_fast_faccess_0) == Bytecodes::_aload_0, "fix bytecode definition");
-    __ cmpw(r1, Bytecodes::_fast_fgetfield);
-    __ movw(bc, Bytecodes::_fast_faccess_0);
-    __ br(Assembler::EQ, rewrite);
-
-    // else rewrite to _fast_aload0
-    assert(Bytecodes::java_code(Bytecodes::_fast_aload_0) == Bytecodes::_aload_0, "fix bytecode definition");
-    __ movw(bc, Bytecodes::Bytecodes::_fast_aload_0);
-
-    // rewrite
-    // bc: new bytecode
-    __ bind(rewrite);
-      //fill with 0
-    patch_bytecode(Bytecodes::_aload_0, bc, r1, false, 0);
-
-    __ bind(done);
-  } else {
-    aload(0);
-  }
+  aload(0);
 }
 
 void NormalCompileTask::iaload() {
@@ -2940,6 +2836,8 @@ void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
 
+    printf("invoke\n");
+
     gc_point();
 
      if (tos != vtos) {
@@ -2971,7 +2869,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     if (load_receiver) {
         // patch the offset later
         parameter_size += 1;
-        __ str(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
+        __ ldr(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
     }
 
     // Note: method patching start from here
@@ -2984,8 +2882,8 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_method_id, bs->bci());
         Label final;
         if (bs->code() == Bytecodes::_invokeinterface) {
-            __ str(r0, zr);
-            __ str(index, (Register)(intptr_t)0xffff);
+            __ mov(r0, (long)this);
+            __ mov(index, (intptr_t)0xffff);
         } else if (bs->code() == Bytecodes::_invokevirtual) {
             // we do not know if this is a final method
             // we use rbx as both index and method register
@@ -2997,11 +2895,11 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
             // next: movptr rax, klass_off(recv)
             // movptr rbx, (index_reg * off + base)(rax)
             // after:
-            __ str(m, zr);
+            __ movptr(m, (long)0);
             __ b(final);
         } else {
             compiled_entry = (address)-1;
-            __ str(m, zr);
+            __ movptr(m, (long)0);
         }
 
         stub->install();
@@ -3026,7 +2924,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 
         if (load_receiver) {
             parameter_size += 1;
-            __ str(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
+            __ ldr(recv, Address(esp, (-1 + parameter_size) * Interpreter::stackElementSize));
         }
 
         if (bs->code() == Bytecodes::_invokeinterface) {
@@ -3039,7 +2937,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     force_compile = false;
             } else {
                 __ load_klass(r3, recv);
-                __ str(r0, (Register)(intptr_t)interface_klass);
+                __ ldr(r0, (Register)(intptr_t)interface_klass);
 
                 __ lookup_interface_method(// inputs: rec. class, interface, itable index
                         r3, r0, vtable_index,
@@ -3065,7 +2963,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     EnclaveRuntime::compile_method(callee);
                 }
                 // load Method*, if invokestatic or vfinal
-                __ str(m, (Register)(intptr_t)callee);
+                __ ldr(m, (Register)(intptr_t)callee);
                 if (JCompiler::is_compile(callee)) {
                     compiled_entry = callee->_from_compiled_entry;
                 }
@@ -3096,7 +2994,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     // do not handle now
     if (bs->code() == Bytecodes::_invokeinterface) {
          __ bind(no_such_interface);
-         __ str(r0, (Register)(intptr_t)-1);
+         __ ldr(r0, (intptr_t)-1);
          __ b(r0);
     }
 
@@ -3344,138 +3242,15 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
 //above have c++ 11 error
 void NormalCompileTask::remove_activation(TosState state, Register ret_addr, bool throw_monitor_exception,
                                           bool install_monitor_exception, bool notify_jvmdi) {
-    // Note: Registers rdx xmm0 may be in use for the
-    // result check if synchronized method
-//    Label unlocked, unlock, no_unlock;
-//
-//    // get the value of _do_not_unlock_if_synchronized into rdx
-//    const Address do_not_unlock_if_synchronized(r15_thread,
-//                                                in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()));
-//    __ movbool(rdx, do_not_unlock_if_synchronized);
-//    __ movbool(do_not_unlock_if_synchronized, false); // reset the flag
-//
-//    // get method access flags
-//    if (method->is_synchronized()) {
-//        // Don't unlock anything if the _do_not_unlock_if_synchronized flag
-//        // is set.
-//        __ testbool(rdx);
-//        __ jcc(Assembler::notZero, no_unlock);
-//
-//        // unlock monitor
-//        __ push(state); // save result
-//
-//        // BasicObjectLock will be first in list, since this is a
-//        // synchronized method. However, need to check that the object has
-//        // not been unlocked by an explicit monitorexit bytecode.
-//        const Address monitor(rbp, frame::interpreter_frame_initial_sp_offset *
-//                                   wordSize - (int) sizeof(BasicObjectLock));
-//        // We use c_rarg1 so that if we go slow path it will be the correct
-//        // register for unlock_object to pass to VM directly
-//        __ lea(c_rarg1, monitor); // address of first monitor
-//
-//        __ movptr(rax, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
-//        __ testptr(rax, rax);
-//        __ jcc(Assembler::notZero, unlock);
-//
-//        __ pop(state);
-//        if (throw_monitor_exception) {
-//            // Entry already unlocked, need to throw exception
-//            __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-//                                            InterpreterRuntime::throw_illegal_monitor_state_exception));
-//            __ should_not_reach_here();
-//        } else {
-//            // Monitor already unlocked during a stack unroll. If requested,
-//            // install an illegal_monitor_state_exception.  Continue with
-//            // stack unrolling.
-//            if (install_monitor_exception) {
-//                __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-//                                                InterpreterRuntime::new_illegal_monitor_state_exception));
-//            }
-//            __ jmp(unlocked);
-//        }
-//
-//        __ bind(unlock);
-//        __ unlock_object(c_rarg1);
-//        __ pop(state);
-//    }
-//
-//    // Check that for block-structured locking (i.e., that all locked
-//    // objects has been unlocked)
-//    __ bind(unlocked);
-//
-//    // rax: Might contain return value
-//
-//    // Check that all monitors are unlocked
-//    {
-//        Label loop, exception, entry, restart;
-//        const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
-//        const Address monitor_block_top(
-//                rbp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
-//        const Address monitor_block_bot(
-//                rbp, frame::interpreter_frame_initial_sp_offset * wordSize);
-//
-//        __ bind(restart);
-//        // We use c_rarg1 so that if we go slow path it will be the correct
-//        // register for unlock_object to pass to VM directly
-//        __ movptr(c_rarg1, monitor_block_top); // points to current entry, starting
-//        // with top-most entry
-//        __ lea(rbx, monitor_block_bot);  // points to word before bottom of
-//        // monitor block
-//        __ jmp(entry);
-//
-//        // Entry already locked, need to throw exception
-//        __ bind(exception);
-//
-//        if (throw_monitor_exception) {
-//            // Throw exception
-////            __ call_VM(noreg,
-////                                    CAST_FROM_FN_PTR(address, InterpreterRuntime::
-////                                            throw_illegal_monitor_state_exception));
-////            __ should_not_reach_here();
-//        } else {
-//            // Stack unrolling. Unlock object and install illegal_monitor_exception.
-//            // Unlock does not block, so don't have to worry about the frame.
-//            // We don't have to preserve c_rarg1 since we are going to throw an exception.
-//
-//            __ push(state);
-//            __ unlock_object(c_rarg1);
-//            __ pop(state);
-//
-//            if (install_monitor_exception) {
-//                __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-//                                                InterpreterRuntime::
-//                                                        new_illegal_monitor_state_exception));
-//            }
-//
-//            __ jmp(restart);
-//        }
-//
-//        __ bind(loop);
-//        // check if current entry is used
-//        __ cmpptr(Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()), (int32_t) NULL);
-//        __ jcc(Assembler::notEqual, exception);
-//
-//        __ addptr(c_rarg1, entry_size); // otherwise advance to next entry
-//        __ bind(entry);
-//        __ cmpptr(c_rarg1, rbx); // check if bottom reached
-//        __ jcc(Assembler::notEqual, loop); // if not at bottom then check this entry
-//    }
-//
-//    __ bind(no_unlock);
-
 
     // remove activation
     // movptr change to str
     // get sender sp
 
-    // from hotspot/enclave/cpu/aarch64/vm/templateInterpreter_aarch64.cpp
-    // line 178, 549
-    __ str(esp,
-           Address(sp, frame::interpreter_frame_sender_sp_offset * wordSize));
+    __ ldr(esp,
+           Address(rfp, frame::interpreter_frame_sender_sp_offset * wordSize));
     __ leave();                           // remove frame anchor
-    __ pop(ret_addr);                     // get return address
-    __ mov(sp, esp);                     // set sp to sender sp
-    __ push(ret_addr);
+    __ andr(sp, esp, -16);                // set sp to sender sp
 }
 
 

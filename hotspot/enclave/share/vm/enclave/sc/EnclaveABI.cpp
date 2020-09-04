@@ -96,6 +96,9 @@ void EnclaveABI::init() {
 
         __ lea(rlocals, Address(c_rarg0, (0x20 + 0x20 + 3) * wordSize));
 
+        __ sub(esp, sp, 40 * wordSize);
+
+        __ mov(r13, sp);
         __ ldr(rscratch1, Address(rmethod, Method::from_compiled_offset()));
         __ blr(rscratch1);
         __ leave();

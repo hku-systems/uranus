@@ -559,6 +559,7 @@ bool InstanceKlass::verify_code(
 /*  Verifier::Mode mode =
     throw_verifyerror ? Verifier::ThrowException : Verifier::NoException;
   return Verifier::verify(this_oop, mode, this_oop->should_verify_class(), CHECK_false);*/
+  return true;
 }
 
 
