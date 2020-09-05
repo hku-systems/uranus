@@ -50,6 +50,7 @@
 #include "runtime/handles.inline.hpp"
 //#include "runtime/javaCalls.hpp"
 //#include "runtime/mutexLocker.hpp"
+#include "runtime/synchronizer.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "utilities/macros.hpp"
 #include "instanceMirrorKlass.hpp"
@@ -924,7 +925,16 @@ void InstanceKlass::set_initialization_state_and_notify(ClassState state, TRAPS)
 }
 
 void InstanceKlass::set_initialization_state_and_notify_impl(instanceKlassHandle this_oop, ClassState state, TRAPS) {
-    D_WARN_Unimplement;
+    oop init_lock = this_oop->init_lock();
+    if (init_lock != NULL) {
+//        ObjectLocker ol(init_lock, THREAD);
+        this_oop->set_init_state(state);
+        this_oop->fence_and_clear_init_lock();
+//        ol.notify_all(CHECK);
+    } else {
+        assert(init_lock != NULL, "The initialization state should never be set twice");
+        this_oop->set_init_state(state);
+    }
 }
 
 // The embedded _implementor field can only record one implementor.

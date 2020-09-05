@@ -68,8 +68,11 @@ Klass* resolve_field_return_klass(methodHandle caller, int bci, TRAPS) {
     // This can be static or non-static field access
     Bytecodes::Code code       = field_access.code();
 
+    // We must load class, initialize class and resolvethe field
+    fieldDescriptor result; // initialize class if needed
     constantPoolHandle constants(THREAD, caller->constants());
-    return (Klass*)Klass_resolve_get_put(THREAD, caller(), field_access.index(), Bytecodes::java_code(code));
+    LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), CHECK_NULL);
+    return result.field_holder();
 }
 
 class StubFrame: public StackObj {
@@ -203,7 +206,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 // TODO: move it to InterpreterMacroAssember
                 // quick fix to avoid gc in runtime
                 // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
-                Register last_java_sp = r0;
+                Register last_java_sp = esp;
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
@@ -297,7 +300,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 // TODO: move it to InterpreterMacroAssember
                 // quick fix to avoid gc in runtime
                 // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
-                Register last_java_sp = r0;
+                Register last_java_sp = esp;
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
@@ -384,7 +387,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 // TODO: move it to InterpreterMacroAssember
                 // quick fix to avoid gc in runtime
                 // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
-                Register last_java_sp = r0;
+                Register last_java_sp = esp;
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
@@ -474,7 +477,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                     // TODO: move it to InterpreterMacroAssember
                     // quick fix to avoid gc in runtime
                     // movptr(Address(rbp, frame::interpreter_frame_bcx_offset * wordSize), r13);
-                    Register last_java_sp = r0;
+                    Register last_java_sp = esp;
                     __ lea(last_java_sp, Address(esp, wordSize));
                     __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
                 }
@@ -561,7 +564,7 @@ void Runtime0::generate_patching(StubAssembler *sasm, address target) {
     //__ set_last_Java_frame(thread, noreg, rbp, NULL);
     // to below
     Label retaddr;
-    __ set_last_Java_frame(sp, rfp, retaddr, rscratch1);
+    __ set_last_Java_frame(esp, rfp, retaddr, rscratch1);
 
     // do the call
     //__ call(RuntimeAddress(target));
@@ -646,12 +649,15 @@ int Runtime0::move_appendix_patching(JavaThread *thread) {
 void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
     NOT_PRODUCT(_patch_code_slowcase_cnt++;)
 
-    JavaThread* THREAD = JavaThread::current();
+    JavaThread* THREAD = thread;
 
     ResourceMark rm(thread);
     RegisterMap reg_map(thread, false);
     frame runtime_frame = thread->last_frame();
     frame caller_frame = runtime_frame.sender(&reg_map);
+
+    // jianyu: we pass esp to sp of runtime_frame for now, but this seems ugly
+    caller_frame.set_sp(runtime_frame.sp());
 
     // last java frame on stack
 
@@ -802,8 +808,6 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         return;
     }
 
-    printf("runtime\n");
-
     {
         // Deoptimization may have happened while we waited for the lock.
         // In that case we don't bother to do any patching we just return
@@ -833,7 +837,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             if (stub_id == Runtime0::access_field_patching_id) {
                 // The offset may not be correct if the class was not loaded at code generation time.
                 // Set it now.
-                NativeMovRegMem* n_move = nativeMovRegMem_at(copy_buff);
+                NativeMemOffset* n_move = nativeMemOffset_at(copy_buff);
                 assert(n_move->offset() == 0 || (n_move->offset() == 4 && (patch_field_type == T_DOUBLE || patch_field_type == T_LONG)), "illegal offset for type");
                 assert(patch_field_offset >= 0, "illegal offset");
                 n_move->set_offset(patch_field_offset);

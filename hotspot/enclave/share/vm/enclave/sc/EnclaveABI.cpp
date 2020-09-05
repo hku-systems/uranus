@@ -65,6 +65,7 @@ void EnclaveABI::init() {
 
         // __ mov(sp, c_rarg0);
         __ mov(rmethod, c_rarg3);
+        __ mov(rthread, c_rarg2);
 
         int words_pushed = 0;
 

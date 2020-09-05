@@ -139,9 +139,34 @@ address TemplateInterpreterGenerator::generate_ecall_entry(const char *name) {
     __ mov(c_rarg2, rmethod);
     __ mov(c_rarg3, rfp);
 
+    __ enter();
+
     address ecall_stub = (address)CompilerEnclave::call_interpreter_zero_locals;
-    __ mov(r9, ecall_stub);
-    __ br(r9);
+    __ movptr(r4, (uintptr_t)ecall_stub);
+    __ blr(r4);
+
+    __ leave();
+
+    unsigned char regs[32];
+    int count = 0;
+    for (int reg = 0; reg <= 30; reg++) {
+        regs[count++] = reg;
+    }
+    regs[count++] = zr->encoding_nocheck();
+    count &= ~1;
+
+    for (int i = 2; i < count; i += 2) {
+        __ ldp(as_Register(regs[i]), as_Register(regs[i+1]),
+            Address(sp, i * wordSize));
+    }
+    if (count) {
+        __ ldp(as_Register(regs[2]), as_Register(regs[1]),
+            Address(__ post(sp, count * wordSize)));
+    }
+
+    __ add(sp, sp, 0x20 * wordSize);
+
+    __ ret(lr);
 
     // address ret = __ pc();
     // __ ldr(esp,

@@ -591,6 +591,7 @@ int NormalCompileTask::compile(int size) {
     }
 
     for (std::deque<CodeStub *>::iterator itr = slow_cases.begin(); itr != slow_cases.end();itr++) {
+        __ align(wordSize);
         (*itr)->emit();
     }
 
@@ -610,6 +611,7 @@ int NormalCompileTask::compile(int size) {
 
     int offset = __ offset();
 
+    __ align(wordSize);
     __ flush();
 
     return offset;
@@ -724,17 +726,17 @@ void NormalCompileTask::ldc(bool wide) {
             Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
             resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
             resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-            __ ldr(r0, (intptr_t)resolve_klass);
+            __ movptr(r0, (intptr_t)resolve_klass);
         } else {
             PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-            __ ldr(r0, (long)this);
+            __ movptr(r0, (long)this);
             patchingStub->install();
             append_stub(patchingStub);
         }
         __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
     } else {
         resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-        __ ldr(r0, (intptr_t)resolve_klass);
+        __ movptr(r0, (intptr_t)resolve_klass);
         __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
     }
     tos = atos;
@@ -750,7 +752,7 @@ void NormalCompileTask::ldc(bool wide) {
             Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
             resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
             enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-            __ ldr(r0, (intptr_t)enclave_constant);
+            __ movptr(r0, (intptr_t)enclave_constant);
         } else {
             PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
             __ ldr(r0, NULL_WORD);
@@ -759,7 +761,7 @@ void NormalCompileTask::ldc(bool wide) {
         }
     } else {
         enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-        __ ldr(r0, (intptr_t)enclave_constant);
+        __ movptr(r0, (intptr_t)enclave_constant);
     }
     tos = atos;
   } else {
@@ -769,7 +771,7 @@ void NormalCompileTask::ldc(bool wide) {
         tos = ftos;
     } else {
         // itos JVM_CONSTANT_Integer only
-        __ ldrw(r0, method->constants()->int_at(idx));
+        __ mov(r0, method->constants()->int_at(idx));
         tos = itos;
     }
   }
@@ -2049,385 +2051,91 @@ void NormalCompileTask::getstatic(int byte_no) {
 }
 
 void NormalCompileTask::putfield_or_static(int byte_no, bool is_static) {
-    transition(vtos, vtos);
+    //  1. resolved and put index into rdx, obj in rax, volatile??
+    //  2. put the object
+    // this expects tos is cached
+    if (tos == vtos)
+        __ pop(r0);
 
-    const Register cache = r2;
-    const Register index = r3;
-    const Register obj   = r2;
-    const Register off   = r19;
-    const Register flags = r0;
-    const Register bc    = r4;
+    const Register obj = r4;
 
-    resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
-    //jvmti_post_field_mod(cache, index, is_static);
-    load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
+    int off = 0xff;
+    TosState tosState = ilgl;
 
-    Label Done;
-    __ mov(r5, flags);
+    // we do not need to pop the field
+    // __ pop(tos);
 
-    {
-        Label notVolatile;
-        __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-        __ membar(MacroAssembler::StoreStore | MacroAssembler::LoadStore);
-        __ bind(notVolatile);
+    // pop the object
+    if (!is_static) {
+        __ pop_ptr(obj);
+        __ sgx_bound_check(obj, out_of_bound);
+        has_bound_check = true;
     }
 
-    // field address
-    const Address field(obj, off);
+    PatchingStub *patching = resolve_cache_and_index(byte_no, obj, off, tosState, is_static);
 
-    Label notByte, notBool, notInt, notShort, notChar,
-            notLong, notFloat, notObj, notDouble;
-
-    // x86 uses a shift and mask or wings it with a shift plus assert
-    // the mask is not needed. aarch64 just uses bitfield extract
-    __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
-
-    assert(btos == 0, "change code, btos != 0");
-    __ cbnz(flags, notByte);
-
-    // btos
-    {
-        __ pop(btos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strb(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
+    Address field(obj, off);
+    switch(tosState) {
+        case btos:  __ strb(r0, field); break;
+        case ztos:  // __ andw(r0, r0, 0x1); this is comment out as patching is not handled, but we will need to handle this
+                    __ strb(r0, field); break;
+        case itos:  __ strw(r0, field); break;
+        case ctos:  __ strh(r0, field); break;
+        case stos:  __ strh(r0, field); break;
+        case ltos:  __ str(r0, field); break;
+        case ftos:  __ strs(v0, field); break;
+        case dtos:  __ strd(v0, field); break;
+        case atos:  __ store_heap_oop(field, r0); break;
+        default:
+            ShouldNotReachHere();
     }
-
-    __ bind(notByte);
-    __ cmp(flags, ztos);
-    __ br(Assembler::NE, notBool);
-
-    // ztos
-    {
-        __ pop(ztos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ andw(r0, r0, 0x1);
-        __ strb(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_zputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notBool);
-    __ cmp(flags, atos);
-    __ br(Assembler::NE, notObj);
-
-    // atos
-    {
-        __ pop(atos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        // Store into the field
-        do_oop_store(_masm, field, r0, BarrierSet::Other, false);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_aputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notObj);
-    __ cmp(flags, itos);
-    __ br(Assembler::NE, notInt);
-
-    // itos
-    {
-        __ pop(itos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strw(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notInt);
-    __ cmp(flags, ctos);
-    __ br(Assembler::NE, notChar);
-
-    // ctos
-    {
-        __ pop(ctos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strh(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notChar);
-    __ cmp(flags, stos);
-    __ br(Assembler::NE, notShort);
-
-    // stos
-    {
-        __ pop(stos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strh(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notShort);
-    __ cmp(flags, ltos);
-    __ br(Assembler::NE, notLong);
-
-    // ltos
-    {
-        __ pop(ltos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ str(r0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notLong);
-    __ cmp(flags, ftos);
-    __ br(Assembler::NE, notFloat);
-
-    // ftos
-    {
-        __ pop(ftos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strs(v0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
-        }
-        __ b(Done);
-    }
-
-    __ bind(notFloat);
-#ifdef ASSERT
-    __ cmp(flags, dtos);
-  __ br(Assembler::NE, notDouble);
-#endif
-
-    // dtos
-    {
-        __ pop(dtos);
-        if (!is_static) pop_and_check_object(obj);
-        // oopDesc::bs()->interpreter_write_barrier(_masm, obj);
-        __ strd(v0, field);
-        if (!is_static) {
-            patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
-        }
-    }
-
-#ifdef ASSERT
-    __ b(Done);
-
-  __ bind(notDouble);
-  __ stop("Bad state");
-#endif
-
-    __ bind(Done);
-
-    {
-        Label notVolatile;
-        __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-        __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
-        __ bind(notVolatile);
+    tos = vtos;
+    if (patching) {
+        patching->install();
+        append_stub(patching);
     }
 }
 
 void NormalCompileTask::getfield_or_static(int byte_no, bool is_static) {
-    const Register cache = r2;
-    const Register index = r3;
-    const Register obj   = r4;
-    const Register off   = r19;
-    const Register flags = r0;
-    const Register bc    = r4; // uses same reg as obj, so don't mix them
-
-    resolve_cache_and_index(byte_no, cache, index, sizeof(u2));
-    jvmti_post_field_access(cache, index, is_static, false);
-    load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
-
+    // this expects tos is not cached
+    // resolve the field and put the field id into cache
+    // patch if not resolved
+    // resolve_cache_and_index
+    const Register obj = r4;
+    int off = 0xff;
+    TosState tosState = ilgl;
     if (!is_static) {
-        // obj is on the stack
-        pop_and_check_object(obj);
+        assert_different_registers(obj, r0);
+        if (tos == vtos) {
+            __ pop(atos);
+        }
+        __ mov(obj, r0);
+        __ sgx_bound_check(obj, out_of_bound);
+        has_bound_check = true;
+    } else {
+        if (tos != vtos)
+            __ push(tos);
     }
-    // oopDesc::bs()->interpreter_read_barrier_not_null(_masm, obj);
-
-    const Address field(obj, off);
-
-    Label Done, notByte, notBool, notInt, notShort, notChar,
-            notLong, notFloat, notObj, notDouble;
-
-    // x86 uses a shift and mask or wings it with a shift plus assert
-    // the mask is not needed. aarch64 just uses bitfield extract
-    __ ubfxw(flags, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
-
-    assert(btos == 0, "change code, btos != 0");
-    __ cbnz(flags, notByte);
-
-    // btos
-    __ load_signed_byte(r0, field);
-    __ push(btos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1, true, byte_no);
+    PatchingStub* patching = resolve_cache_and_index(byte_no, obj, off, tosState, is_static);
+    Address field(obj, off);
+    // depends on the field type
+    // should not be tos
+    switch(tosState) {
+        case btos: tos = btos; __ load_signed_byte(r0, field); break;
+        case ztos: tos = ztos; __ ldrsb(r0, field); break;
+        case itos: tos = itos; __ ldrw(r0, field); break;
+        case ctos: tos = ctos; __ load_unsigned_short(r0, field); break;
+        case stos: tos = stos; __ load_signed_short(r0, field); break;
+        case ltos: tos = ltos; __ ldr(r0, field); break;
+        case ftos: tos = ftos; __ ldrs(v0, field); break;
+        case dtos: tos = dtos; __ ldrd(v0, field); break;
+        case atos: tos = atos; __ load_heap_oop(r0, field); break;
+        default:
+            ShouldNotReachHere();
     }
-    __ b(Done);
-
-    __ bind(notByte);
-    __ cmp(flags, ztos);
-    __ br(Assembler::NE, notBool);
-
-    // ztos (same code as btos)
-    __ ldrsb(r0, field);
-    __ push(ztos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        // use btos rewriting, no truncating to t/f bit is needed for getfield.
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_bgetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notBool);
-    __ cmp(flags, atos);
-    __ br(Assembler::NE, notObj);
-    // atos
-    __ load_heap_oop(r0, field);
-    __ push(atos);
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_agetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notObj);
-    __ cmp(flags, itos);
-    __ br(Assembler::NE, notInt);
-    // itos
-    __ ldrw(r0, field);
-    __ push(itos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_igetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notInt);
-    __ cmp(flags, ctos);
-    __ br(Assembler::NE, notChar);
-    // ctos
-    __ load_unsigned_short(r0, field);
-    __ push(ctos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_cgetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notChar);
-    __ cmp(flags, stos);
-    __ br(Assembler::NE, notShort);
-    // stos
-    __ load_signed_short(r0, field);
-    __ push(stos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_sgetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notShort);
-    __ cmp(flags, ltos);
-    __ br(Assembler::NE, notLong);
-    // ltos
-    __ ldr(r0, field);
-    __ push(ltos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_lgetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notLong);
-    __ cmp(flags, ftos);
-    __ br(Assembler::NE, notFloat);
-    // ftos
-    __ ldrs(v0, field);
-    __ push(ftos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_fgetfield, bc, r1, true, byte_no);
-    }
-    __ b(Done);
-
-    __ bind(notFloat);
-#ifdef ASSERT
-    __ cmp(flags, dtos);
-  __ br(Assembler::NE, notDouble);
-#endif
-    // dtos
-    __ ldrd(v0, field);
-    __ push(dtos);
-    // Rewrite bytecode to be faster
-    if (!is_static) {
-        //fill with true
-        patch_bytecode(Bytecodes::_fast_dgetfield, bc, r1, true, byte_no);
-    }
-#ifdef ASSERT
-        __ b(Done);
-
-  __ bind(notDouble);
-  __ stop("Bad state");
-#endif
-
-    __ bind(Done);
-    // It's really not worth bothering to check whether this field
-    // really is volatile in the slow case.
-    __ membar(MacroAssembler::LoadLoad | MacroAssembler::LoadStore);
-
-}
-
-// The Rcache and index registers must be set before call
-// n.b unlike x86 cache already includes the index offset
-void NormalCompileTask::load_field_cp_cache_entry(Register obj,
-                                              Register cache,
-                                              Register index,
-                                              Register off,
-                                              Register flags,
-                                              bool is_static = false) {
-    assert_different_registers(cache, index, flags, off);
-
-    ByteSize cp_base_offset = ConstantPoolCache::base_offset();
-    // Field offset
-    __ ldr(off, Address(cache, in_bytes(cp_base_offset +
-                                        ConstantPoolCacheEntry::f2_offset())));
-    // Flags
-    __ ldrw(flags, Address(cache, in_bytes(cp_base_offset +
-                                           ConstantPoolCacheEntry::flags_offset())));
-
-    // klass overwrite register
-    if (is_static) {
-        __ ldr(obj, Address(cache, in_bytes(cp_base_offset +
-                                            ConstantPoolCacheEntry::f1_offset())));
-        const int mirror_offset = in_bytes(Klass::java_mirror_offset());
-        __ ldr(obj, Address(obj, mirror_offset));
+    if (patching) {
+        patching->install();
+        append_stub(patching);
     }
 }
 
@@ -2444,106 +2152,62 @@ void NormalCompileTask::pop_and_check_object(Register r)
     __ verify_oop(r);
 }
 
-
-PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no,
-                                                         Register Rcache,
-                                                         Register index,
-                                                         size_t index_size) {
-    const Register temp = r19;
-    assert_different_registers(Rcache, index, temp);
-
-    Label resolved;
-    assert(byte_no == f1_byte || byte_no == f2_byte, "byte_no out of range");
-    __ get_cache_and_index_and_bytecode_at_bcp(Rcache, index, temp, byte_no, 1, index_size);
-    __ cmp(temp, (int) bs->code());  // have we resolved this bytecode?
-    __ br(Assembler::EQ, resolved);
-
-    // resolve first time through
-    address entry;
-    /*
-    switch (bs->code()) {
-        case Bytecodes::_getstatic:
-        case Bytecodes::_putstatic:
-        case Bytecodes::_getfield:
-        case Bytecodes::_putfield:
-            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_get_put);
-            break;
-        case Bytecodes::_invokevirtual:
-        case Bytecodes::_invokespecial:
-        case Bytecodes::_invokestatic:
-        case Bytecodes::_invokeinterface:
-            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invoke);
-            break;
-        case Bytecodes::_invokehandle:
-            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokehandle);
-            break;
-        case Bytecodes::_invokedynamic:
-            entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokedynamic);
-            break;
-        default:
-            fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bs->code())));
-            break;
+PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static) {
+    // for loop of code
+    Klass* klass_holder = method->method_holder();
+    // load the address offset and the klass to be loaded,
+    // it seems that putfield do not need to resolve it
+    ConstantPoolCacheEntry *field_entry = method->constants()->cache()->entry_at(getfield_index());
+    tosState = MetadataAccessor::basicType2tosState(
+            MetadataAccessor::get_field_type_by_index(method->constants(), getfield_index()));
+    Klass* field_holder_klass;
+    if (is_static) {
+        field_holder_klass = MetadataAccessor::get_field_holder_klass_if_loaded(method->constants(), getfield_index());
+        if (field_holder_klass == NULL) {
+            if (will_run) {
+                field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
+                __ movptr(c_obj, (intptr_t)field_holder_klass);
+                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+            } else {
+                // patch
+                PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
+                __ movptr(c_obj, NULL_WORD);
+                patchingStub->install();
+                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                append_stub(patchingStub);
+            }
+        } else {
+            __ movptr(c_obj, (intptr_t)field_holder_klass);
+            __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+        }
     }
-     */
 
-    __ mov(temp, (int) bs->code());
-    //temp comment out because do not deal with entry now
-    //__ call_VM(noreg, entry, temp);
-
-    // Update registers with resolved info
-    __ get_cache_and_index_at_bcp(Rcache, index, 1, index_size);
-    // n.b. unlike x86 Rcache is now rcpool plus the indexed offset
-    // so all clients ofthis method must be modified accordingly
-    __ bind(resolved);
-
+    if (field_entry == NULL || !field_entry->is_resolved(bs->code())) {
+        if (will_run) {
+            Bytecode_field field_access(method, bs->bci());
+            fieldDescriptor result; // initialize class if needed
+            Bytecodes::Code code = field_access.code();
+            constantPoolHandle constants(JavaThread::current(), method->constants());
+            LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), JavaThread::current());
+            off = result.offset();
+            return NULL;
+        } else {
+            // __ movptr(c_obj, (intptr_t)field_entry->f1_as_klass()->java_mirror());
+            PatchingStub *patching = new PatchingStub(_masm, PatchingStub::access_field_id, bs->bci());
+            // patch
+            // __ movl(index, -1); // this value is patched later
+            // later jmp dest is replaced to call_after
+            return patching;
+        }
+    } else {
+        off = field_entry->f2_as_index();
+        return NULL;
+    }
 }
 
 void NormalCompileTask::jsr_w() { Unimplemented(); }
 void NormalCompileTask::goto_w() {
     branch(false, true);
-}
-
-void NormalCompileTask::invokevirtual_helper(Register index,
-                                         Register recv,
-                                         Register flags)
-{
-  // Uses temporary registers r0, r3
-  assert_different_registers(index, recv, r0, r3);
-  // Test for an invoke of a final method
-  Label notFinal;
-  __ tbz(flags, ConstantPoolCacheEntry::is_vfinal_shift, notFinal);
-
-  const Register method = index;  // method must be rmethod
-  assert(method == rmethod,
-         "methodOop must be rmethod for interpreter calling convention");
-
-  // do the call - the index is actually the method to call
-  // that is, f2 is a vtable index if !is_vfinal, else f2 is a Method*
-
-  // It's final, need a null check here!
-  __ null_check(recv);
-
-  // profile this call
-  __ profile_final_call(r0);
-  __ profile_arguments_type(r0, method, r4, true);
-
-  __ jump_from_interpreted(method, r0);
-
-  __ bind(notFinal);
-
-  // get receiver klass
-  __ null_check(recv, oopDesc::klass_offset_in_bytes());
-  __ load_klass(r0, recv);
-
-  // profile this call
-  __ profile_virtual_call(r0, rlocals, r3);
-
-  // get target methodOop & entry point
-  __ lookup_virtual_method(r0, index, method);
-  __ profile_arguments_type(r3, method, r4, true);
-  // FIXME -- this looks completely redundant. is it?
-  // __ ldr(r3, Address(method, Method::interpreter_entry_offset()));
-  __ jump_from_interpreted(method, r3);
 }
 
 void NormalCompileTask::invokevirtual(int byte_no) {
@@ -2699,144 +2363,8 @@ void NormalCompileTask::invokedynamic(int byte_no) {
 
 }
 
-void NormalCompileTask::prepare_invoke(int byte_no,
-                                   Register method, // linked method (or i-klass)
-                                   Register index,  // itable index, MethodType, etc.
-                                   Register recv,   // if caller wants to see it
-                                   Register flags   // if caller wants to test it
-) {
-    //add gc point
-    gc_point();
-
-    // determine flags
-    Bytecodes::Code code = bs->code();
-    const bool is_invokeinterface  = code == Bytecodes::_invokeinterface;
-    const bool is_invokedynamic    = code == Bytecodes::_invokedynamic;
-    const bool is_invokehandle     = code == Bytecodes::_invokehandle;
-    const bool is_invokevirtual    = code == Bytecodes::_invokevirtual;
-    const bool is_invokespecial    = code == Bytecodes::_invokespecial;
-    const bool load_receiver       = (recv  != noreg);
-    const bool save_flags          = (flags != noreg);
-    assert(load_receiver == (code != Bytecodes::_invokestatic && code != Bytecodes::_invokedynamic), "");
-    assert(save_flags    == (is_invokeinterface || is_invokevirtual), "need flags for vfinal");
-    assert(flags == noreg || flags == r3, "");
-    assert(recv  == noreg || recv  == r2, "");
-
-    // setup registers & access constant pool cache
-    if (recv  == noreg)  recv  = r2;
-    if (flags == noreg)  flags = r3;
-    assert_different_registers(method, index, recv, flags);
-
-    // save 'interpreter return address'
-    __ save_bcp();
-
-    //load_invoke_cp_cache_entry(byte_no, method, index, flags, is_invokevirtual, false, is_invokedynamic);
-    //to:
-    // ConstantPoolCacheEntry *method_entry = method->constants()->cache()->entry_at(get_method_index());
-
-    // maybe push appendix to arguments (just before return address)
-    if (is_invokedynamic || is_invokehandle) {
-        Label L_no_push;
-        __ tbz(flags, ConstantPoolCacheEntry::has_appendix_shift, L_no_push);
-        // Push the appendix as a trailing parameter.
-        // This must be done before we get the receiver,
-        // since the parameter_size includes it.
-        __ push(r19);
-        __ mov(r19, index);
-        assert(ConstantPoolCacheEntry::_indy_resolved_references_appendix_offset == 0, "appendix expected at index+0");
-        __ load_resolved_reference_at_index(index, r19);
-        __ pop(r19);
-        __ push(index);  // push appendix (MethodType, CallSite, etc.)
-        __ bind(L_no_push);
-    }
-
-    // load receiver if needed (note: no return address pushed yet)
-    if (load_receiver) {
-        __ andw(recv, flags, ConstantPoolCacheEntry::parameter_size_mask);
-        // FIXME -- is this actually correct? looks like it should be 2
-        // const int no_return_pc_pushed_yet = -1;  // argument slot correction before we push return address
-        // const int receiver_is_at_end      = -1;  // back off one slot to get receiver
-        // Address recv_addr = __ argument_address(recv, no_return_pc_pushed_yet + receiver_is_at_end);
-        // __ movptr(recv, recv_addr);
-        __ add(rscratch1, esp, recv, ext::uxtx, 3); // FIXME: uxtb here?
-        __ ldr(recv, Address(rscratch1, -Interpreter::expr_offset_in_bytes(1)));
-        __ verify_oop(recv);
-    }
-
-    // compute return type
-    // x86 uses a shift and mask or wings it with a shift plus assert
-    // the mask is not needed. aarch64 just uses bitfield extract
-    __ ubfxw(rscratch2, flags, ConstantPoolCacheEntry::tos_state_shift,  ConstantPoolCacheEntry::tos_state_bits);
-    // load return address
-    {
-        const address table_addr = (address) Interpreter::invoke_return_entry_table_for(code);
-        __ mov(rscratch1, table_addr);
-        __ ldr(lr, Address(rscratch1, rscratch2, Address::lsl(3)));
-    }
-}
-
-
-void NormalCompileTask::patch_bytecode(Bytecodes::Code bc, Register bc_reg,
-                                   Register temp_reg, bool load_bc_into_bc_reg,
-                                   int byte_no)
-{
-    if (!RewriteBytecodes)  return;
-    Label L_patch_done;
-
-    switch (bc) {
-        case Bytecodes::_fast_aputfield:
-        case Bytecodes::_fast_bputfield:
-        case Bytecodes::_fast_zputfield:
-        case Bytecodes::_fast_cputfield:
-        case Bytecodes::_fast_dputfield:
-        case Bytecodes::_fast_fputfield:
-        case Bytecodes::_fast_iputfield:
-        case Bytecodes::_fast_lputfield:
-        case Bytecodes::_fast_sputfield:
-        {
-            // We skip bytecode quickening for putfield instructions when
-            // the put_code written to the constant pool cache is zero.
-            // This is required so that every execution of this instruction
-            // calls out to InterpreterRuntime::resolve_get_put to do
-            // additional, required work.
-            assert(byte_no == f1_byte || byte_no == f2_byte, "byte_no out of range");
-            assert(load_bc_into_bc_reg, "we use bc_reg as temp");
-            __ get_cache_and_index_and_bytecode_at_bcp(temp_reg, bc_reg, temp_reg, byte_no, 1);
-            __ movw(bc_reg, bc);
-            __ cmpw(temp_reg, (unsigned) 0);
-            __ br(Assembler::EQ, L_patch_done);  // don't patch
-        }
-            break;
-        default:
-            assert(byte_no == -1, "sanity");
-            // the pair bytecodes have already done the load.
-            if (load_bc_into_bc_reg) {
-                __ movw(bc_reg, bc);
-            }
-    }
-
-
-#ifdef ASSERT
-    Label L_okay;
-  __ load_unsigned_byte(temp_reg, at_bcp(0));
-  __ cmpw(temp_reg, (int) Bytecodes::java_code(bc));
-  __ br(Assembler::EQ, L_okay);
-  __ cmpw(temp_reg, bc_reg);
-  __ br(Assembler::EQ, L_okay);
-  __ stop("patching the wrong bytecode");
-  __ bind(L_okay);
-#endif
-
-    // patch bytecode
-    __ strb(bc_reg, at_bcp(0));
-    __ bind(L_patch_done);
-}
-
-
 void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register recv, Register flags) {
     // get the address of the function call, if not resolve, then return a patching
-
-    printf("invoke\n");
 
     gc_point();
 

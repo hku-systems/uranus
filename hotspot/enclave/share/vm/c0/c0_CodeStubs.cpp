@@ -26,10 +26,10 @@ void PatchingStub::install() {
         // embed a fixed offset to handle long patches which need to be offset by a word.
         // the patching code will just add the field offset field to this offset so
         // that we can refernce either the high or low word of a double word field.
-        // TODO:fix me
-        // NativeMovRegMem* n_move = nativeMovRegMem_at(_pc_start);
-        // n_move->set_offset(0);
-        // printf("offset %d\n", n_move->offset());
+         NativeMemOffset* n_move = nativeMemOffset_at(_pc_start);
+         if (n_move->offset() != 0xff) {
+             ShouldNotReachHere();
+         }
     } else if (_id == load_klass_id || _id == load_mirror_id || _id == load_appendix_id || _id == load_method_id || _id == compile_method_id) {
         assert(_obj != noreg, "must have register object for load_klass/load_mirror");
     } else {
@@ -123,7 +123,6 @@ void PatchingStub::emit() {
         __ b(_patch_site_entry);
     }
     NativeGeneralJump::insert_unconditional((address)_pc_start, entry);
-    printf("value %lx %d\n", entry, *(char*)(entry));
 }
 
 #undef __

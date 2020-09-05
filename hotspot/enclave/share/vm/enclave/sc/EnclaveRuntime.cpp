@@ -148,7 +148,7 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
 //        delete clean_pointer;
 //    }
 
-    const char* classname = "TestSuit";
+    const char* classname = ((Method*)m)->klass_name()->as_C_string();
     Symbol *csym = SymbolTable::new_symbol(classname, &javaThread);
     // ClassLoader::load_classfile(csym, &javaThread);
     Klass *c = SystemDictionary::resolve_or_null(csym, Handle(), Handle(), &javaThread);

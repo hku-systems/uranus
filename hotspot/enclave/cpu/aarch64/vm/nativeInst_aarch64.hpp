@@ -47,6 +47,7 @@
 // - - NativeReturnX (return with argument)
 // - - NativePushConst
 // - - NativeTstRegMem
+// - - NativeMemOffset
 
 // The base class for different kinds of native instruction abstractions.
 // Provides the primitive operations to manipulate code relative to this.
@@ -487,5 +488,38 @@ inline NativeCallTrampolineStub* nativeCallTrampolineStub_at(address addr) {
   assert(is_NativeCallTrampolineStub_at(addr), "no call trampoline found");
   return (NativeCallTrampolineStub*)addr;
 }
+
+class NativeMemOffset: public NativeInstruction {
+    enum AArch64_specific_constants {
+        instruction_size            =    4,
+        instruction_offset          =    0,
+        data_offset                 =    0,
+        next_instruction_offset     =    4
+    };
+
+public:
+
+    address instruction_address() const;
+
+    int   offset() const;
+
+    void  set_offset(int x);
+
+    void  add_offset_in_bytes(int add_offset)     { set_offset ( ( offset() + add_offset ) ); }
+
+    void verify();
+
+    // unit test stuff
+    static void test() {}
+
+private:
+    inline friend NativeMemOffset* nativeMemOffset_at (address address);
+};
+
+inline NativeMemOffset* nativeMemOffset_at (address address) {
+    NativeMemOffset* test = (NativeMemOffset*)(address - NativeMemOffset::instruction_offset);
+    return test;
+}
+
 
 #endif // CPU_AARCH64_VM_NATIVEINST_AARCH64_HPP

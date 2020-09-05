@@ -22,6 +22,9 @@ void JCompiler::compile_method(Method *method) {
         return;
     }
     int size = 0;
+    if (!method->method_holder()->is_initialized()) {
+        method->method_holder()->initialize(JavaThread::current());
+    }
     /*
     if (method->method_kind() == AbstractInterpreter::sgx_ocall_entry) {
         task = new OCallCompileTask(method);

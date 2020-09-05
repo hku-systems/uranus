@@ -91,12 +91,10 @@ intptr_t NativeMovConstReg::data() const {
 }
 
 void NativeMovConstReg::set_data(intptr_t x) {
-  printf("here\n");
   if (maybe_cpool_ref(instruction_address()) && false) {
     address addr = MacroAssembler::target_addr_for_insn(instruction_address());
     *(intptr_t*)addr = x;
   } else {
-    printf("patch\n");
     MacroAssembler::pd_patch_instruction(instruction_address(), (address)x);
     ICache::invalidate_range(instruction_address(), instruction_size);
   }
@@ -285,4 +283,16 @@ address NativeCallTrampolineStub::destination(nmethod *nm) const {
 void NativeCallTrampolineStub::set_destination(address new_destination) {
   set_ptr_at(data_offset, new_destination);
   OrderAccess::release();
+}
+
+address NativeMemOffset::instruction_address() const      { return addr_at(instruction_offset); }
+
+int NativeMemOffset::offset() const {
+    unsigned insn = *(unsigned*)instruction_address();
+    return Instruction_aarch64::extract(insn, 20, 12);
+}
+
+void NativeMemOffset::set_offset(int x) {
+    Instruction_aarch64::patch(instruction_address(), 20, 12, x);
+    ICache::invalidate_range(instruction_address(), instruction_size);
 }
