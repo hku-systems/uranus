@@ -19,13 +19,28 @@ using std::map;
 class NormalCompileTask: public CompileTask {
 public:
     enum Operation { add, sub, mul, div, rem, _and, _or, _xor, shl, shr, ushr };
-    enum Condition {
-        equal,
-        not_equal,
-        less      ,
-        less_equal ,
-        greater    ,
-        greater_equal
+    enum Condition {                     // The x86 condition codes used for conditional jumps/moves.
+        zero          = 0x4,
+        notZero       = 0x5,
+        equal         = 0x4,
+        notEqual      = 0x5,
+        less          = 0xc,
+        lessEqual     = 0xe,
+        greater       = 0xf,
+        greaterEqual  = 0xd,
+        below         = 0x2,
+        belowEqual    = 0x6,
+        above         = 0x7,
+        aboveEqual    = 0x3,
+        overflow      = 0x0,
+        noOverflow    = 0x1,
+        carrySet      = 0x2,
+        carryClear    = 0x3,
+        negative      = 0x8,
+        positive      = 0x9,
+        parity        = 0xa,
+        noParity      = 0xb,
+        none          = 0x10
     };
     enum CacheByte { f1_byte = 1, f2_byte = 2 };  // byte_no codes
 
@@ -200,7 +215,7 @@ public:
     void double_cmp(int unordered_result);
 
     void count_calls(Register method, Register temp);
-    void branch(bool is_jsr, bool is_wide);
+    void branch(bool is_jsr, bool is_wide, Condition cc);
     void if_0cmp   (Condition cc);
     void if_icmp   (Condition cc);
     void if_nullcmp(Condition cc);
@@ -278,7 +293,6 @@ public:
     PatchingStub* resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static);
 
     void jvmti_post_field_access(Register cache, Register index, bool is_static, bool has_tos);
-    void pop_and_check_object(Register r);
 
     int getfield_index() {
         return bs->get_index_u2_cpcache();
