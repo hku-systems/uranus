@@ -221,12 +221,12 @@ static inline Address at_tos_p5() {
 // Condition conversion
 static Assembler::Condition j_not(NormalCompileTask::Condition cc) {
     switch (cc) {
-        case NormalCompileTask::equal        : return Assembler::EQ;
-        case NormalCompileTask::notEqual    : return Assembler::NE;
-        case NormalCompileTask::less         : return Assembler::LT;
-        case NormalCompileTask::lessEqual   : return Assembler::LE;
-        case NormalCompileTask::greater      : return Assembler::GT;
-        case NormalCompileTask::greaterEqual: return Assembler::GE;
+        case NormalCompileTask::equal        : return Assembler::NE;
+        case NormalCompileTask::notEqual    : return Assembler::EQ;
+        case NormalCompileTask::less         : return Assembler::GE;
+        case NormalCompileTask::lessEqual   : return Assembler::GT;
+        case NormalCompileTask::greater      : return Assembler::LE;
+        case NormalCompileTask::greaterEqual: return Assembler::LT;
     }
     ShouldNotReachHere();
     return Assembler::EQ;
@@ -1555,10 +1555,12 @@ void NormalCompileTask::if_0cmp(NormalCompileTask::Condition cc) {
     __ br(j_not(cc), not_taken);
   }
 
-  branch(false, false, cc);
+  branch(false, false, none);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
+
+// TODO: if_icmp and if_acmp is not efficient, as they need to jump twice
 void NormalCompileTask::if_icmp(NormalCompileTask::Condition cc) {
   transition(itos, vtos);
   // assume branch is more often taken than not (loops use backward branches)
@@ -1566,7 +1568,7 @@ void NormalCompileTask::if_icmp(NormalCompileTask::Condition cc) {
   __ pop_i(r1);
   __ cmpw(r1, r0, Assembler::LSL);
   __ br(j_not(cc), not_taken);
-  branch(false, false, cc);
+  branch(false, false, none);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
@@ -1578,7 +1580,7 @@ void NormalCompileTask::if_acmp(NormalCompileTask::Condition cc) {
   __ pop_ptr(r1);
   __ cmpoops(r1, r0);
   __ br(j_not(cc), not_taken);
-  branch(false, false, cc);
+  branch(false, false, none);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
@@ -1591,7 +1593,7 @@ void NormalCompileTask::if_nullcmp(NormalCompileTask::Condition cc) {
     __ cbnz(r0, not_taken);
   else
     __ cbz(r0, not_taken);
-  branch(false, false, cc);
+  branch(false, false, none);
   __ bind(not_taken);
   __ profile_not_taken_branch(r0);
 }
@@ -1610,8 +1612,8 @@ void NormalCompileTask::ret(){
 void NormalCompileTask::iinc(){
   transition(vtos, vtos);
   signed char* value_pointer = (signed char*)bs->bcp() + 2;
-  __ mov(r1, *value_pointer); // get constant
-  __ addw(r0, r0, r1);
+  __ ldr(r0, iaddress(bs->get_index_u1()));
+  __ addw(r0, r0, *value_pointer);
   __ str(r0, iaddress(bs->get_index_u1()));
 }
 void NormalCompileTask::wide_iinc() {
@@ -1781,17 +1783,27 @@ void NormalCompileTask::_return(TosState state) {
     tos = state;
 }
 
-void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
-    if (inst_addr[0] == (unsigned char) 0x0F) {
-        // condition jmp
-        address code_pos = inst_addr + 1;
-        intptr_t disp = (intptr_t)jmp_addr - ((intptr_t)code_pos + 1 + 4);
+static inline int32_t extend(unsigned val, int hi = 31, int lo = 0) {
+  union {
+      unsigned u;
+      int n;
+  };
 
-        *((int32_t *)(code_pos+1)) = (int32_t) disp;
-        ICache::invalidate_range(inst_addr, NativeGeneralJump::instruction_size + 1);
-    } else {
-        NativeGeneralJump::insert_unconditional(inst_addr, jmp_addr);
-    }
+  u = val << (31 - hi);
+  n = n >> (31 - hi + lo);
+  return n;
+}
+
+void NormalCompileTask::patch_jmp(address inst_addr, address jmp_addr) {
+  // support only unconditional jump now
+  uint32_t inst = *(uint32_t*)inst_addr;
+  if (Instruction_aarch64::extract(inst, 31, 26) == 0b000101) {
+    long offset = (long) (jmp_addr - inst_addr) >> 2;
+    Instruction_aarch64::patch(inst_addr, 25, 0, extend(offset, 25, 0));
+  } else {
+    // this is not unconditional jump
+    D_WARN_Unimplement;
+  }
 }
 
 void NormalCompileTask::index_check(Register array, Register index) {
@@ -2503,24 +2515,18 @@ void NormalCompileTask::jump_target(int target, Condition cc) {
         address next_addr = __ pc() + NativeGeneralJump::instruction_size;
         //no none condition
         if (cc == none) {
-            __ emit_int8((unsigned char) 0xE9);
-            __ emit_int32(itr->second - next_addr);
+            __ b(itr->second);
         } else {
             next_addr += 1;
-            __ emit_int8((unsigned char) 0x0F);
-            __ emit_int8((unsigned char) (0x80 | cc));
-            __ emit_int32(itr->second - next_addr);
+            D_WARN_Unimplement;
         }
     } else {
         patch_address.push_back(std::pair<int, address>(target, __ pc()));
         //no none condition
         if (cc == none) {
-            __ emit_int8((unsigned char) 0xE9);
-            __ emit_int32(0);
+            __ b(__ pc() + NativeGeneralJump::instruction_size);
         } else {
-            __ emit_int8((unsigned char) 0x0F);
-            __ emit_int8((unsigned char) (0x80 | cc));
-            __ emit_int32(0);
+          D_WARN_Unimplement;
         }
     }
 
