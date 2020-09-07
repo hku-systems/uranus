@@ -838,70 +838,70 @@ void NormalCompileTask::aload_0() {
 }
 
 void NormalCompileTask::iaload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // r0: index
   // r1: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1, Address(r1, r0, Address::uxtw(2)));
-  __ ldrw(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_INT)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2, Address(r2, r0, Address::uxtw(2)));
+  __ ldrw(r0, Address(r2, arrayOopDesc::base_offset_in_bytes(T_INT)));
 }
 void NormalCompileTask::laload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // r0: index
   // r1: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1, Address(r1, r0, Address::uxtw(3)));
-  __ ldr(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_LONG)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2, Address(r2, r0, Address::uxtw(3)));
+  __ ldr(r0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_LONG)));
 }
 void NormalCompileTask::faload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // r0: index
   // r1: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1,  Address(r1, r0, Address::uxtw(2)));
-  __ ldrs(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2,  Address(r2, r0, Address::uxtw(2)));
+  __ ldrs(v0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
 void NormalCompileTask::daload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // r0: index
   // r1: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1,  Address(r1, r0, Address::uxtw(3)));
-  __ ldrd(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2,  Address(r2, r0, Address::uxtw(3)));
+  __ ldrd(v0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 }
 void NormalCompileTask::aaload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // r0: index
   // r1: array
-  index_check(r1, r0); // kills rbx
+  index_check(r2, r0); // kills rbx
   int s = (UseCompressedOops ? 2 : 3);
-  __ lea(r1, Address(r1, r0, Address::uxtw(s)));
-  __ load_heap_oop(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
+  __ lea(r2, Address(r2, r0, Address::uxtw(s)));
+  __ load_heap_oop(r0, Address(r2, arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
 }
 void NormalCompileTask::baload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // eax: index
   // rdx: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1,  Address(r1, r0, Address::uxtw(0)));
-  __ load_signed_byte(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_BYTE)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2,  Address(r2, r0, Address::uxtw(0)));
+  __ load_signed_byte(r0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
 void NormalCompileTask::caload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // eax: index
   // rdx: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1,  Address(r1, r0, Address::uxtw(1)));
-  __ load_unsigned_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2,  Address(r2, r0, Address::uxtw(1)));
+  __ load_unsigned_short(r0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 
 }
 void NormalCompileTask::saload() {
-  __ pop_ptr(r1);
+  __ pop_ptr(r2);
   // eax: index
   // rdx: array
-  index_check(r1, r0); // kills rbx
-  __ lea(r1,  Address(r1, r0, Address::uxtw(1)));
-  __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
+  index_check(r2, r0); // kills rbx
+  __ lea(r2,  Address(r1, r0, Address::uxtw(1)));
+  __ load_signed_short(r0, Address(r2,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
 void NormalCompileTask::istore(){
   __ strw(r0, iaddress(bs->get_index_u1()));
@@ -1839,18 +1839,19 @@ void NormalCompileTask::_new() {
         if (will_run) {
             Bytecode_new bytecode_new(method, method->bcp_from(bs->bci()));
             Klass* klass = method->constants()->klass_at(bytecode_new.index(), JavaThread::current());
-            __ str(r3, (Register)(intptr_t) klass);
+            __ movptr(r3, (intptr_t) klass);
         } else {
             // do the patch
             PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_klass_id, bs->bci());
-            __ str(r3, noreg);
+            __ movptr(r3, NULL_WORD);
             patchingStub->install();
             append_stub(patchingStub);
         }
     } else {
         Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
-        __ str(r3, (Register)(intptr_t) klass);
+        __ movptr(r3, (intptr_t) klass);
     }
+    // check gc_point() implementation
     gc_point();
 
     //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_instance_id)));
@@ -1862,20 +1863,19 @@ void NormalCompileTask::_new() {
 void NormalCompileTask::newarray() {
     Register length = r19;
     Register klass  = r3;
-    gc_point();
-    __ str(length, r0);
-    __ str(r0, (Register)(intptr_t)Universe::typeArrayKlassObj());
-    //__ str(klass, Address(r0, (int32_t)bs->get_index_u1(), Address::times_ptr));
-    __ str(klass, Address(r0, (int32_t)bs->get_index_u1() * wordSize));
 
     gc_point();
+    __ mov(length, r0);
+    __ movptr(klass, (intptr_t)Universe::typeArrayKlassObj()[bs->get_index_u1()]);
+
+    gc_point();
+
     //__ call(RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
     //call to below
     __ lea(r0, RuntimeAddress(Runtime0::entry_for(Runtime0::new_type_array_id)));
     __ blr(r0);
 }
 
-//TODO: reference to uranus x86 and template table
 void NormalCompileTask::anewarray() {
     transition(itos, atos);
     gc_point();
@@ -1886,7 +1886,7 @@ void NormalCompileTask::anewarray() {
         if (will_run) {
             Bytecode_anewarray anew(method, method->bcp_from(bs->bci()));
             Klass* ek = method->constants()->klass_at(anew.index(), JavaThread::current());
-            Klass* klass = (Klass*)KLASS_array_klass(ek, 1, 0);
+            Klass* klass = ek->array_klass(JavaThread::current());
             __ movptr(r3, (intptr_t)klass);
         } else {
             // do the patch
@@ -1897,7 +1897,7 @@ void NormalCompileTask::anewarray() {
         }
     } else {
         Klass* klass = method->constants()->klass_at_if_loaded(constantPoolHandle(method->constants()), idx);
-        klass = (Klass*)KLASS_array_klass(klass, 1, 0);
+        klass = (Klass*)klass->array_klass(JavaThread::current());
         __ movptr(r3, (intptr_t) klass);
     }
 
@@ -1927,12 +1927,12 @@ void NormalCompileTask::multianewarray() {
     // __ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_cpoll_multi_array));
     //change below code to above
 
+    __ mov(c_rarg0, rthread);
     __ movptr(c_rarg1, (intptr_t)method->constants());
     __ mov(c_rarg2, bs->get_index_u2());
     __ mov(c_rarg4, nfold);
-    __ call_VM(r0,
-            CAST_FROM_FN_PTR(address, Runtime0::new_type_array_id),
-            c_rarg1);
+    __ lea(rscratch1, RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_cpoll_multi_array)));
+    __ blr(rscratch1);
 
     __ lea(esp, Address(esp, nfold * wordSize));
   __ current_entry->clear_bit_prev(nfold);
@@ -2118,16 +2118,16 @@ void NormalCompileTask::invokevirtual(int byte_no) {
   // 5. the return handling of function
 
   // * need to change the calling convention, if necessary
-  invoke(byte_no, r1, r1, r2, r3);
+  invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokespecial(int byte_no) {
   transition(vtos, vtos);
-  invoke(byte_no, r1, noreg, r2, noreg);
+  invoke(byte_no, rmethod, noreg, r2, noreg);
 }
 
 void NormalCompileTask::invokeinterface(int byte_no) {
-  invoke(byte_no, r1, r1, r2, r3);
+  invoke(byte_no, rmethod, rmethod, r2, r3);
 }
 
 void NormalCompileTask::invokestatic(int byte_no) {
@@ -2146,6 +2146,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
 
      if (tos != vtos) {
          __ push(tos);
+         tos = vtos;
      }
 
     int parameter_size = 0;
@@ -2408,10 +2409,8 @@ void NormalCompileTask::instanceof() {
 
 //need to add to _new, invoke, etc according to /openjdk-sgx/hotspot/enclave_src/share/vm/c0/NormalCompileTask.cpp
 void NormalCompileTask::gc_point() {
-    // temporarily comment out
-    //movptr change to str
-    //rbp to c_rarg1 for bottom of stack
-    //__ str(Address(c_rarg1, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
+    //temporarily comment out
+    //__ movptr(Address(rmethod, frame::interpreter_frame_last_sp_offset * wordSize), bs->bci());
     oopSet->put_entry(bs->bci(), __ current_entry->clone());
 }
 

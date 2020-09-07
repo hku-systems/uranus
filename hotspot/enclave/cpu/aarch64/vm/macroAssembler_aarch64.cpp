@@ -3355,17 +3355,17 @@ void MacroAssembler::eden_allocate(Register obj,
                                    Register t1,
                                    Label& slow_case) {
   assert_different_registers(obj, var_size_in_bytes, t1);
-  if (CMSIncrementalMode || !Universe::heap()->supports_inline_contig_alloc()) {
-    b(slow_case);
-  } else {
+//  if (CMSIncrementalMode || !Universe::heap()->supports_inline_contig_alloc()) {
+//    b(slow_case);
+//  } else {
     Register end = t1;
     Register heap_end = rscratch2;
     Label retry;
     bind(retry);
     {
       unsigned long offset;
-      adrp(rscratch1, ExternalAddress((address) Universe::heap()->end_addr()), offset);
-      ldr(heap_end, Address(rscratch1, offset));
+      movptr(rscratch1, (uintptr_t) Universe::heap()->end_addr());
+      ldr(heap_end, Address(rscratch1, 0));
     }
 
     ExternalAddress heap_top((address) Universe::heap()->top_addr());
@@ -3373,13 +3373,13 @@ void MacroAssembler::eden_allocate(Register obj,
     // Get the current top of the heap
     {
       unsigned long offset;
-      adrp(rscratch1, heap_top, offset);
+//      adrp(rscratch1, heap_top, offset);
       // Use add() here after ARDP, rather than lea().
       // lea() does not generate anything if its offset is zero.
       // However, relocs expect to find either an ADD or a load/store
       // insn after an ADRP.  add() always generates an ADD insn, even
       // for add(Rn, Rn, 0).
-      add(rscratch1, rscratch1, offset);
+      movptr(rscratch1, (uintptr_t) Universe::heap()->top_addr());
       ldaxr(obj, rscratch1);
     }
 
@@ -3400,7 +3400,7 @@ void MacroAssembler::eden_allocate(Register obj,
     // If heap_top hasn't been changed by some other thread, update it.
     stlxr(rscratch2, end, rscratch1);
     cbnzw(rscratch2, retry);
-  }
+//  }
 }
 
 void MacroAssembler::verify_tlab() {

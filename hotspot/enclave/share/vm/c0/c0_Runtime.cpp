@@ -165,21 +165,21 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             Label slow_path;
             Label retry_tlab, try_eden;
             Label done;
-            __ tlab_refill(retry_tlab, try_eden, slow_path); // does not destroy r3 (klass), returns r5
-
-            __ bind(retry_tlab);
-
-            // get the instance size (size is postive so movl is fine for 64bit)
-            __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
-
-            __ tlab_allocate(obj, obj_size, 0, t1, t2, slow_path);
-
-            __ initialize_object(obj, klass, obj_size, 0, t1, t2);
-            __ verify_oop(obj);
-            __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
-            __ ret(lr);
-
-            __ bind(try_eden);
+//            __ tlab_refill(retry_tlab, try_eden, slow_path); // does not destroy r3 (klass), returns r5
+//
+//            __ bind(retry_tlab);
+//
+//            // get the instance size (size is postive so movl is fine for 64bit)
+//            __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
+//
+//            __ tlab_allocate(obj, obj_size, 0, t1, t2, slow_path);
+//
+//            __ initialize_object(obj, klass, obj_size, 0, t1, t2);
+//            __ verify_oop(obj);
+//            __ ldp(r5, r19, Address(__ post(sp, 2 * wordSize)));
+//            __ ret(lr);
+//
+//            __ bind(try_eden);
             // get the instance size (size is postive so movl is fine for 64bit)
             __ ldrw(obj_size, Address(klass, Klass::layout_helper_offset()));
 
@@ -210,7 +210,8 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
-            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj)));
+            __ lea(rscratch1, CAST_FROM_FN_PTR(address, EnclaveMemory::static_vm_new_obj));
+            __ br(rscratch1);
             if (true) {
                 __ reset_last_Java_frame(true);
                 // quick fix to avoid gc in runtime
@@ -225,7 +226,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
                 Label ok;
                 __ br(Assembler::EQ, ok);
-                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                //__ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ lea(rscratch1, Interpreter::throw_forward_entry());
+                __ br(rscratch1);
                 __ bind(ok);
             }
             //end of call_VME
@@ -267,6 +270,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ ubfx(t1, t1, Klass::_lh_header_size_shift,
                     exact_log2(Klass::_lh_header_size_mask + 1));
             __ add(arr_size, arr_size, t1);
+
             __ add(arr_size, arr_size, MinObjAlignmentInBytesMask); // align up
             __ andr(arr_size, arr_size, ~MinObjAlignmentInBytesMask);
 
@@ -288,7 +292,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ bind(slow_path);
 
             // keep and change to aarch64 version
-            __ str(c_rarg1, Address(r3, Klass::java_mirror_offset()));
+            __ ldrw(c_rarg1, Address(r3, Klass::java_mirror_offset()));
             __ ldrw(c_rarg2, length);
 
             //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
@@ -304,7 +308,10 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
-            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array)));
+            //__ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array)));
+            __ lea(rscratch1, CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_new_array));
+            __ br(rscratch1);
+
             if (true) {
                 __ reset_last_Java_frame(true);
                 // quick fix to avoid gc in runtime
@@ -319,7 +326,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
                 Label ok;
                 __ br(Assembler::EQ, ok);
-                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                //__ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ lea(rscratch1, Interpreter::throw_forward_entry());
+                __ br(rscratch1);
                 __ bind(ok);
             }
 
@@ -375,7 +384,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ bind(slow_path);
 
             // keep and change to aarch64 version
-            __ str(c_rarg1, Address(r3, Klass::java_mirror_offset()));
+            __ movptr(c_rarg1, r3);
             __ ldrw(c_rarg2, length);
 
             //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
@@ -391,7 +400,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
                 __ lea(last_java_sp, Address(esp, wordSize));
                 __ set_last_Java_frame(rthread, last_java_sp, rfp, NULL);
             }
-            __ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array)));
+            //__ b(RuntimeAddress(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array)));
+            __ lea(rscratch1, CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
+            __ br(rscratch1);
             if (true) {
                 __ reset_last_Java_frame(true);
                 // quick fix to avoid gc in runtime
@@ -406,7 +417,9 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
 
                 Label ok;
                 __ br(Assembler::EQ, ok);
-                __ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                //__ b(RuntimeAddress(Interpreter::throw_forward_entry()));
+                __ lea(rscratch1, Interpreter::throw_forward_entry());
+                __ br(rscratch1);
                 __ bind(ok);
             }
 
