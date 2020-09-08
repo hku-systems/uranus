@@ -698,6 +698,7 @@ void os::serialize_thread_states() {
 
 bool os::stack_shadow_pages_available(Thread *thread, methodHandle method) {
   D_WARN_Unimplement;
+  return true;
 }
 
 size_t os::page_size_for_region(size_t region_size, size_t min_pages, bool must_be_aligned) {

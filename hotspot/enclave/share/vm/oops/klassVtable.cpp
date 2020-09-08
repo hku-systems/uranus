@@ -1032,7 +1032,7 @@ void itableMethodEntry::initialize(Method* m) {
 //    // The dumptime itable method entry should be the same as the runtime entry.
 //    assert(_method == m, "sanity");
 //  } else {
-//    _method = m;
+    _method = m;
 //  }
 }
 
@@ -1196,8 +1196,7 @@ void klassItable::initialize_itable_for_interface(int method_table_offset, Klass
     if (m->has_itable_index()) {
       // This search must match the runtime resolution, i.e. selection search for invokeinterface
       // to correctly enforce loader constraints for interface method inheritance
-      // TODO: resolver
-//      LinkResolver::lookup_instance_method_in_klasses(target, _klass, m->name(), m->signature(), CHECK);
+      LinkResolver::lookup_instance_method_in_klasses(target, _klass, m->name(), m->signature(), CHECK);
     }
     if (target == NULL || !target->is_public() || target->is_abstract()) {
       // Entry does not resolve. Leave it empty for AbstractMethodError.

@@ -786,6 +786,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         oop recv = NULL;
         if (bytecode == Bytecodes::_invokevirtual || bytecode == Bytecodes::_invokeinterface ||
             bytecode == Bytecodes::_invokespecial) {
+            //below line caused error for _invokeinterface
             recv = caller_frame.interpreter_callee_receiver(call.signature());
             if (recv == NULL) {
               THROW(vmSymbols::java_lang_NullPointerException());
@@ -800,6 +801,22 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         } else {
             mth = callinfo.selected_method()();
         }
+
+        if (bytecode == Bytecodes::_invokeinterface) {
+            interface_klass = mth->method_holder();
+            if (((InstanceKlass*)interface_klass)->is_initialized()) {
+                interface_klass->initialize(JavaThread::current());
+            }
+            if (mth->has_itable_index()) {
+                interface_itable_idx = mth->itable_index();
+            } else {
+                printf("no itable, fail\n");
+            }
+            oop recv_recv = (oop)recv;
+            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_itable(interface_klass, interface_itable_idx, JavaThread::current());
+            EnclaveRuntime::compile_method(method);
+        }
+
         EnclaveRuntime::compile_method(mth);
     } else if (stub_id == compile_method_patching_id) {
         Method* compiled_method = thread->compiled_method();

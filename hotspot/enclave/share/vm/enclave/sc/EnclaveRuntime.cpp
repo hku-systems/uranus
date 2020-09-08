@@ -101,6 +101,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     EnclaveNative::init();
     EnclaveException::init();
 
+    StubRoutines::initialize1();
+
     klass_map = new std::map<std::string, Klass*>();
 
     compiler = JCompiler::create_compiler();

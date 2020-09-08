@@ -95,7 +95,7 @@ void EnclaveABI::init() {
         //     Address(__ post(c_rarg0, count * wordSize)));
         words_pushed += 2;
 
-        __ lea(rlocals, Address(c_rarg0, (0x20 + 0x20 + 3) * wordSize));
+        __ lea(rlocals, Address(c_rarg0, (0x20 + 0x20 + 5) * wordSize));
 
         __ sub(esp, sp, 40 * wordSize);
 

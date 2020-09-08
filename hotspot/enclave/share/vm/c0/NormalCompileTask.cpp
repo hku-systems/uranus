@@ -1717,7 +1717,7 @@ void NormalCompileTask::entry() {
         for (int i = 0;i < size_parameters;i++)
         {
             // movptr change to str, times8 change to lsl(3)
-            __ ldr(r15, Address(rlocals, (size_parameters - i) * wordSize));
+            __ ldr(r15, Address(rlocals, - i * wordSize));
             __ push(r15);
         }
     }
@@ -1914,7 +1914,6 @@ void NormalCompileTask::arraylength() {
     __ ldrw(r0, Address(r0, arrayOopDesc::length_offset_in_bytes()));
 }
 
-//TODO: reference to uranus x86 and template table
 void NormalCompileTask::multianewarray() {
     //add gc point
     gc_point();
@@ -2187,8 +2186,8 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
         PatchingStub *stub = new PatchingStub(_masm, PatchingStub::load_method_id, bs->bci());
         Label final;
         if (bs->code() == Bytecodes::_invokeinterface) {
-            __ mov(r0, (long)this);
-            __ mov(index, (intptr_t)0xffff);
+            __ movptr(r0, (long)this);
+            __ movptr(index, (intptr_t)0xffff);
         } else if (bs->code() == Bytecodes::_invokevirtual) {
             // we do not know if this is a final method
             // we use rbx as both index and method register
@@ -2268,7 +2267,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
                     EnclaveRuntime::compile_method(callee);
                 }
                 // load Method*, if invokestatic or vfinal
-                __ ldr(m, (Register)(intptr_t)callee);
+                __ movptr(m, (intptr_t)callee);
                 if (JCompiler::is_compile(callee)) {
                     compiled_entry = callee->_from_compiled_entry;
                 }
@@ -2299,7 +2298,7 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     // do not handle now
     if (bs->code() == Bytecodes::_invokeinterface) {
          __ bind(no_such_interface);
-         __ ldr(r0, (intptr_t)-1);
+         __ ldr(r0, (address)NULL);
          __ b(r0);
     }
 

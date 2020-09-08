@@ -48,7 +48,7 @@
 //#include "prims/methodComparator.hpp"
 //#include "runtime/fieldDescriptor.hpp"
 #include "runtime/handles.inline.hpp"
-//#include "runtime/javaCalls.hpp"
+#include "runtime/javaCalls.hpp"
 //#include "runtime/mutexLocker.hpp"
 #include "runtime/synchronizer.hpp"
 #include "runtime/orderAccess.inline.hpp"
@@ -1161,7 +1161,7 @@ Method* InstanceKlass::class_initializer() {
 }
 
 void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TRAPS) {
-/*  if (ReplayCompiles &&
+  if (ReplayCompiles &&
       (ReplaySuppressInitializers == 1 ||
        ReplaySuppressInitializers >= 2 && this_oop->class_loader() != NULL)) {
     // Hide the existence of the initializer for the purpose of replaying the compile
@@ -1179,7 +1179,7 @@ void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TR
     JavaCallArguments args; // No arguments
     JavaValue result(T_VOID);
     JavaCalls::call(&result, h_method, &args, CHECK); // Static call (no args)
-  }*/
+  }
 }
 
 
@@ -1308,12 +1308,12 @@ void InstanceKlass::methods_do(void f(Method* method)) {
 
 
 void InstanceKlass::do_local_static_fields(FieldClosure* cl) {
-/*  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
+  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
     if (fs.access_flags().is_static()) {
       fieldDescriptor& fd = fs.field_descriptor();
       cl->do_field(&fd);
     }
-  }*/
+  }
 }
 
 
@@ -1325,12 +1325,12 @@ void InstanceKlass::do_local_static_fields(void f(fieldDescriptor*, Handle, TRAP
 
 void InstanceKlass::do_local_static_fields_impl(instanceKlassHandle this_k,
                              void f(fieldDescriptor* fd, Handle mirror, TRAPS), Handle mirror, TRAPS) {
-/*  for (JavaFieldStream fs(this_k()); !fs.done(); fs.next()) {
+  for (JavaFieldStream fs(this_k()); !fs.done(); fs.next()) {
     if (fs.access_flags().is_static()) {
       fieldDescriptor& fd = fs.field_descriptor();
       f(&fd, mirror, CHECK);
     }
-  }*/
+  }
 }
 
 
@@ -1339,7 +1339,7 @@ static int compare_fields_by_offset(int* a, int* b) {
 }
 
 void InstanceKlass::do_nonstatic_fields(FieldClosure* cl) {
-/*  InstanceKlass* super = superklass();
+  InstanceKlass* super = superklass();
   if (super != NULL) {
     super->do_nonstatic_fields(cl);
   }
@@ -1366,7 +1366,7 @@ void InstanceKlass::do_nonstatic_fields(FieldClosure* cl) {
       cl->do_field(&fd);
     }
   }
-  FREE_C_HEAP_ARRAY(int, fields_sorted, mtClass);*/
+  FREE_C_HEAP_ARRAY(int, fields_sorted, mtClass);
 }
 
 

@@ -321,7 +321,7 @@ int os::PlatformEvent::TryPark() { syscall_invoke_count(__func__); }
 
 void
 os::os_exception_wrapper(java_call_t f, JavaValue* value, methodHandle* method,
-                         JavaCallArguments* args, Thread* thread) { syscall_invoke_count(__func__); }
+                         JavaCallArguments* args, Thread* thread) { f(value, method, args, thread); }
 
 bool os::pd_commit_memory(char* addr, size_t size, size_t alignment_hint,
                           bool exec) { syscall_invoke_count(__func__); }
