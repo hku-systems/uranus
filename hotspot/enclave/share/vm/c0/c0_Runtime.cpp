@@ -384,7 +384,7 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             __ bind(slow_path);
 
             // keep and change to aarch64 version
-            __ movptr(c_rarg1, r3);
+            __ mov(c_rarg1, r3);
             __ ldrw(c_rarg2, length);
 
             //__ call_VME(CAST_FROM_FN_PTR(address, EnclaveMemory::static_klass_obj_array));
@@ -465,13 +465,11 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
         case compile_method_patching_id:
         {
             Label compile_start;
-            __ str(r0, Address(rfp, Method::from_compiled_offset()));
-            //and operation and test zero
-            __ andr(r0, r0, r0);
+            __ ldr(r0, Address(rmethod, Method::from_compiled_offset()));
             __ cbz(r0, compile_start);
             __ ret(lr);
             __ bind(compile_start);
-            __ str(rfp, Address(rthread, JavaThread::compiled_method_offset()));
+            __ str(rmethod, Address(rthread, JavaThread::compiled_method_offset()));
             {
                 StubFrame f(sasm, "compile_method_patching", dont_gc_arguments);
                 generate_patching(sasm, CAST_FROM_FN_PTR(address, compile_method_patching));
@@ -815,9 +813,22 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             oop recv_recv = (oop)recv;
             Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_itable(interface_klass, interface_itable_idx, JavaThread::current());
             EnclaveRuntime::compile_method(method);
+        } else if (bytecode == Bytecodes::_invokevirtual) {
+          virtual_vtable_idx = mth->vtable_index();
+          if (virtual_vtable_idx > 0) {
+            oop recv_recv = (oop)recv;
+            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_vtable(virtual_vtable_idx);
+            EnclaveRuntime::compile_method(method);
+          } else {
+            // final
+            EnclaveRuntime::compile_method(mth);
+          }
+        } else {
+          // static or special
+          EnclaveRuntime::compile_method(mth);
         }
 
-        EnclaveRuntime::compile_method(mth);
+
     } else if (stub_id == compile_method_patching_id) {
         Method* compiled_method = thread->compiled_method();
         EnclaveRuntime::compile_method(compiled_method);
@@ -909,13 +920,8 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
                 } else if (code == Bytecodes::_invokevirtual && virtual_vtable_idx > 0) {
                     NativeMovConstReg *n_copy = nativeMovConstReg_at(copy_buff);
                     n_copy->set_data(virtual_vtable_idx);
-                    unsigned char* jmp_buf = copy_buff + NativeMovConstReg::instruction_size;
-                    if (jmp_buf[0] != 0xEB) {
-                        int32_t* jmp_offset = (int32_t*)(jmp_buf + 1);
-                        *jmp_offset = 0;
-                    } else {
-                        jmp_buf[1] = 0;
-                    }
+                    NativeNop *nop = nativeNop_at(n_copy->next_instruction_address());
+                    nop->patch();
                 } else {
                     NativeMovConstReg *n_copy = nativeMovConstReg_at(copy_buff);
                     n_copy->set_data((intptr_t)mth);

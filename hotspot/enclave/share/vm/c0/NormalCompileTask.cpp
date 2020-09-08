@@ -736,6 +736,10 @@ void NormalCompileTask::ldc(bool wide) {
     // call ldc
     oop resolve_constant = NULL;
     oop enclave_constant = NULL;
+    // TODO: move it to somewhere else
+    if (!((InstanceKlass*)SystemDictionary::String_klass())->is_initialized()) {
+      SystemDictionary::String_klass()->initialize(JavaThread::current());
+    }
     if (Bytecodes::uses_cp_cache(bs->raw_code())) {
         resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
     }
@@ -2296,11 +2300,11 @@ void NormalCompileTask::invoke(int byte_no, Register m, Register index, Register
     __ jump_to_compiled(m, compiled_entry, force_compile, patch_compile);
 
     // do not handle now
-    if (bs->code() == Bytecodes::_invokeinterface) {
-         __ bind(no_such_interface);
-         __ ldr(r0, (address)NULL);
-         __ b(r0);
-    }
+//    if (bs->code() == Bytecodes::_invokeinterface) {
+//         __ bind(no_such_interface);
+//         __ ldr(r0, (address)NULL);
+//         __ b(r0);
+//    }
 
     return_entry(tosState, parameter_size);
     tos = called_tos;

@@ -27,7 +27,7 @@
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.hpp"
 #include "classfile/classLoaderData.inline.hpp"
-// #include "classfile/defaultMethods.hpp"
+#include "classfile/defaultMethods.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
@@ -4118,7 +4118,8 @@ instanceKlassHandle ClassFileParser::parseClassFile(Symbol* name,
     // Generate any default methods - default methods are interface methods
     // that have a default implementation.  This is new with Lambda project.
     if (has_default_methods ) {
-        D_WARN_Unimplement;
+      DefaultMethods::generate_default_methods(
+              this_klass(), &all_mirandas, CHECK_(nullHandle));
     }
 
     // Update the loader_data graph.

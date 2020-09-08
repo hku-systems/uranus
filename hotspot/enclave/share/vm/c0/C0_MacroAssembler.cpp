@@ -84,9 +84,6 @@ void C0_MacroAssembler::jump_to_compiled(Register method, address entry, bool fo
         mov(r0, entry);
         blr(r0);
     } else {
-        // jump to the compile stub, if it is not a interface, remove the patch after
-        stub = new PatchingStub(this, PatchingStub::compile_method_id, force_compile);
-        stub->install();
         ldr(r0, Address(method, Method::from_compiled_offset()));
         blr(r0);
     }

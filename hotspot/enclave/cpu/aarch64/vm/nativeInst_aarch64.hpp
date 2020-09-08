@@ -521,5 +521,25 @@ inline NativeMemOffset* nativeMemOffset_at (address address) {
     return test;
 }
 
+class NativeNop: public NativeInstruction {
+    enum AArch64_specific_constants {
+        instruction_size            =    4,
+        instruction_offset          =    0,
+        data_offset                 =    0,
+        next_instruction_offset     =    4
+    };
+
+public:
+
+    address instruction_address() const;
+    void patch();
+private:
+    inline friend NativeNop* nativeNop_at (address address);
+};
+
+inline NativeNop* nativeNop_at (address address) {
+  NativeNop* test = (NativeNop*)(address - NativeNop::instruction_offset);
+  return test;
+}
 
 #endif // CPU_AARCH64_VM_NATIVEINST_AARCH64_HPP

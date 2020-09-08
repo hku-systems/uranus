@@ -68,8 +68,8 @@ void* MetaspaceObj::operator new(size_t size, ClassLoaderData* loader_data,
   return malloc(word_size * sizeof(char*));
 }
 
+// TODO: check this
 bool MetaspaceObj::is_shared() const {
-  D_WARN_Unimplement;
   return false;
 }
 

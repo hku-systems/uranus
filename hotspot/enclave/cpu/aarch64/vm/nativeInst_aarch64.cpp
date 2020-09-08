@@ -296,3 +296,16 @@ void NativeMemOffset::set_offset(int x) {
     Instruction_aarch64::patch(instruction_address(), 20, 12, x);
     ICache::invalidate_range(instruction_address(), instruction_size);
 }
+
+address NativeNop::instruction_address() const { return addr_at(instruction_offset); }
+
+void NativeNop::patch() {
+  Instruction_aarch64::patch(instruction_address(), 31, 21, 0b11010101000);
+  Instruction_aarch64::patch(instruction_address(), 20, 19, 0b00);
+  Instruction_aarch64::patch(instruction_address(), 18, 16, 0b011);
+  Instruction_aarch64::patch(instruction_address(), 15, 12, 0b0010);
+  Instruction_aarch64::patch(instruction_address(), 11, 8, 0);
+  Instruction_aarch64::patch(instruction_address(), 7, 5, 0b000);
+  Instruction_aarch64::patch(instruction_address(), 4, 0, dummy_reg->encoding());
+  ICache::invalidate_range(instruction_address(), instruction_size);
+}

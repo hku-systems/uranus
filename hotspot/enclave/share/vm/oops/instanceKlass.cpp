@@ -505,10 +505,9 @@ void InstanceKlass::fence_and_clear_init_lock() {
 }
 
 void InstanceKlass::eager_initialize_impl(instanceKlassHandle this_oop) {
-  D_WARN_Unimplement;
-/*  EXCEPTION_MARK;
+  EXCEPTION_MARK;
   oop init_lock = this_oop->init_lock();
-  ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
+//  ObjectLocker ol(init_lock, THREAD, init_lock != NULL);
 
   // abort if someone beat us to the initialization
   if (!this_oop->is_not_initialized()) return;  // note: not equivalent to is_initialized()
@@ -533,7 +532,7 @@ void InstanceKlass::eager_initialize_impl(instanceKlassHandle this_oop) {
       ResourceMark rm(THREAD);
       tty->print_cr("[Initialized %s without side effects]", this_oop->external_name());
     }
-  }*/
+  }
 }
 
 
@@ -1060,18 +1059,18 @@ bool InstanceKlass::is_same_or_direct_interface(Klass *k) const {
 }
 
 objArrayOop InstanceKlass::allocate_objArray(int n, int length, TRAPS) {
-/*  if (length < 0) THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
+  if (length < 0) THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
   if (length > arrayOopDesc::max_array_length(T_OBJECT)) {
-    report_java_out_of_memory("Requested array size exceeds VM limit");
-    JvmtiExport::post_array_size_exhausted();
+//    report_java_out_of_memory("Requested array size exceeds VM limit");
+//    JvmtiExport::post_array_size_exhausted();
     THROW_OOP_0(Universe::out_of_memory_error_array_size());
   }
   int size = objArrayOopDesc::object_size(length);
   Klass* ak = array_klass(n, CHECK_NULL);
   KlassHandle h_ak (THREAD, ak);
-  objArrayOop o =
-    (objArrayOop)CollectedHeap::array_allocate(h_ak, size, length, CHECK_NULL);
-  return o;*/
+  objArrayOop o = (objArrayOop)EnclaveMemory::enclaveMemory->klass_obj_array((JavaThread*)THREAD, h_ak(), length);
+//    (objArrayOop)CollectedHeap::array_allocate(h_ak, size, length, CHECK_NULL);
+  return o;
 }
 
 instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
