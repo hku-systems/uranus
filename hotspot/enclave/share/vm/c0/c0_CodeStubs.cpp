@@ -26,10 +26,10 @@ void PatchingStub::install() {
         // embed a fixed offset to handle long patches which need to be offset by a word.
         // the patching code will just add the field offset field to this offset so
         // that we can refernce either the high or low word of a double word field.
-         NativeMemOffset* n_move = nativeMemOffset_at(_pc_start);
-         if (n_move->offset() != 0xff) {
-             ShouldNotReachHere();
-         }
+//         NativeMemOffset* n_move = nativeMemOffset_at(_pc_start);
+//         if (n_move->offset() != 0xff) {
+//             ShouldNotReachHere();
+//         }
     } else if (_id == load_klass_id || _id == load_mirror_id || _id == load_appendix_id || _id == load_method_id || _id == compile_method_id) {
         assert(_obj != noreg, "must have register object for load_klass/load_mirror");
     } else {

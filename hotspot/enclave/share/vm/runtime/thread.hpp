@@ -136,6 +136,11 @@ class Thread: public ThreadShadow {
   static ByteSize stack_size_offset()            { return byte_offset_of(Thread, _stack_size ); }
   static ByteSize normal_thread_offset()          { return byte_offset_of(Thread, _normal_thread ); }
 
+  jint _hashStateW ;                           // Marsaglia Shift-XOR thread-local RNG
+  jint _hashStateX ;                           // thread-specific hashCode generator state
+  jint _hashStateY ;
+  jint _hashStateZ ;
+
   // Testers
   virtual bool is_VM_thread()       const            { return false; }
   virtual bool is_Java_thread()     const            { return false; }

@@ -138,7 +138,6 @@ Method* Klass::uncached_lookup_method(Symbol* name, Symbol* signature, OverpassL
 
 void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word_size, TRAPS) throw() {
   // TODO allocate klass in enclave
-  D_WARN_Unimplement;
   return malloc(word_size * HeapWordSize);
 }
 

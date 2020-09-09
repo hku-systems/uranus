@@ -437,7 +437,6 @@ void Universe::initialize_basic_type_mirrors(TRAPS) {
 }
 
 void Universe::fixup_mirrors(TRAPS) {
-  printf("%lx %lx\n", THREAD, JavaThread::current());
   // Bootstrap problem: all classes gets a mirror (java.lang.Class instance) assigned eagerly,
   // but we cannot do that for classes created before java.lang.Class is loaded. Here we simply
   // walk over permanent objects created so far (mostly classes) and fixup their mirrors. Note
@@ -452,7 +451,7 @@ void Universe::fixup_mirrors(TRAPS) {
   for (int i = 0; i < list_length; i++) {
     Klass* k = list->at(i);
     assert(k->is_klass(), "List should only hold classes");
-    printf("%lx %lx\n", k, THREAD);
+    printf("fixup %s\n", k->name()->as_C_string());
     EXCEPTION_MARK;
     KlassHandle kh(THREAD, k);
     java_lang_Class::fixup_mirror(kh, CATCH);

@@ -45,7 +45,12 @@
 #include <stdint.h>
 
 // define some enclave global states here
-#define ShouldNotReachHere()  printf("should not reach here %s:%d\n", __FILE__, __LINE__);
+#define ShouldNotReachHere()  { \
+  printf("should not reach here %s:%d\n", __FILE__, __LINE__); \
+  char *null_ptr = NULL; \
+  char c = *null_ptr; }
+
+
 #define ShouldNotCallThis()
 #define guarantee(p, msg)
 #define fatal(msg)

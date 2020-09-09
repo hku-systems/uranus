@@ -536,8 +536,8 @@ int NormalCompileTask::compile(int size) {
             case Bytecodes::_checkcast:     gen(checkcast(),        atos, atos);
             case Bytecodes::_instanceof:    gen(instanceof(),       atos, itos);
             //TODO: add aarch64 version for below 2 instructions
-            //case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
-            //case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
+            case Bytecodes::_monitorenter:  gen(monitorenter(),     atos, vtos);
+            case Bytecodes::_monitorexit:   gen(monitorexit(),      atos, vtos);
             case Bytecodes::_wide:
                 Unimplemented();
                 break;
@@ -2610,7 +2610,6 @@ void NormalCompileTask::athrow() {
   __ null_check(r0);
   __ b(Interpreter::throw_exception_entry());
 }
-/*
 //-----------------------------------------------------------------------------
 // Synchronization
 //
@@ -2631,162 +2630,12 @@ void NormalCompileTask::athrow() {
 
  //comment out
 void NormalCompileTask::monitorenter() {
-  transition(atos, vtos);
-
-  // check for NULL object
-  __ null_check(r0);
-
-  // We need to preemptively evacuate the object, because we later compare
-  // it to objects in the BasicObjectLock list, and we might get false negatives
-  // if another thread evacuates the object in the meantime. See acmp.
-  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
-
-  const Address monitor_block_top(
-        rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
-  const Address monitor_block_bot(
-        rfp, frame::interpreter_frame_initial_sp_offset * wordSize);
-  const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
-
-  Label allocated;
-
-  // initialize entry pointer
-  __ mov(c_rarg1, zr); // points to free slot or NULL
-
-  // find a free slot in the monitor block (result in c_rarg1)
-  {
-    Label entry, loop, exit;
-    __ ldr(c_rarg3, monitor_block_top); // points to current entry,
-                                        // starting with top-most entry
-    __ lea(c_rarg2, monitor_block_bot); // points to word before bottom
-
-    __ b(entry);
-
-    __ bind(loop);
-    // check if current entry is used
-    // if not used then remember entry in c_rarg1
-    __ ldr(rscratch1, Address(c_rarg3, BasicObjectLock::obj_offset_in_bytes()));
-    __ cmp(zr, rscratch1);
-    __ csel(c_rarg1, c_rarg3, c_rarg1, Assembler::EQ);
-    // check if current entry is for same object
-    __ cmp(r0, rscratch1);
-    // if same object then stop searching
-    __ br(Assembler::EQ, exit);
-    // otherwise advance to next entry
-    __ add(c_rarg3, c_rarg3, entry_size);
-    __ bind(entry);
-    // check if bottom reached
-    __ cmp(c_rarg3, c_rarg2);
-    // if not at bottom then check this entry
-    __ br(Assembler::NE, loop);
-    __ bind(exit);
-  }
-
-  __ cbnz(c_rarg1, allocated); // check if a slot has been found and
-                            // if found, continue with that on
-
-  // allocate one if there's no free slot
-  {
-    Label entry, loop;
-    // 1. compute new pointers            // rsp: old expression stack top
-    __ ldr(c_rarg1, monitor_block_bot);   // c_rarg1: old expression stack bottom
-    __ sub(esp, esp, entry_size);         // move expression stack top
-    __ sub(c_rarg1, c_rarg1, entry_size); // move expression stack bottom
-    __ mov(c_rarg3, esp);                 // set start value for copy loop
-    __ str(c_rarg1, monitor_block_bot);   // set new monitor block bottom
-
-    __ sub(sp, sp, entry_size);           // make room for the monitor
-
-    __ b(entry);
-    // 2. move expression stack contents
-    __ bind(loop);
-    __ ldr(c_rarg2, Address(c_rarg3, entry_size)); // load expression stack
-                                                   // word from old location
-    __ str(c_rarg2, Address(c_rarg3, 0));          // and store it at new location
-    __ add(c_rarg3, c_rarg3, wordSize);            // advance to next word
-    __ bind(entry);
-    __ cmp(c_rarg3, c_rarg1);        // check if bottom reached
-    __ br(Assembler::NE, loop);      // if not at bottom then
-                                     // copy next word
-  }
-
-  // call run-time routine
-  // c_rarg1: points to monitor entry
-  __ bind(allocated);
-
-  // Increment bcp to point to the next bytecode, so exception
-  // handling for async. exceptions work correctly.
-  // The object has already been poped from the stack, so the
-  // expression stack looks correct.
-  __ increment(rbcp);
-
-  // store object
-  __ str(r0, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
-  __ lock_object(c_rarg1);
-
-  // check to make sure this monitor doesn't cause stack overflow after locking
-  __ save_bcp();  // in case of exception
-  __ generate_stack_overflow_check(0);
-
-  // The bcp has already been incremented. Just need to dispatch to
-  // next instruction.
-  __ dispatch_next(vtos);
+  D_WARN_Unimplement;
 }
 //comment out
 void NormalCompileTask::monitorexit() {
-  transition(atos, vtos);
-
-  // check for NULL object
-  __ null_check(r0);
-
-  // We need to preemptively evacuate the object, because we later compare
-  // it to objects in the BasicObjectLock list, and we might get false negatives
-  // if another thread evacuates the object in the meantime. See acmp.
-  oopDesc::bs()->interpreter_write_barrier(_masm, r0);
-
-  const Address monitor_block_top(
-        rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
-  const Address monitor_block_bot(
-        rfp, frame::interpreter_frame_initial_sp_offset * wordSize);
-  const int entry_size = frame::interpreter_frame_monitor_size() * wordSize;
-
-  Label found;
-
-  // find matching slot
-  {
-    Label entry, loop;
-    __ ldr(c_rarg1, monitor_block_top); // points to current entry,
-                                        // starting with top-most entry
-    __ lea(c_rarg2, monitor_block_bot); // points to word before bottom
-                                        // of monitor block
-    __ b(entry);
-
-    __ bind(loop);
-    // check if current entry is for same object
-    __ ldr(rscratch1, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
-    __ cmp(r0, rscratch1);
-    // if same object then stop searching
-    __ br(Assembler::EQ, found);
-    // otherwise advance to next entry
-    __ add(c_rarg1, c_rarg1, entry_size);
-    __ bind(entry);
-    // check if bottom reached
-    __ cmp(c_rarg1, c_rarg2);
-    // if not at bottom then check this entry
-    __ br(Assembler::NE, loop);
-  }
-
-  // error handling. Unlocking was not block-structured
-  __ call_VM(noreg, CAST_FROM_FN_PTR(address,
-                   InterpreterRuntime::throw_illegal_monitor_state_exception));
-  __ should_not_reach_here();
-
-  // call run-time routine
-  __ bind(found);
-  __ push_ptr(r0); // make sure object is on stack (contract with oopMaps)
-  __ unlock_object(c_rarg1);
-  __ pop_ptr(r0); // discard object
+  D_WARN_Unimplement;
 }
- */
 
 inline bool is_jump_code(Bytecodes::Code code) {
     return ((code >= Bytecodes::_lcmp && code <= Bytecodes::_lookupswitch)

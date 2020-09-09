@@ -31,6 +31,11 @@ Thread::Thread() {
     set_last_handle_mark(NULL);
     _handle_area = new (mtThread) HandleArea(NULL);
     new HandleMark(this);
+    // thread-specific hashCode stream generator state - Marsaglia shift-xor form
+    _hashStateX = os::random() ;
+    _hashStateY = 842502087 ;
+    _hashStateZ = 0x8767 ;    // (int)(3579807591LL & 0xffff) ;
+    _hashStateW = 273326509 ;
 }
 
 Thread::~Thread() {

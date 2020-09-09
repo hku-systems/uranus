@@ -266,10 +266,8 @@ public:
     void anewarray();
     void arraylength();
     void multianewarray();
-/*
     void monitorenter();
     void monitorexit();
-*/
     void checkcast();
     void instanceof();
 

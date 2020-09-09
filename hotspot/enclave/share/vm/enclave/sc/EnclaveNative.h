@@ -47,20 +47,20 @@
     template(throwable_FillInStackTrace,        "Java_java_lang_Throwable_fillInStackTrace",            &JVM_FillInStackTrace)              \
     template(throwable_GetStackTraceDepth,      "Java_java_lang_Throwable_getStackTraceDepth",          &JVM_GetStackTraceDepth)            \
     template(throwable_GetStackTraceElement,    "Java_java_lang_Throwable_getStackTraceElement",        &JVM_GetStackTraceElement)          \
-    template(tools_print,                       "Java_edu_anonymity_sgx_Tools_print",                   &JVM_EnclaveDebug)                  \
-    template(tools_clone,                       "Java_edu_anonymity_sgx_Tools_copy_1out",               &JVM_EnclaveCopy)                   \
-    template(tools_deep_copy,                   "Java_edu_anonymity_sgx_Tools_deep_1copy",              &JVM_EnclaveDeepCopy)               \
-    template(tools_clean,                       "Java_edu_anonymity_sgx_Tools_clean",                   &JVM_EnclaveClean)                  \
+    template(tools_print,                       "Java_edu_hku_cs_uranus_Tools_print",                   &JVM_EnclaveDebug)                  \
+    template(tools_clone,                       "Java_edu_hku_cs_uranus_Tools_copy_1out",               &JVM_EnclaveCopy)                   \
+    template(tools_deep_copy,                   "Java_edu_hku_cs_uranus_Tools_deep_1copy",              &JVM_EnclaveDeepCopy)               \
+    template(tools_clean,                       "Java_edu_hku_cs_uranus_Tools_clean",                   &JVM_EnclaveClean)                  \
     template(thread_currentThread,              "Java_java_lang_Thread_currentThread",                  &JVM_CurrentThread)                 \
     template(thread_yield,                      "Java_java_lang_Thread_yield",                          &Java_java_lang_Thread_yield)       \
-    template(sgx_encrypt,                       "Java_edu_anonymity_sgx_Crypto_sgx_1encrypt",           &JVM_BytesEncrypt)                  \
-    template(sgx_decrypt,                       "Java_edu_anonymity_sgx_Crypto_sgx_1decrypt",           &JVM_BytesDecrypt)                  \
-    template(sgx_encrypt_int,                   "Java_edu_anonymity_sgx_Crypto_sgx_1encrypt_1int",      &JVM_BytesEncryptInt)               \
-    template(sgx_decrypt_int,                   "Java_edu_anonymity_sgx_Crypto_sgx_1decrypt_1int",      &JVM_BytesDecryptInt)               \
-    template(sgx_encrypt_double,                "Java_edu_anonymity_sgx_Crypto_sgx_1encrypt_1double",   &JVM_BytesEncryptDouble)            \
-    template(sgx_decrypt_double,                "Java_edu_anonymity_sgx_Crypto_sgx_1decrypt_1double",   &JVM_BytesDecryptDouble)            \
-    template(sgx_hash,                          "Java_edu_anonymity_sgx_Crypto_sgx_1hash",              &JVM_BytesHash)                     \
-    template(sgx_verify,                        "Java_edu_anonymity_sgx_Crypto_sgx_1verify",            &JVM_BytesHashVerify)               \
+    template(sgx_encrypt,                       "Java_edu_hku_cs_uranus_Crypto_sgx_1encrypt",           &JVM_BytesEncrypt)                  \
+    template(sgx_decrypt,                       "Java_edu_hku_cs_uranus_Crypto_sgx_1decrypt",           &JVM_BytesDecrypt)                  \
+    template(sgx_encrypt_int,                   "Java_edu_hku_cs_uranus_Crypto_sgx_1encrypt_1int",      &JVM_BytesEncryptInt)               \
+    template(sgx_decrypt_int,                   "Java_edu_hku_cs_uranus_Crypto_sgx_1decrypt_1int",      &JVM_BytesDecryptInt)               \
+    template(sgx_encrypt_double,                "Java_edu_hku_cs_uranus_Crypto_sgx_1encrypt_1double",   &JVM_BytesEncryptDouble)            \
+    template(sgx_decrypt_double,                "Java_edu_hku_cs_uranus_Crypto_sgx_1decrypt_1double",   &JVM_BytesDecryptDouble)            \
+    template(sgx_hash,                          "Java_edu_hku_cs_uranus_Crypto_sgx_1hash",              &JVM_BytesHash)                     \
+    template(sgx_verify,                        "Java_edu_hku_cs_uranus_Crypto_sgx_1verify",            &JVM_BytesHashVerify)               \
     template(sun_unsafe_compareSwapObject,      "Java_sun_misc_Unsafe_compareAndSwapObject",            &Unsafe_CompareAndSwapObject)       \
     template(sun_unsafe_compareSwapLong,        "Java_sun_misc_Unsafe_compareAndSwapLong",              &Unsafe_CompareAndSwapLong)         \
     template(sun_unsafe_compareSwapInt,         "Java_sun_misc_Unsafe_compareAndSwapInt",               &Unsafe_CompareAndSwapInt)          \
@@ -97,6 +97,10 @@
     template(sun_unsafe_putCharVolatile,        "Java_sun_misc_Unsafe_putCharVolatile",                 &Unsafe_SetCharVolatile)            \
     template(sun_unsafe_putDoubleVolatile,      "Java_sun_misc_Unsafe_putDoubleVolatile",               &Unsafe_SetDoubleVolatile)          \
     template(sun_unsafe_copyMemory,             "Java_sun_misc_Unsafe_copyMemory",                      &Unsafe_CopyMemory)                 \
+    template(sun_unsafe_arrayBaseOffset,        "Java_sun_misc_Unsafe_arrayBaseOffset",                 &Unsafe_ArrayBaseOffset)            \
+    template(sun_unsafe_arrayIndexScale,        "Java_sun_misc_Unsafe_arrayIndexScale",                 &Unsafe_ArrayIndexScale)            \
+    template(sun_unsafe_addressSize,            "Java_sun_misc_Unsafe_addressSize",                     &Unsafe_AddressSize)                \
+    template(sun_reflect_getCallerClass,        "sun_reflect_Reflection_getCallerClass",                &JVM_GetCallerClass)                \
     template(double_long_bit_to_double,         "Java_java_lang_Double_longBitsToDouble",               &Double_longBitsToDouble)           \
     template(double_double_to_long_bit,         "Java_java_lang_Double_doubleToRawLongBits",            &Double_doubleToRawLongBits)        \
     DO_STRICTMATH(template)

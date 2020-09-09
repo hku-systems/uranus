@@ -25,16 +25,16 @@ void JCompiler::compile_method(Method *method) {
     if (!method->method_holder()->is_initialized()) {
         method->method_holder()->initialize(JavaThread::current());
     }
-    /*
+
     if (method->method_kind() == AbstractInterpreter::sgx_ocall_entry) {
         task = new OCallCompileTask(method);
     } else if (!method->is_native()) {
         task = new NormalCompileTask(method);
-        if (((NormalCompileTask*)task)->fast_compile()) {
-            task->set_compile_entry();
-            delete task;
-            return;
-        }
+//        if (((NormalCompileTask*)task)->fast_compile()) {
+//            task->set_compile_entry();
+//            delete task;
+//            return;
+//        }
         size = task->compile(0);
         delete task;
         task = new NormalCompileTask(method);
@@ -42,8 +42,6 @@ void JCompiler::compile_method(Method *method) {
     } else {
         task = new NativeCompileTask(method);
     }
-    */
-   task = new NormalCompileTask(method);
 
     if (method->is_abstract()) {
         printf("compiling abstract method %s\n", method->name()->as_C_string());

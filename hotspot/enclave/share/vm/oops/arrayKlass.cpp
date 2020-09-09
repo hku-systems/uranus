@@ -98,9 +98,7 @@ ArrayKlass::ArrayKlass(Symbol* name) {
 void ArrayKlass::complete_create_array_klass(ArrayKlass* k, KlassHandle super_klass, TRAPS) {
   k->initialize_supers(super_klass(), CHECK);
   k->vtable()->initialize_vtable(false, CHECK);
-#ifndef ENCLAVE_UNIX
   java_lang_Class::create_mirror(k, Handle(THREAD, k->class_loader()), Handle(NULL), CHECK);
-#endif
 }
 
 GrowableArray<Klass*>* ArrayKlass::compute_secondary_supers(int num_extra_slots) {

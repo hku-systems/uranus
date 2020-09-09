@@ -36,6 +36,7 @@
 #include "runtime/handles.inline.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/signature.hpp"
+#include "runtime/sharedRuntime.hpp"
 #include "utilities/quickSort.hpp"
 
 PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
@@ -579,16 +580,23 @@ bool Method::is_klass_loaded(int refinfo_index, bool must_be_resolved) const {
 
 
 void Method::set_native_function(address function, bool post_event_flag) {
-  D_WARN_Unimplement;
+  address* native_function = native_function_addr();
+  *native_function = function;
 }
 
 bool Method::has_native_function() const {
-  D_WARN_Unimplement;
+  if (is_method_handle_intrinsic())
+    return false;  // special-cased in SharedRuntime::generate_native_wrapper
+  address func = native_function();
+  return (func != NULL && func != SharedRuntime::native_method_throw_unsatisfied_link_error_entry());
 }
 
 
 void Method::clear_native_function() {
-  D_WARN_Unimplement;
+    // Note: is_method_handle_intrinsic() is allowed here.
+  set_native_function(SharedRuntime::native_method_throw_unsatisfied_link_error_entry(),
+        !native_bind_event_is_interesting);
+  clear_code();
 }
 
 address Method::critical_native_function() {

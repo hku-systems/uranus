@@ -376,3 +376,58 @@ UNSAFE_ENTRY(void, Unsafe_CopyMemory(JNIEnv *env, jobject unsafe, jlong srcAddr,
     printf(D_INFO("UnsafeCopy")" %lx -> %lx", (intptr_t)src, (intptr_t)dst);
     Copy::conjoint_memory_atomic(src, dst, sz);
 UNSAFE_END
+
+UNSAFE_ENTRY(jint, Unsafe_AddressSize(JNIEnv *env, jobject unsafe))
+  UnsafeWrapper("Unsafe_AddressSize");
+  return sizeof(void*);
+UNSAFE_END
+
+static void getBaseAndScale(int& base, int& scale, jclass acls, TRAPS) {
+  if (acls == NULL) {
+    THROW(vmSymbols::java_lang_NullPointerException());
+  }
+  oop      mirror = JNIHandles::resolve_non_null(acls);
+  Klass* k      = java_lang_Class::as_Klass(mirror);
+  if (k == NULL || !k->oop_is_array()) {
+    THROW(vmSymbols::java_lang_InvalidClassException());
+  } else if (k->oop_is_objArray()) {
+    base  = arrayOopDesc::base_offset_in_bytes(T_OBJECT);
+    scale = heapOopSize;
+  } else if (k->oop_is_typeArray()) {
+    TypeArrayKlass* tak = TypeArrayKlass::cast(k);
+    base  = tak->array_header_in_bytes();
+    assert(base == arrayOopDesc::base_offset_in_bytes(tak->element_type()), "array_header_size semantics ok");
+    scale = (1 << tak->log2_element_size());
+  } else {
+    ShouldNotReachHere();
+  }
+}
+
+UNSAFE_ENTRY(jint, Unsafe_ArrayBaseOffset(JNIEnv *env, jobject unsafe, jclass acls))
+  UnsafeWrapper("Unsafe_ArrayBaseOffset");
+  int base = 0, scale = 0;
+  getBaseAndScale(base, scale, acls, CHECK_0);
+  return field_offset_from_byte_offset(base);
+UNSAFE_END
+
+
+UNSAFE_ENTRY(jint, Unsafe_ArrayIndexScale(JNIEnv *env, jobject unsafe, jclass acls))
+  UnsafeWrapper("Unsafe_ArrayIndexScale");
+  int base = 0, scale = 0;
+  getBaseAndScale(base, scale, acls, CHECK_0);
+  // This VM packs both fields and array elements down to the byte.
+  // But watch out:  If this changes, so that array references for
+  // a given primitive type (say, T_BOOLEAN) use different memory units
+  // than fields, this method MUST return zero for such arrays.
+  // For example, the VM used to store sub-word sized fields in full
+  // words in the object layout, so that accessors like getByte(Object,int)
+  // did not really do what one might expect for arrays.  Therefore,
+  // this function used to report a zero scale factor, so that the user
+  // would know not to attempt to access sub-word array elements.
+  // // Code for unpacked fields:
+  // if (scale < wordSize)  return 0;
+
+  // The following allows for a pretty general fieldOffset cookie scheme,
+  // but requires it to be linear in byte offset.
+  return field_offset_from_byte_offset(scale) - field_offset_from_byte_offset(0);
+UNSAFE_END

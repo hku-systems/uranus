@@ -42,6 +42,9 @@ extern "C" {
   void Unsafe_SetCharVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jchar x);
   void Unsafe_SetDoubleVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jdouble x);
   void Unsafe_CopyMemory(JNIEnv *env, jobject unsafe, jlong srcAddr, jlong dstAddr, jlong size);
+  jint Unsafe_AddressSize(JNIEnv *env, jobject unsafe);
+  jint Unsafe_ArrayBaseOffset(JNIEnv *env, jobject unsafe, jclass acls);
+  jint Unsafe_ArrayIndexScale(JNIEnv *env, jobject unsafe, jclass acls);
 #ifdef __cplusplus
 }
 #endif
