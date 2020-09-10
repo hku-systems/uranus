@@ -600,3 +600,203 @@ JVM_ENTRY(jclass, JVM_GetCallerClass(JNIEnv* env, int depth))
   Klass *k = target_frame.interpreter_frame_method()->method_holder();
   return (k == NULL) ? NULL : (jclass) JNIHandles::make_local(env, k->java_mirror());
 JVM_END
+
+typedef unsigned short unicode;
+
+static unicode
+next_utf2unicode(char **utfstring_ptr, int * valid)
+{
+  unsigned char *ptr = (unsigned char *)(*utfstring_ptr);
+  unsigned char ch, ch2, ch3;
+  int length = 1;             /* default length */
+  unicode result = 0x80;      /* default bad result; */
+  *valid = 1;
+  switch ((ch = ptr[0]) >> 4) {
+    default:
+      result = ch;
+      break;
+
+    case 0x8: case 0x9: case 0xA: case 0xB: case 0xF:
+      /* Shouldn't happen. */
+      *valid = 0;
+      break;
+
+    case 0xC: case 0xD:
+      /* 110xxxxx  10xxxxxx */
+      if (((ch2 = ptr[1]) & 0xC0) == 0x80) {
+        unsigned char high_five = ch & 0x1F;
+        unsigned char low_six = ch2 & 0x3F;
+        result = (high_five << 6) + low_six;
+        length = 2;
+      }
+      break;
+
+    case 0xE:
+      /* 1110xxxx 10xxxxxx 10xxxxxx */
+      if (((ch2 = ptr[1]) & 0xC0) == 0x80) {
+        if (((ch3 = ptr[2]) & 0xC0) == 0x80) {
+          unsigned char high_four = ch & 0x0f;
+          unsigned char mid_six = ch2 & 0x3f;
+          unsigned char low_six = ch3 & 0x3f;
+          result = (((high_four << 6) + mid_six) << 6) + low_six;
+          length = 3;
+        } else {
+          length = 2;
+        }
+      }
+      break;
+  } /* end of switch */
+
+  *utfstring_ptr = (char *)(ptr + length);
+  return result;
+}
+
+JNIEXPORT jboolean
+VerifyFixClassname(char *name)
+{
+  char *p = name;
+  jboolean slashesFound = JNI_FALSE;
+  int valid = 1;
+
+  while (valid != 0 && *p != '\0') {
+    if (*p == '/') {
+      slashesFound = JNI_TRUE;
+      p++;
+    } else if (*p == '.') {
+      *p++ = '/';
+    } else {
+      next_utf2unicode(&p, &valid);
+    }
+  }
+
+  return slashesFound && valid != 0;
+}
+
+JVM_ENTRY(jsize, jni_GetStringUTFLength(JNIEnv *env, jstring string))
+  jsize ret = 0;
+  oop java_string = JNIHandles::resolve_non_null(string);
+  if (java_lang_String::value(java_string) != NULL) {
+    ret = java_lang_String::utf8_length(java_string);
+  }
+return ret;
+JVM_END
+
+JVM_ENTRY(jsize, jni_GetStringLength(JNIEnv *env, jstring string))
+  jsize ret = 0;
+  oop s = JNIHandles::resolve_non_null(string);
+  if (java_lang_String::value(s) != NULL) {
+    ret = java_lang_String::length(s);
+  }
+return ret;
+JVM_END
+
+JVM_ENTRY(void, jni_GetStringUTFRegion(JNIEnv *env, jstring string, jsize start, jsize len, char *buf))
+  oop s = JNIHandles::resolve_non_null(string);
+  int s_len = java_lang_String::length(s);
+  if (start < 0 || len < 0 || start + len > s_len) {
+    THROW(vmSymbols::java_lang_StringIndexOutOfBoundsException());
+  } else {
+  //%note jni_7
+  if (len > 0) {
+    ResourceMark rm(THREAD);
+    char *utf_region = java_lang_String::as_utf8_string(s, start, len);
+    int utf_len = (int)strlen(utf_region);
+    memcpy(buf, utf_region, utf_len);
+    buf[utf_len] = 0;
+  } else {
+    // JDK null-terminates the buffer even in len is zero
+    if (buf != NULL) {
+      buf[0] = 0;
+    }
+  }
+}
+JVM_END
+
+JVM_ENTRY(jclass, JVM_FindClassFromCaller(JNIEnv* env, const char* name,
+        jboolean init, jobject loader,
+                jclass caller))
+//  JVMWrapper2("JVM_FindClassFromCaller %s throws ClassNotFoundException", name);
+  // Java libraries should ensure that name is never null...
+  if (name == NULL || (int)strlen(name) > Symbol::max_length()) {
+    // It's impossible to create this class;  the name cannot fit
+    // into the constant pool.
+    THROW_MSG_0(vmSymbols::java_lang_ClassNotFoundException(), name);
+  }
+
+  TempNewSymbol h_name = SymbolTable::new_symbol(name, CHECK_NULL);
+
+  oop loader_oop = JNIHandles::resolve(loader);
+  oop from_class = JNIHandles::resolve(caller);
+  oop protection_domain = NULL;
+  // If loader is null, shouldn't call ClassLoader.checkPackageAccess; otherwise get
+  // NPE. Put it in another way, the bootstrap class loader has all permission and
+  // thus no checkPackageAccess equivalence in the VM class loader.
+  // The caller is also passed as NULL by the java code if there is no security
+  // manager to avoid the performance cost of getting the calling class.
+  if (from_class != NULL && loader_oop != NULL) {
+    protection_domain = java_lang_Class::as_Klass(from_class)->protection_domain();
+  }
+
+  Handle h_loader(THREAD, loader_oop);
+  Handle h_prot(THREAD, protection_domain);
+  Klass* klass = SystemDictionary::resolve_or_fail(h_name, h_loader, h_prot, false, CHECK_NULL);
+
+  KlassHandle klass_handle(THREAD, klass);
+  // Check if we should initialize the class
+  if (init && klass_handle->oop_is_instance()) {
+    klass_handle->initialize(CHECK_NULL);
+  }
+  return (jclass) JNIHandles::make_local(env, klass_handle->java_mirror());
+
+//  if (TraceClassResolution && result != NULL) {
+//    trace_class_resolution(java_lang_Class::as_Klass(JNIHandles::resolve_non_null(result)));
+//  }
+JVM_END
+
+JVM_ENTRY(jclass, Java_java_lang_Class_forName0(JNIEnv *env, jclass ths, jstring classname,
+        jboolean initialize, jobject loader, jclass caller))
+  char *clname;
+  jclass cls = NULL;
+  char buf[128];
+  jsize len;
+  jsize unicode_len;
+
+//  if (classname == NULL) {
+//  JNU_ThrowNullPointerException(env, 0);
+//  return 0;
+//  }
+
+  len = jni_GetStringUTFLength(env, classname);
+  unicode_len = jni_GetStringLength(env, classname);
+  if (len >= (jsize)sizeof(buf)) {
+    clname = (char*)malloc(len + 1);
+    if (clname == NULL) {
+//      JNU_ThrowOutOfMemoryError(env, NULL);
+      return NULL;
+    }
+  } else {
+    clname = buf;
+  }
+  jni_GetStringUTFRegion(env, classname, 0, unicode_len, clname);
+
+  if (VerifyFixClassname(clname) == JNI_TRUE) {
+    /* slashes present in clname, use name b4 translation for exception */
+//    (*env)->GetStringUTFRegion(env, classname, 0, unicode_len, clname);
+//    JNU_ThrowClassNotFoundException(env, clname);
+    goto done;
+  }
+
+//  if (!VerifyClassname(clname, JNI_TRUE)) {  /* expects slashed name */
+//    JNU_ThrowClassNotFoundException(env, clname);
+//    goto done;
+//  }
+
+  cls = JVM_FindClassFromCaller(env, clname, initialize, loader, caller);
+
+  done:
+  if (clname != buf) {
+    free(clname);
+  }
+
+  return cls;
+JVM_END

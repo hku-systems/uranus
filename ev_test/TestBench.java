@@ -1,4 +1,6 @@
 
+import java.util.HashMap;
+import edu.hku.cs.uranus.Tools;
 public class TestBench {
     public int field_1 = 1;
     public int field_2 = 2;
@@ -99,6 +101,22 @@ public class TestBench {
         return sum;
     }
 
+    static boolean sgx_hook_hashmap(int nkey) {
+        HashMap<String, String> map = new HashMap<String, String>();
+        map.put("key", "value");
+        return map.get("key") == "value";
+    }
+
+    static int sgx_hook_hashcode() {
+        Object s = new Object();
+        return s.hashCode();
+    }
+
+    static boolean sgx_hook_tools() {
+        Tools.print("abc\n");
+        return true;
+    }
+
     public static void main( String[] args ) {
         System.out.println("sgx_hook_int_add " + (sgx_hook_int_add(1, 2) == (1 + 2)));
         System.out.println("sgx_hook_int_minus " + (sgx_hook_int_minus(1, 2) == (1 - 2)));
@@ -128,6 +146,9 @@ public class TestBench {
         System.out.println("sgx_hook_multiobjarray_init " + (sgx_hook_multiobjarray_init()));
         System.out.println("sgx_hook_instanceof " + (sgx_hook_instanceof()));
         System.out.println("sgx_hook_forloop " + (sgx_hook_forloop(10) == 10));
+       System.out.println("sgx_hook_hashmap " + (sgx_hook_hashmap(10)));
+        System.out.println("sgx_hook_hashcode " + (sgx_hook_hashcode() != 0));
+        //System.out.println("sgx_hook_tools " + (sgx_hook_tools()));
     }
 
 };

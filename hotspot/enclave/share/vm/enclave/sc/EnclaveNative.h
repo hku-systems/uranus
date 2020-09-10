@@ -34,6 +34,7 @@
     template(array_multi_new,                   "Java_java_lang_reflect_Array_multiNewArray",           &JVM_EnclaveNewMultiArray)          \
     template(array_get,                         "NULL",                                                 NULL)                               \
     template(array_set,                         "Java_java_lang_reflect_Array_set",                     &JVM_EnclaveSetArrayElement)        \
+    template(class_forname,                     "Java_java_lang_Class_forName0",                        &Java_java_lang_Class_forName0)     \
     template(class_get,                         "Java_java_lang_Object_getClass",                       jni_functions()->GetObjectClass)    \
     template(class_getName,                     "Java_java_lang_Class_getName0",                        &JVM_GetClassName)                  \
     template(class_getSuper,                    "Java_java_lang_Class_getSuperclass",                   jni_functions()->GetSuperclass)     \

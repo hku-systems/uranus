@@ -1741,6 +1741,9 @@ typedef struct JDK1_1InitArgs {
     jint debugPort;
 } JDK1_1InitArgs;
 
+JNIEXPORT jclass JNICALL Java_java_lang_Class_forName0(JNIEnv *env, jclass ths, jstring classname,
+                                                jboolean initialize, jobject loader, jclass caller);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif /* __cplusplus */
