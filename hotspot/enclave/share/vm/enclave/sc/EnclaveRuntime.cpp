@@ -47,6 +47,10 @@ void pre_set_object_alignment() {
 
 void mutex_init();
 
+extern bool  universe_post_init();
+
+extern void javaClasses_init();
+
 void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, void** klass_list, int db) {
 
     debug_bit = db;
@@ -97,6 +101,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     // vmSymbols::initialize(&javaThread);
     Universe::genesis(&javaThread);
 
+    universe_post_init();
+
     is_init = true;
     EnclaveNative::init();
     EnclaveException::init();
@@ -108,6 +114,8 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     compiler = JCompiler::create_compiler();
 
     Runtime0::initialize();
+
+    javaClasses_init();
 
     // init mpx and set bound
     ENABLE_MPX();
@@ -123,9 +131,9 @@ void* EnclaveRuntime::do_ecall_comp(void *rbx_buf, void *m, int *has_exception) 
     // if (!init)
     // c1_initialize(NULL);
     JavaThread javaThread;
-    javaThread.initialize();
     javaThread.initialize_thread_local_storage();
     ThreadLocalStorage::set_thread(&javaThread);
+    javaThread.initialize();
     int functional = ((Method*)m)->access_flags().is_funtional();
     sgx_spin_lock(&count_mutex);
     in_enclave_thread_count += 1;

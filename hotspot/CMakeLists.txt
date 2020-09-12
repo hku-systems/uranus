@@ -34,6 +34,8 @@ include_directories(${TOP_DIR}/enclave/cpu/${BUILD_ARCH}/vm/)
 include_directories(${TOP_DIR}/enclave/os/linux/vm/)
 include_directories(${TOP_DIR}/enclave/os/posix/vm/)
 include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
+include_directories(${TOP_DIR}/enclave/share/vm/prims/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/sc/native_libs/)
 # include_directories(${TOP_DIR}/enclave/panoply/include)
 #include_directories(${TOP_DIR}/include/tlibc)
 #include_directories(${TOP_DIR}/include/stlc++)
@@ -41,7 +43,7 @@ include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
         -DHOTSPOT_VM_DISTRO="OpenJDK"  -DTARGET_OS_FAMILY_linux -DTARGET_ARCH_${BUILD_ARCH} -DTARGET_ARCH_MODEL_${BUILD_ARCH}${BUILD_64}
-        -DTARGET_OS_ARCH_linux_${BUILD_ARCH} -DTARGET_OS_ARCH_MODEL_linux_${BUILD_ARCH}${BUILD_64}
+        -DTARGET_OS_ARCH_linux_${BUILD_ARCH} -DTARGET_OS_ARCH_MODEL_linux_${BUILD_ARCH}${BUILD_64} -DJDK_MAJOR_VERSION="1.7" -DJDK_MINOR_VERSION=".1" -DRELEASE="major"
         -DTARGET_COMPILER_gcc -D_REENTRANT -DVM_LITTLE_ENDIAN -D_LP64=1
         -DJRE_RELEASE_VERSION="1.8.0-internal-jianyu_2018_04_23_00_03-b00"
         -DENCLAVE_UNIX)

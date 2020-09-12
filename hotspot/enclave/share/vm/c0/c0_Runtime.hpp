@@ -9,6 +9,16 @@
 
 class StubAssembler;
 
+#define BREAK_ENABLE true
+#define BREAK_KLASS   "java/util/Hashtable"
+#define BREAK_METHOD  "<init>"
+
+#ifdef BREAK_KLASS
+#define BREAK_IF(method) if(BREAK_ENABLE && strcmp(method->klass_name()->as_C_string(), BREAK_KLASS) == 0 && strcmp(method->name()->as_C_string(), BREAK_METHOD) == 0)
+#else
+#define BREAK_IF(method) if (BREAK_ENABLE)
+#endif
+
 #define RUNTIME1_STUBS(stub, last_entry) \
   stub(new_instance)                 \
   stub(new_type_array)               \
@@ -21,6 +31,8 @@ class StubAssembler;
   stub(load_mirror_patching)         \
   stub(load_appendix_patching)       \
   stub(compile_method_patching)       \
+  stub(debug_method_entry)            \
+  stub(debug_method_exit)             \
   last_entry(number_of_ids)
 
 #define DECLARE_STUB_ID(x)       x ## _id ,

@@ -38,6 +38,7 @@
 # include "asm/assembler.inline.hpp"
 # include "asm/codeBuffer.hpp"
 # include "asm/register.hpp"
+# include "classfile/classFileStream.hpp"
 # include "classfile/classLoader.hpp"
 # include "classfile/javaClasses.hpp"
 # include "classfile/placeholders.hpp"

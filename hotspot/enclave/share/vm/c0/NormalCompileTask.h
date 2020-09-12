@@ -78,7 +78,7 @@ public:
         tos = vtos;
         ret_tos = udtos;
         jmp_target = std::map<int, TosState>();
-        will_run = true;
+        will_run = false;
         has_interface = false;
         has_bound_check = false;
     }

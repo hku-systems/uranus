@@ -30,6 +30,7 @@
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "interpreter/interpreter.hpp"
+#include "memory/oopFactory.hpp"
 #include "memory/universe.hpp"
 #include "memory/universe.inline.hpp"
 #include "oops/constantPool.hpp"
@@ -451,7 +452,6 @@ void Universe::fixup_mirrors(TRAPS) {
   for (int i = 0; i < list_length; i++) {
     Klass* k = list->at(i);
     assert(k->is_klass(), "List should only hold classes");
-    printf("fixup %s\n", k->name()->as_C_string());
     EXCEPTION_MARK;
     KlassHandle kh(THREAD, k);
     java_lang_Class::fixup_mirror(kh, CATCH);
@@ -739,7 +739,166 @@ void universe2_init() {
 extern void initialize_converter_functions();
 
 bool universe_post_init() {
-  D_WARN_Unimplement;
+  assert(!is_init_completed(), "Error: initialization not yet completed!");
+  Universe::_fully_initialized = true;
+  EXCEPTION_MARK;
+  { ResourceMark rm;
+    Interpreter::initialize();      // needed for interpreter entry points
+    if (!UseSharedSpaces) {
+      HandleMark hm(THREAD);
+      KlassHandle ok_h(THREAD, SystemDictionary::Object_klass());
+      Universe::reinitialize_vtable_of(ok_h, CHECK_false);
+      Universe::reinitialize_itables(CHECK_false);
+    }
+  }
+
+  HandleMark hm(THREAD);
+  Klass* k;
+  instanceKlassHandle k_h;
+  // Setup preallocated empty java.lang.Class array
+  Universe::_the_empty_class_klass_array = oopFactory::new_objArray(SystemDictionary::Class_klass(), 0, CHECK_false);
+
+  // Setup preallocated OutOfMemoryError errors
+  k = SystemDictionary::resolve_or_fail(vmSymbols::java_lang_OutOfMemoryError(), true, CHECK_false);
+  k_h = instanceKlassHandle(THREAD, k);
+  Universe::_out_of_memory_error_java_heap = k_h->allocate_instance(CHECK_false);
+  Universe::_out_of_memory_error_metaspace = k_h->allocate_instance(CHECK_false);
+  Universe::_out_of_memory_error_class_metaspace = k_h->allocate_instance(CHECK_false);
+  Universe::_out_of_memory_error_array_size = k_h->allocate_instance(CHECK_false);
+  Universe::_out_of_memory_error_gc_overhead_limit =
+          k_h->allocate_instance(CHECK_false);
+  Universe::_out_of_memory_error_realloc_objects = k_h->allocate_instance(CHECK_false);
+
+  // Setup preallocated NullPointerException
+  // (this is currently used for a cheap & dirty solution in compiler exception handling)
+  k = SystemDictionary::resolve_or_fail(vmSymbols::java_lang_NullPointerException(), true, CHECK_false);
+  Universe::_null_ptr_exception_instance = InstanceKlass::cast(k)->allocate_instance(CHECK_false);
+  // Setup preallocated ArithmeticException
+  // (this is currently used for a cheap & dirty solution in compiler exception handling)
+  k = SystemDictionary::resolve_or_fail(vmSymbols::java_lang_ArithmeticException(), true, CHECK_false);
+  Universe::_arithmetic_exception_instance = InstanceKlass::cast(k)->allocate_instance(CHECK_false);
+  // Virtual Machine Error for when we get into a situation we can't resolve
+  k = SystemDictionary::resolve_or_fail(
+          vmSymbols::java_lang_VirtualMachineError(), true, CHECK_false);
+  bool linked = InstanceKlass::cast(k)->link_class_or_fail(CHECK_false);
+  if (!linked) {
+    tty->print_cr("Unable to link/verify VirtualMachineError class");
+    return false; // initialization failed
+  }
+  Universe::_virtual_machine_error_instance =
+          InstanceKlass::cast(k)->allocate_instance(CHECK_false);
+
+  Universe::_vm_exception = InstanceKlass::cast(k)->allocate_instance(CHECK_false);
+
+  if (!DumpSharedSpaces) {
+    // These are the only Java fields that are currently set during shared space dumping.
+    // We prefer to not handle this generally, so we always reinitialize these detail messages.
+    Handle msg = java_lang_String::create_from_str("Java heap space", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_java_heap, msg());
+
+    msg = java_lang_String::create_from_str("Metaspace", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_metaspace, msg());
+    msg = java_lang_String::create_from_str("Compressed class space", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_class_metaspace, msg());
+
+    msg = java_lang_String::create_from_str("Requested array size exceeds VM limit", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_array_size, msg());
+
+    msg = java_lang_String::create_from_str("GC overhead limit exceeded", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_gc_overhead_limit, msg());
+
+    msg = java_lang_String::create_from_str("Java heap space: failed reallocation of scalar replaced objects", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_out_of_memory_error_realloc_objects, msg());
+
+    msg = java_lang_String::create_from_str("/ by zero", CHECK_false);
+    java_lang_Throwable::set_message(Universe::_arithmetic_exception_instance, msg());
+
+    // Setup the array of errors that have preallocated backtrace
+    k = Universe::_out_of_memory_error_java_heap->klass();
+    assert(k->name() == vmSymbols::java_lang_OutOfMemoryError(), "should be out of memory error");
+    k_h = instanceKlassHandle(THREAD, k);
+
+    int len = (StackTraceInThrowable) ? (int)PreallocatedOutOfMemoryErrorCount : 0;
+    Universe::_preallocated_out_of_memory_error_array = oopFactory::new_objArray(k_h(), len, CHECK_false);
+    for (int i=0; i<len; i++) {
+      oop err = k_h->allocate_instance(CHECK_false);
+      Handle err_h = Handle(THREAD, err);
+      java_lang_Throwable::allocate_backtrace(err_h, CHECK_false);
+      Universe::preallocated_out_of_memory_errors()->obj_at_put(i, err_h());
+    }
+    Universe::_preallocated_out_of_memory_error_avail_count = (jint)len;
+  }
+
+
+  // Setup static method for registering finalizers
+  // The finalizer klass must be linked before looking up the method, in
+  // case it needs to get rewritten.
+  // TODO
+//  InstanceKlass::cast(SystemDictionary::Finalizer_klass())->link_class(CHECK_false);
+//  Method* m = InstanceKlass::cast(SystemDictionary::Finalizer_klass())->find_method(
+//          vmSymbols::register_method_name(),
+//          vmSymbols::register_method_signature());
+//  if (m == NULL || !m->is_static()) {
+//    tty->print_cr("Unable to link/verify Finalizer.register method");
+//    return false; // initialization failed (cannot throw exception yet)
+//  }
+//  Universe::_finalizer_register_cache->init(
+//          SystemDictionary::Finalizer_klass(), m);
+  Method *m;
+  InstanceKlass::cast(SystemDictionary::misc_Unsafe_klass())->link_class(CHECK_false);
+  m = InstanceKlass::cast(SystemDictionary::misc_Unsafe_klass())->find_method(
+          vmSymbols::throwIllegalAccessError_name(),
+          vmSymbols::void_method_signature());
+  if (m != NULL && !m->is_static()) {
+    // Note null is okay; this method is used in itables, and if it is null,
+    // then AbstractMethodError is thrown instead.
+    tty->print_cr("Unable to link/verify Unsafe.throwIllegalAccessError method");
+    return false; // initialization failed (cannot throw exception yet)
+  }
+  // TODO:
+//  Universe::_throw_illegal_access_error_cache->init(
+//          SystemDictionary::misc_Unsafe_klass(), m);
+
+  // Setup method for registering loaded classes in class loader vector
+  InstanceKlass::cast(SystemDictionary::ClassLoader_klass())->link_class(CHECK_false);
+  m = InstanceKlass::cast(SystemDictionary::ClassLoader_klass())->find_method(vmSymbols::addClass_name(), vmSymbols::class_void_signature());
+  if (m == NULL || m->is_static()) {
+    tty->print_cr("Unable to link/verify ClassLoader.addClass method");
+    return false; // initialization failed (cannot throw exception yet)
+  }
+//  Universe::_loader_addClass_cache->init(
+//          SystemDictionary::ClassLoader_klass(), m);
+
+  // Setup method for checking protection domain
+  InstanceKlass::cast(SystemDictionary::ProtectionDomain_klass())->link_class(CHECK_false);
+  m = InstanceKlass::cast(SystemDictionary::ProtectionDomain_klass())->
+          find_method(vmSymbols::impliesCreateAccessControlContext_name(),
+                      vmSymbols::void_boolean_signature());
+  // Allow NULL which should only happen with bootstrapping.
+  if (m != NULL) {
+    if (m->is_static()) {
+      // NoSuchMethodException doesn't actually work because it tries to run the
+      // <init> function before java_lang_Class is linked. Print error and exit.
+      tty->print_cr("ProtectionDomain.impliesCreateAccessControlContext() has the wrong linkage");
+      return false; // initialization failed
+    }
+//    Universe::_pd_implies_cache->init(
+//            SystemDictionary::ProtectionDomain_klass(), m);
+  }
+
+  // The folowing is initializing converter functions for serialization in
+  // JVM.cpp. If we clean up the StrictMath code above we may want to find
+  // a better solution for this as well.
+  initialize_converter_functions();
+
+  // This needs to be done before the first scavenge/gc, since
+  // it's an input to soft ref clearing policy.
+  {
+    MutexLocker x(Heap_lock);
+    Universe::update_heap_info_at_gc();
+  }
+
+  return true;
 }
 
 

@@ -207,6 +207,7 @@ class JavaThread: public Thread {
   JavaThread* next() const                       { return _next; }
   void set_next(JavaThread* p)                   { _next = p; }
 
+  void set_threadObj(oop obj)                    { _thread_obj = obj; }
   oop threadObj()                                { return _thread_obj; }
 
   // Last frame anchor routines

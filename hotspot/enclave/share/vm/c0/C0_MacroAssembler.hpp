@@ -41,10 +41,10 @@ public:
     void pop_f(FloatRegister r = v0)    {   TOS_POP(ftos, r, _f);       }
     void pop_d(FloatRegister r = v0)    {   TOS_POP(dtos, r, _d);       }
     void push_ptr(Register r = r0)     {   TOS_PUSH(atos, r, _ptr);    }
-    void push_i(Register r = r0)       {   TOS_PUSH(atos, r, _i);      }
-    void push_l(Register r = r0)       {   TOS_PUSH(atos, r, _l);      }
-    void push_f(FloatRegister r = v0)   {   TOS_PUSH(atos, r, _f);      }
-    void push_d(FloatRegister r = v0)   {   TOS_PUSH(atos, r, _d);      }
+    void push_i(Register r = r0)       {   TOS_PUSH(itos, r, _i);      }
+    void push_l(Register r = r0)       {   TOS_PUSH(ltos, r, _l);      }
+    void push_f(FloatRegister r = v0)   {   TOS_PUSH(ftos, r, _f);      }
+    void push_d(FloatRegister r = v0)   {   TOS_PUSH(dtos, r, _d);      }
 
 
     void pop(Register r )               {   TOS_POP(atos, r, );        }

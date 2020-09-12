@@ -23,7 +23,7 @@
  * questions.
  */
 
-#include "prims/jni.h"
+#include "jni.h"
 #include "fdlibm/fdlibm.h"
 
 #include "java_lang_StrictMath.h"

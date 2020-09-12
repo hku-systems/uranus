@@ -542,14 +542,14 @@ class CodeBuffer: public StackObj {
   csize_t total_relocation_size() const;
 
   // allocated size of any and all recorded oops
+  // TODO: check it
   csize_t total_oop_size() const {
-    D_WARN_Unimplement;
     return 0;
   }
 
   // allocated size of any and all recorded metadata
+  // TODO: check it
   csize_t total_metadata_size() const {
-    D_WARN_Unimplement;
     return 0;
   }
 

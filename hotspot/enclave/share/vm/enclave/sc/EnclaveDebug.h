@@ -32,6 +32,9 @@ void error_backtrace_fp(void* fp, void* sp, void* pc);
 
 void print_enclave_frame(void* , void* sender_sp, void* method);
 
+void debug_enclave_frame(void *thread);
+void debug_enclave_frame_exit(void *thread);
+
 void exit_enclave_frame(void* th, void* m);
 
 void print_native_enclave_frame(void *t, void* addr, void* m);

@@ -32,7 +32,7 @@
 // Java native functions.
 
 class NativeLookup : AllStatic {
- public:
+ private:
   // JNI name computation
   static char* pure_jni_name(methodHandle method);
   static char* long_jni_name(methodHandle method);

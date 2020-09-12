@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,6 +128,12 @@ JVM_EnclaveDeepCopy(JNIEnv *env, jclass ignore, jobject handle);
 JNIEXPORT void JNICALL
 JVM_EnclaveClean(JNIEnv *env, jclass ignore);
 
+JNIEXPORT jobjectArray JNICALL
+JVM_GetMethodParameters(JNIEnv *env, jobject method);
+
+JNIEXPORT jint JNICALL
+JVM_GetInterfaceVersion(void);
+
 /*************************************************************************
  PART 1: Functions for Native Libraries
  ************************************************************************/
@@ -176,6 +182,14 @@ JVM_InitProperties(JNIEnv *env, jobject p);
  */
 JNIEXPORT void JNICALL
 JVM_OnExit(void (*func)(void));
+
+/*
+ * java.nio.Bits
+ */
+JNIEXPORT void JNICALL
+JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
+                   jobject dstObj, jlong dstOffset, jlong size,
+                   jlong elemSize);
 
 /*
  * java.lang.Runtime
@@ -1740,9 +1754,6 @@ typedef struct JDK1_1InitArgs {
     jboolean debugging;
     jint debugPort;
 } JDK1_1InitArgs;
-
-JNIEXPORT jclass JNICALL Java_java_lang_Class_forName0(JNIEnv *env, jclass ths, jstring classname,
-                                                jboolean initialize, jobject loader, jclass caller);
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -6,6 +6,8 @@
 char* EnclaveNative::native_name[] = {0};
 void* EnclaveNative::native_entry[] = {0};
 
+#include "native_libs/java_lang_String.h"
+
 static void mangle_name_on_4(outputStream* st, Symbol* name, int begin, int end) {
     char* bytes = (char*)name->bytes() + begin;
     char* end_bytes = (char*)name->bytes() + end;
@@ -47,9 +49,9 @@ void EnclaveNative::init(){
 
 extern "C" {
 
-    JNIEXPORT void JNICALL
+    JNIEXPORT jobject JNICALL
     NullJNICall() {
-
+      return 0;
     }
 
     JNIEXPORT jdouble JNICALL

@@ -5,6 +5,7 @@
 #include <precompiled.hpp>
 #include "NativeCompileTask.hpp"
 #include "interpreter/interpreterRuntime.hpp"
+#include "c0_Runtime.hpp"
 #include <enclave/sc/EnclaveNative.h>
 
 #define __ _masm->
@@ -270,6 +271,7 @@ void NativeParameterIterator::generate_result_handler() {
     case T_FLOAT  : /* nothing to do */        break;
     case T_DOUBLE : /* nothing to do */        break;
     case T_OBJECT :
+    case T_ARRAY  :
 //      // retrieve result from frame
 //      __ ldr(r0, Address(rfp, frame::interpreter_frame_oop_temp_offset*wordSize));
       // and verify it
@@ -318,6 +320,12 @@ void NativeCompileTask::entry() {
     // so method is not locked if overflows.
     if (method->is_synchronized()) {
 //        __ lock_method();
+    }
+
+    BREAK_IF(method)
+    {
+      __ lea(rscratch1, RuntimeAddress(Runtime0::entry_for(Runtime0::debug_method_entry_id)));
+      __ blr(rscratch1);
     }
 
     // work registers
@@ -453,6 +461,12 @@ void NativeCompileTask::entry() {
     }
 
     native_itr.generate_result_handler();
+
+    BREAK_IF(method)
+    {
+      __ lea(rscratch1, RuntimeAddress(Runtime0::entry_for(Runtime0::debug_method_exit_id)));
+      __ blr(rscratch1);
+    }
 
     // remove activation
     __ ldr(esp, Address(rfp,

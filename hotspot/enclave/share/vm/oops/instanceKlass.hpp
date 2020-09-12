@@ -442,7 +442,7 @@ class InstanceKlass: public Klass {
     return compute_enclosing_class_impl(self, inner_is_member, THREAD);
   }
   static Klass* compute_enclosing_class_impl(instanceKlassHandle self,
-                                               bool* inner_is_member, TRAPS) { D_WARN_Unimplement; }
+                                               bool* inner_is_member, TRAPS);
 
   // tell if two classes have the same enclosing class (at package level)
   bool is_same_package_member(Klass* class2, TRAPS) {

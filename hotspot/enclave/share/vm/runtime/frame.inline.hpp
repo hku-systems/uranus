@@ -27,6 +27,7 @@
 
 #include "interpreter/interpreter.hpp"
 #include "oops/method.hpp"
+#include "enclave/sc/EnclaveABI.h"
 #include "runtime/frame.hpp"
 #include "runtime/signature.hpp"
 #include "stubRoutines.hpp"
@@ -52,7 +53,7 @@ inline bool frame::is_bci(intptr_t bcx) {
 }
 
 inline bool frame::is_entry_frame() const {
-  return false;
+  return EnclaveABI::stub_blob->contains(pc());
 }
 
 inline bool frame::is_stub_frame() const {

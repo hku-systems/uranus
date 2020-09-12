@@ -515,7 +515,18 @@ void Runtime0::generate_code_for(Runtime0::StubID id, StubAssembler *sasm) {
             }
             break;
         }
-
+        case debug_method_entry_id: {
+          {
+            StubFrame f(sasm, "debug entry", dont_gc_arguments);
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, debug_enclave_frame));
+          }
+        }
+        case debug_method_exit_id: {
+          {
+            StubFrame f(sasm, "debug entry", dont_gc_arguments);
+            generate_patching(sasm, CAST_FROM_FN_PTR(address, debug_enclave_frame_exit));
+          }
+        }
         default:
         {
 //            StubFrame f(sasm, "unimplemented entry", dont_gc_arguments);
@@ -735,7 +746,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             case Bytecodes::_getstatic:
             { Klass* klass = resolve_field_return_klass(caller_method, bci, CHECK);
                 init_klass = KlassHandle(THREAD, klass);
-                mirror = Handle(THREAD, (oop)klass);
+                mirror = Handle(THREAD, (oop)klass->java_mirror());
             }
                 break;
             case Bytecodes::_new:
@@ -890,7 +901,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
                 // initializing thread are forced to come into the VM and
                 // block.
                 do_patch = (code != Bytecodes::_getstatic && code != Bytecodes::_putstatic) ||
-                           InstanceKlass::cast(init_klass())->is_initialized();
+                           InstanceKlass::cast(init_klass())->is_initialized() || true;
                 NativeGeneralJump* jump = nativeGeneralJump_at(instr_pc);
                 if (jump->jump_destination() == being_initialized_entry) {
                     assert(do_patch == true, "initialization must be complete at this point");

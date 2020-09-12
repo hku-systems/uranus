@@ -13,7 +13,7 @@ address EnclaveABI::exception_ret = NULL;
 address EnclaveABI::interpreter_ret = NULL;
 interpreter_stub_t EnclaveABI::do_ecall = NULL;
 get_exception_stub_t EnclaveABI::get_exception = NULL;
-
+BufferBlob* EnclaveABI::stub_blob = NULL;
 
 void* EnclaveABI::copy_parameter(void *r14, int size) {
         intptr_t* heap_rsp = (intptr_t*)EnclaveMemory::heapMemory->alloc(size, NULL);
@@ -35,7 +35,7 @@ void* EnclaveABI::call_interpreter(void *r14, int size, void *method, void *thre
 
 void EnclaveABI::init() {
         ResourceMark rm;
-        BufferBlob* stub_blob = BufferBlob::create("EnclaveABI:", 512);
+        stub_blob = BufferBlob::create("EnclaveABI:", 512);
         if (stub_blob == NULL) {
                 ShouldNotReachHere();
         }

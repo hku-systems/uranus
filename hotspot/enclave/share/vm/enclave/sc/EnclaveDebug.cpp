@@ -49,6 +49,22 @@ void print_enclave_frame(void *t, void* addr, void* m) {
     }
 }
 
+void debug_enclave_frame(void *thread) {
+  JavaThread* THREAD = (JavaThread*)thread;
+  RegisterMap map(THREAD, false);
+  frame runtime_frame = THREAD->last_frame();
+  frame caller_frame = runtime_frame.sender_for_interpreter_frame(&map);
+  printf("-> call %s:%s\n", caller_frame.interpreter_frame_method()->klass_name()->as_C_string(), caller_frame.interpreter_frame_method()->name()->as_C_string());
+}
+
+void debug_enclave_frame_exit(void *thread) {
+  JavaThread* THREAD = (JavaThread*)thread;
+  RegisterMap map(THREAD, false);
+  frame runtime_frame = THREAD->last_frame();
+  frame caller_frame = runtime_frame.sender_for_interpreter_frame(&map);
+  printf("<- call %s:%s\n", caller_frame.interpreter_frame_method()->klass_name()->as_C_string(), caller_frame.interpreter_frame_method()->name()->as_C_string());
+}
+
 void exit_enclave_frame(void* th, void* me) {
   Method* m = (Method*)me;
   char space_buf[enclave_frame_count + 1];

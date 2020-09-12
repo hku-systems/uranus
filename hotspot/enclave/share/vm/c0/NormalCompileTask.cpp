@@ -44,6 +44,7 @@ extern int is_sgx_interface(const Method* m);
 
 extern Klass* resolve_field_return_klass(methodHandle caller, int bci, TRAPS);
 
+#define init_klass(klass) if (!InstanceKlass::cast(klass)->is_initialized()) { InstanceKlass::cast(klass)->initialize(JavaThread::current()); }
 
 static void error_backtrace(JavaThread* thread) {
   JavaThread* THREAD = thread;
@@ -709,7 +710,6 @@ void NormalCompileTask::ldc(bool wide) {
   if (tag.is_unresolved_klass() || tag.is_unresolved_klass_in_error() || tag.is_klass()) {
     // call ldc
     oop resolve_constant = NULL;
-    Klass* resolve_klass = NULL;
     if (Bytecodes::uses_cp_cache(bs->raw_code())) {
         resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
     }
@@ -717,19 +717,15 @@ void NormalCompileTask::ldc(bool wide) {
         if (will_run) {
             Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
             resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
-            resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-            __ movptr(r0, (intptr_t)resolve_klass);
+            __ movptr(r0, (intptr_t)resolve_constant);
         } else {
             PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
             __ movptr(r0, (long)NULL_WORD);
             patchingStub->install();
             append_stub(patchingStub);
         }
-        __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
     } else {
-        resolve_klass = java_lang_Class::as_Klass(resolve_constant);
-        __ movptr(r0, (intptr_t)resolve_klass);
-        __ ldr(r0, Address(r0, Klass::java_mirror_offset()));
+        __ movptr(r0, (intptr_t)resolve_constant);
     }
     tos = atos;
 } else if (tag.is_string()) {
@@ -763,7 +759,8 @@ void NormalCompileTask::ldc(bool wide) {
   } else {
     if (tag.is_float()) {
         // ftos
-        __ ldrs(v0, ExternalAddress((address)method->constants()->float_at_addr(idx)) );
+        __ movptr(r0, (intptr_t)method->constants()->float_at_addr(idx));
+        __ ldrs(v0, Address(r0, 0));
         tos = ftos;
     } else {
         // itos JVM_CONSTANT_Integer only
@@ -1692,18 +1689,6 @@ void NormalCompileTask::entry() {
     int size_parameters = method->size_of_parameters();
     int addtional_locals = size_locals - size_parameters;
 
-    #ifdef DB_FRAME
-    //Comment out because it is for debug and it is for x86
-      //__ push(r11);
-      //__ mov(c_rarg0, r15_thread);
-      //__ mov(c_rarg1, r13);
-      //__ movptr(c_rarg2, (intptr_t)method);
-
-      //__ call_VME(CAST_FROM_FN_PTR(address, print_enclave_frame), false, true);
-
-      //__ pop(r11);
-    #endif
-
     if (break_method != NULL &&
         strcmp(method->name()->as_C_string(), break_method) == 0 &&
         strcmp(method->klass_name()->as_C_string(), break_klass) == 0) {
@@ -1754,6 +1739,10 @@ void NormalCompileTask::entry() {
     //   // Allocate monitor and lock method
     //   __ lock_method();
     // }
+    BREAK_IF(method) {
+      __ lea(rscratch1, RuntimeAddress(Runtime0::entry_for(Runtime0::debug_method_entry_id)));
+      __ blr(rscratch1);
+    }
 }
 
 // address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size)
@@ -1774,6 +1763,13 @@ void NormalCompileTask::return_entry(TosState state, int parameter_size) {
 }
 //TODO: clean the code
 void NormalCompileTask::_return(TosState state) {
+
+    BREAK_IF(method) {
+      __ movptr(rmethod, (intptr_t) method);
+      __ lea(rscratch1, RuntimeAddress(Runtime0::entry_for(Runtime0::debug_method_exit_id)));
+      __ blr(rscratch1);
+    }
+
     if (ret_tos == vtos)
       __ pop(state);
 
@@ -2067,14 +2063,12 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
         if (field_holder_klass == NULL) {
             if (will_run) {
                 field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
-                __ movptr(c_obj, (intptr_t)field_holder_klass);
-                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
             } else {
                 // patch
                 PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
                 __ movptr(c_obj, NULL_WORD);
                 patchingStub->install();
-                __ ldr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
                 append_stub(patchingStub);
             }
         } else {
@@ -2344,11 +2338,11 @@ void NormalCompileTask::checkcast() {
   // rax: klass
   // rdx: obj
 
-  __ load_klass(r2, r3);
+  __ load_klass(r4, r3);
 
   // Generate subtype check.  Blows rcx, rdi.  Object in rdx.
-  // Superklass in r0.  Subklass in r2.
-  __ gen_subtype_check(r2, ok_is_subtype);
+  // Superklass in r0.  Subklass in r4.
+  __ gen_subtype_check(r4, ok_is_subtype);
 
   // Come here on failure
   __ push_ptr(r3);

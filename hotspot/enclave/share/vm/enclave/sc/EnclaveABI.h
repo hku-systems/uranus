@@ -14,6 +14,7 @@ typedef address (*get_exception_stub_t)();
 
 class EnclaveABI: public StubCodeGenerator {
 public:
+    static BufferBlob* stub_blob;
     EnclaveABI(CodeBuffer *c);
 
     static void init();

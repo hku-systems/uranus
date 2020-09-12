@@ -6,6 +6,7 @@
 #define HOTSPOT_SHAREDHEADER_H
 
 #include <precompiled.hpp>
+#include "prims/jvm_misc.hpp"
 #include "native_libs/java_lang_Thread.h"
 #include "native_libs/sun_misc_Unsafe.h"
 
@@ -34,7 +35,6 @@
     template(array_multi_new,                   "Java_java_lang_reflect_Array_multiNewArray",           &JVM_EnclaveNewMultiArray)          \
     template(array_get,                         "NULL",                                                 NULL)                               \
     template(array_set,                         "Java_java_lang_reflect_Array_set",                     &JVM_EnclaveSetArrayElement)        \
-    template(class_forname,                     "Java_java_lang_Class_forName0",                        &Java_java_lang_Class_forName0)     \
     template(class_get,                         "Java_java_lang_Object_getClass",                       jni_functions()->GetObjectClass)    \
     template(class_getName,                     "Java_java_lang_Class_getName0",                        &JVM_GetClassName)                  \
     template(class_getSuper,                    "Java_java_lang_Class_getSuperclass",                   jni_functions()->GetSuperclass)     \
@@ -53,7 +53,6 @@
     template(tools_deep_copy,                   "Java_edu_hku_cs_uranus_Tools_deep_1copy",              &JVM_EnclaveDeepCopy)               \
     template(tools_clean,                       "Java_edu_hku_cs_uranus_Tools_clean",                   &JVM_EnclaveClean)                  \
     template(thread_currentThread,              "Java_java_lang_Thread_currentThread",                  &JVM_CurrentThread)                 \
-    template(thread_yield,                      "Java_java_lang_Thread_yield",                          &Java_java_lang_Thread_yield)       \
     template(sgx_encrypt,                       "Java_edu_hku_cs_uranus_Crypto_sgx_1encrypt",           &JVM_BytesEncrypt)                  \
     template(sgx_decrypt,                       "Java_edu_hku_cs_uranus_Crypto_sgx_1decrypt",           &JVM_BytesDecrypt)                  \
     template(sgx_encrypt_int,                   "Java_edu_hku_cs_uranus_Crypto_sgx_1encrypt_1int",      &JVM_BytesEncryptInt)               \
@@ -104,6 +103,8 @@
     template(sun_reflect_getCallerClass,        "sun_reflect_Reflection_getCallerClass",                &JVM_GetCallerClass)                \
     template(double_long_bit_to_double,         "Java_java_lang_Double_longBitsToDouble",               &Double_longBitsToDouble)           \
     template(double_double_to_long_bit,         "Java_java_lang_Double_doubleToRawLongBits",            &Double_doubleToRawLongBits)        \
+    template(access_doPrivileged,               "Java_java_security_AccessController_doPrivileged",     &JVM_DoPrivileged          )        \
+    template(string_intern,                     "Java_java_lang_String_intern",                         &Java_java_lang_String_intern)        \
     DO_STRICTMATH(template)
 
 extern "C" {
