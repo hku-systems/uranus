@@ -588,9 +588,9 @@ int NormalCompileTask::compile(int size) {
         (*itr)->emit();
     }
 
-   for (std::deque<CodeStub *>::iterator itr = slow_cases.begin(); itr != slow_cases.end();itr++) {
-       delete (PatchingStub*)(*itr);
-   }
+//   for (std::deque<CodeStub *>::iterator itr = slow_cases.begin(); itr != slow_cases.end();itr++) {
+//       delete (PatchingStub*)(*itr);
+//   }
 
     /*
     if (has_interface) {
