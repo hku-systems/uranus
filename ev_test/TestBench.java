@@ -118,7 +118,9 @@ public class TestBench {
     }
 
     public static void main( String[] args ) {
-        System.out.println("sgx_hook_int_add " + (sgx_hook_int_add(1, 2) == (1 + 2)));
+	System.out.println("sgx_hook_tools " + (sgx_hook_tools()));
+        /*
+	System.out.println("sgx_hook_int_add " + (sgx_hook_int_add(1, 2) == (1 + 2)));
         System.out.println("sgx_hook_int_minus " + (sgx_hook_int_minus(1, 2) == (1 - 2)));
         System.out.println("sgx_hook_int_mul " + (sgx_hook_int_mul(1, 2) == ( 1 * 2)));
         System.out.println("sgx_hook_int_div " + (sgx_hook_int_div(1, 2) == ( 1 / 2)));
@@ -146,9 +148,9 @@ public class TestBench {
         System.out.println("sgx_hook_multiobjarray_init " + (sgx_hook_multiobjarray_init()));
         System.out.println("sgx_hook_instanceof " + (sgx_hook_instanceof()));
         System.out.println("sgx_hook_forloop " + (sgx_hook_forloop(10) == 10));
-       System.out.println("sgx_hook_hashmap " + (sgx_hook_hashmap(10)));
+        System.out.println("sgx_hook_hashmap " + (sgx_hook_hashmap(10)));
         System.out.println("sgx_hook_hashcode " + (sgx_hook_hashcode() != 0));
-        //System.out.println("sgx_hook_tools " + (sgx_hook_tools()));
+        System.out.println("sgx_hook_tools " + (sgx_hook_tools())); */
     }
 
 };
