@@ -99,7 +99,7 @@ file(GLOB src_assembly
 
 set_property(SOURCE enclave/os_cpu/linux_${BUILD_ARCH}/vm/linux_${BUILD_ARCH}${BUILD_64}.s PROPERTY LANGUAGE C)
 
-add_library(enclave SHARED ${src_app} ${src_assembly})
+add_library(enclave SHARED ${CMAKE_BINARY_DIR}/securecompiler_t.c ${src_app} ${src_assembly})
 
 set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 
@@ -109,7 +109,7 @@ target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-who
 
 add_custom_command(
         COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"
-        DEPENDS ${CMAKE_SOURCE_DIR}/make/linux/makefiles/enclave/securecompiler.edl
+        DEPENDS ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl
         OUTPUT ${CMAKE_BINARY_DIR}/securecompiler_t.h ${CMAKE_BINARY_DIR}/securecompiler_t.c)
 
 install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)
