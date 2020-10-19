@@ -45,6 +45,7 @@ void ThreadCritical::initialize() {
 void ThreadCritical::release() {
 }
 
+// TODO: fix this
 ThreadCritical::ThreadCritical() {
   // pthread_t self = pthread_self();
   // if (self != tc_owner) {

@@ -311,17 +311,9 @@ bool os::pd_uncommit_memory(char* addr, size_t size) { syscall_invoke_count(__fu
 
 bool os::pd_commit_memory(char* addr, size_t size, bool exec) { syscall_invoke_count(__func__); }
 
-void os::PlatformEvent::unpark() { syscall_invoke_count(__func__); }
-
-int os::PlatformEvent::park(jlong millis) { syscall_invoke_count(__func__); }
-
-void os::PlatformEvent::park() { syscall_invoke_count(__func__); }
-
-int os::PlatformEvent::TryPark() { syscall_invoke_count(__func__); }
-
 void
 os::os_exception_wrapper(java_call_t f, JavaValue* value, methodHandle* method,
-                         JavaCallArguments* args, Thread* thread) { f(value, method, args, thread); }
+                         JavaCallArguments* args, Thread* thread) { syscall_invoke_count(__func__); }
 
 bool os::pd_commit_memory(char* addr, size_t size, size_t alignment_hint,
                           bool exec) { syscall_invoke_count(__func__); }
@@ -422,8 +414,6 @@ bool os::is_headless_jre() { syscall_invoke_count(__func__); }
 bool os::have_special_privileges() { syscall_invoke_count(__func__); }
 
 bool os::check_heap(bool force) { syscall_invoke_count(__func__); }
-
-pthread_condattr_t os::Linux::_condattr[1];
 
 void os::run_periodic_checks() { syscall_invoke_count(__func__); }
 

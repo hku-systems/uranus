@@ -3160,5 +3160,5 @@ int InjectedField::compute_offset() {
 void javaClasses_init() {
   JavaClasses::compute_offsets();
   JavaClasses::check_offsets();
-//  FilteredFieldsMap::initialize();  // must be done after computing offsets.
+  FilteredFieldsMap::initialize();  // must be done after computing offsets.
 }

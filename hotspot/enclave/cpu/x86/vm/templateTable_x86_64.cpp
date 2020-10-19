@@ -315,14 +315,7 @@ void TemplateTable::ldc(bool wide) {
 
   __ bind(call_ldc);
   __ movl(c_rarg1, wide);
-#ifndef ENCLAVE_UNIX
   call_VM(rax, CAST_FROM_FN_PTR(address, InterpreterRuntime::ldc), c_rarg1);
-#else
-  __ movptr(c_rarg2, rcx);
-  __ movptr(c_rarg3, rbx);
-  __ movptr(r12, (intptr_t)JVM_ENTRY_ldc);
-  __ call(r12);
-#endif
   __ push_ptr(rax);
   __ verify_oop(rax);
   __ jmp(Done);
@@ -369,26 +362,13 @@ void TemplateTable::fast_aldc(bool wide) {
   __ get_cache_index_at_bcp(tmp, 1, index_size);
   __ load_resolved_reference_at_index(result, tmp);
 
-  // TODO: remove fast path and leave it in EnclaveOcall for handling
-  // should find out the reason why fast path does not work
-#ifndef ENCLAVE_UNIX
   __ testl(result, result);
   __ jcc(Assembler::notZero, resolved);
-#endif
 
-#ifndef ENCLAVE_UNIX
   address entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_ldc);
     // first time invocation - must resolve first
   __ movl(tmp, (int)bytecode());
   __ call_VM(result, entry, tmp);
-#else
-  address entry = CAST_FROM_FN_PTR(address, JVM_ENTRY_resolve_ldc);
-    __ get_constant_pool(c_rarg1);
-    __ movl(c_rarg2, tmp);
-    __ movl(c_rarg3, (int)bytecode());
-    __ movptr(r12, (intptr_t)entry);
-    __ call(r12);
-#endif
   __ bind(resolved);
 
   if (VerifyOops) {
@@ -1912,19 +1892,19 @@ void TemplateTable::resolve_cache_and_index(int byte_no,
   case Bytecodes::_putstatic:
   case Bytecodes::_getfield:
   case Bytecodes::_putfield:
-    entry = CAST_FROM_FN_PTR(address, JVM_ENTRY_resolve_get_put);
+    entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_get_put);
     break;
   case Bytecodes::_invokevirtual:
   case Bytecodes::_invokespecial:
   case Bytecodes::_invokestatic:
   case Bytecodes::_invokeinterface:
-    entry = CAST_FROM_FN_PTR(address, JVM_ENTRY_resolve_invoke);
+    entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invoke);
     break;
   case Bytecodes::_invokehandle:
-    entry = CAST_FROM_FN_PTR(address, JVM_ENTRY_resolve_invoke_handle);
+    entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokehandle);
     break;
   case Bytecodes::_invokedynamic:
-    entry = CAST_FROM_FN_PTR(address, JVM_ENTRY_resolve_invoke_dynamic);
+    entry = CAST_FROM_FN_PTR(address, InterpreterRuntime::resolve_invokedynamic);
     break;
   default:
     fatal(err_msg("unexpected bytecode: %s", Bytecodes::name(bytecode())));
@@ -2935,16 +2915,8 @@ void TemplateTable::_new() {
   __ cmpb(Address(rsi,
                   InstanceKlass::init_state_offset()),
           InstanceKlass::fully_initialized);
-  __ jcc(Assembler::equal, resolve_fin);
-  __ bind(do_resolve);
-  __ get_constant_pool(c_rarg1);
-  __ get_unsigned_2_byte_index_at_bcp(c_rarg2, 1);
-  __ movptr(r12, (intptr_t)(JVM_ENTRY_resolve_klass));
-  __ call(r12);
-  // move the klass to rsi
-  __ movptr(rsi, rax);
-
-  __ bind(resolve_fin);
+  __ jcc(Assembler::notEqual, slow_case);
+  
   // get instance_size in InstanceKlass (scaled to a count of bytes)
   __ movl(rdx,
           Address(rsi,
@@ -3084,15 +3056,12 @@ void TemplateTable::checkcast() {
           JVM_CONSTANT_Class);
   __ jcc(Assembler::equal, quicked);
 
-  // jianyu: here the super class is not resolve, resolve it now
-  __ push(atos);
-
-  __ movptr(c_rarg1, rcx);
-  __ movptr(c_rarg2, rbx);
-
-  // jianyu: we arg1: pool, arg2: index, result in rax
-  __ call_VME(CAST_FROM_FN_PTR(address, JVM_ENTRY_quick_cc));
+  __ push(atos); // save receiver for result, and for GC
+  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  // vm_result_2 has metadata result
+  __ get_vm_result_2(rax, r15_thread);
   __ pop_ptr(rdx); // restore receiver
+
   __ jmpb(resolved);
 
   // Get superklass in rax and subklass in rbx
@@ -3146,15 +3115,13 @@ void TemplateTable::instanceof() {
 
     // jianyu: here the super class is not resolve, resolve it now
 //    __ load_klass(rdx, rax);
-    __ push(atos);
-
-    __ movptr(c_rarg1, rcx);
-    __ movptr(c_rarg2, rbx);
-
-    // jianyu: we arg1: pool, arg2: index, result in rax
-    __ call_VME(CAST_FROM_FN_PTR(address, JVM_ENTRY_quick_cc));
-    __ pop_ptr(rdx);
-    __ load_klass(rdx, rdx);
+  __ push(atos); // save receiver for result, and for GC
+  call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::quicken_io_cc));
+  // vm_result_2 has metadata result
+  __ get_vm_result_2(rax, r15_thread);
+  __ pop_ptr(rdx); // restore receiver
+  __ verify_oop(rdx);
+  __ load_klass(rdx, rdx);
 
     __ jmpb(resolved);
 

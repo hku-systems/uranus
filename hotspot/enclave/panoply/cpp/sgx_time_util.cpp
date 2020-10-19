@@ -27,26 +27,6 @@ int gettimeofday(void * tv, void * tz)
 	return retval;
 }
 
-struct tm *gmtime_r(const time_t *timer, struct tm *tp)
-{
-	struct tm * retval;
-	ocall_gmtime_r(&retval, timer, tp);
-	return tp;
-}
-
-struct tm *localtime_r(const time_t *timer, struct tm *tp)
-{
-	struct tm * retval;
-	ocall_localtime_r(&retval, timer, tp);
-	return tp;
-}
-
-time_t mktime(struct tm *tp)	
-{
-	time_t retval;
-	return ocall_mktime(&retval, tp);
-}
-
 clock_t clock()	{
 	clock_t c;
 	ocall_clock(&c);

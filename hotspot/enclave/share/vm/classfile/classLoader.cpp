@@ -339,15 +339,73 @@ u1* LazyClassPathEntry::open_entry(const char* name, jint* filesize, bool nul_te
 }
 
 ClassFileStream* EnclaveClassPathEntry::open_stream(const char *name, Thread *__the_thread__) {
-    int buffer_size = 0;
-    void* obuffer = class_file_buffer(name, buffer_size);
-    u1* buffer = NEW_RESOURCE_ARRAY(u1, buffer_size);
-    memcpy(buffer, obuffer, buffer_size);
-    return new ClassFileStream(buffer, buffer_size, "enclave");    // Resource allocated
+    if (enclave_file_cache() == NULL) {
+      init_map();
+    }
+
+    if (entry_map.find(std::string(name)) == entry_map.end())
+      return NULL;
+
+    buffer_cache_t cache_entry = entry_map[std::string(name)];
+    return new ClassFileStream((u1*)cache_entry.buffer, cache_entry.size, "enclave");    // Resource allocated
 }
 
 void* EnclaveClassPathEntry::class_file_buffer(const char *name, int &size) {
     return JVM_CLASSFILE_BUFFER(name, &size);
+}
+
+char* EnclaveClassPathEntry::_enclave_file_cache = NULL;
+std::map<std::string, buffer_cache_t> EnclaveClassPathEntry::entry_map;
+
+sgx_sha256_hash_t enclave_jar_hash;
+
+void EnclaveClassPathEntry::init_map() {
+  int buffer_size = 0;
+  void* obuffer = class_file_buffer(enclave_name(), buffer_size);
+  _enclave_file_cache = new char[buffer_size];
+  memcpy(_enclave_file_cache, obuffer, buffer_size);
+
+  sgx_sha_state_handle_t p;
+  if (sgx_sha256_init(&p) != SGX_SUCCESS) {
+    printf("error in sha256 init\n");
+    return;
+  }
+
+  char* sha2_buf = _enclave_file_cache;
+  if (sgx_sha256_update(sha2_buf, buffer_size, p) != SGX_SUCCESS) {
+    printf("error in sha256 update\n");
+    return;
+  }
+
+  if (sgx_sha256_get_hash(p, &enclave_jar_hash) != SGX_SUCCESS) {
+    printf("error in sha256 hash\n");
+    return;
+  }
+
+//  for (int i = 0;i < SGX_SHA256_HASH_SIZE;i++) {
+//    printf("%x", enclave_jar_hash[i]);
+//  }
+//  printf("\n");
+
+
+  char *cur = _enclave_file_cache;
+  char *name;
+
+  entry_map = std::map<std::string, buffer_cache_t>();
+
+  while (cur < _enclave_file_cache + buffer_size) {
+    int *fname_len = (int*)cur;
+    int *buffer_len = (int*)(cur + *fname_len + 4);
+    name = new char[*fname_len + 1];
+    memcpy(name, cur + 4, *fname_len);
+    name[*fname_len] = 0;
+//    printf("class %d %d %s %lx\n", *fname_len, *buffer_len, name, cur + 4 + *fname_len + 4);
+    buffer_cache_t cache;
+    cache.buffer = cur + 4 + *fname_len + 4, *buffer_len;
+    cache.size = *buffer_len;
+    entry_map[std::string(name)] = cache;
+    cur = cur + 4 + *fname_len + 4 + *buffer_len;
+  }
 }
 
 static void print_meta_index(LazyClassPathEntry* entry,

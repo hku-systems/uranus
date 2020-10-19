@@ -2831,9 +2831,9 @@ void Assembler::sqrtss(XMMRegister dst, XMMRegister src) {
   emit_simd_arith(0x51, dst, src, VEX_SIMD_F3);
 }
 
-//void Assembler::std() {
-//  emit_int8((unsigned char)0xFD);
-//}
+void Assembler::std() {
+  emit_int8((unsigned char)0xFD);
+}
 
 void Assembler::sqrtss(XMMRegister dst, Address src) {
   NOT_LP64(assert(VM_Version::supports_sse(), ""));

@@ -45,7 +45,7 @@ enclave {
         int ocall_fprint_string(SGX_WRAPPER_FILE stream, [in, string] const char* s);
 
 
-        // Disable as not compatible in the new HWMODE 
+        // Disable as not compatible in the new HWMODE
         int ocall_vfscanf(SGX_WRAPPER_FILE s, [in, string]const char *format, [user_check] void* val);
         int ocall_vscanf([in, string]const char *format, [user_check] void* val);
         int ocall_vsscanf([in, string] const char* s, [in, string]const char *format, [user_check] void* val);
@@ -53,7 +53,7 @@ enclave {
         int ocall_vasprintf([user_check] char** string, [in, string]const char* format, [user_check] void* val);
         int ocall_vfprintf(SGX_WRAPPER_FILE FILESTREAM, [in, string]const char* format, [user_check] void* val);
         int ocall_vprintf([in, string]const char* format, [user_check] void* val);
-        
+
     };
 
 };

@@ -125,7 +125,7 @@ int ferror(FILE *fp);
 
 int fflush(FILE *fp);
 
-int vfprintf(FILE *fp, const char* format, ...);
+int vfprintf(FILE *fp, const char* format, void *val);
 
 int vprintf(const char* format, void* val);
 

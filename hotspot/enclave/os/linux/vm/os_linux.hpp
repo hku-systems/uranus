@@ -231,13 +231,7 @@ class Linux {
 
   static jlong fast_thread_cpu_time(clockid_t clockid) { sys_error(); }
 
-  // pthread_cond clock suppport
-  private:
-  static pthread_condattr_t _condattr[1];
-
   public:
-  static pthread_condattr_t* condAttr() { return _condattr; }
-
   // Stack repair handling
 
   // none present
@@ -334,63 +328,6 @@ public:
     } else
       return 0;
   }
-};
-
-
-class PlatformEvent : public CHeapObj<mtInternal> {
-  private:
-    double CachePad [4] ;   // increase odds that _mutex is sole occupant of cache line
-    volatile int _Event ;
-    volatile int _nParked ;
-    pthread_mutex_t _mutex  [1] ;
-    pthread_cond_t  _cond   [1] ;
-    double PostPad  [2] ;
-    Thread * _Assoc ;
-
-  public:       // TODO-FIXME: make dtor private
-    ~PlatformEvent() { guarantee (0, "invariant") ; }
-
-  public:
-    PlatformEvent() {
-      int status;
-      status = pthread_cond_init (_cond, os::Linux::condAttr());
-      status = pthread_mutex_init (_mutex, NULL);
-      _Event   = 0 ;
-      _nParked = 0 ;
-      _Assoc   = NULL ;
-    }
-
-    // Use caution with reset() and fired() -- they may require MEMBARs
-    void reset() { _Event = 0 ; }
-    int  fired() { return _Event; }
-    void park () ;
-    void unpark () ;
-    int  TryPark () ;
-    int  park (jlong millis) ; // relative timed-wait only
-    void SetAssociation (Thread * a) { _Assoc = a ; }
-} ;
-
-class PlatformParker : public CHeapObj<mtInternal> {
-  protected:
-    enum {
-        REL_INDEX = 0,
-        ABS_INDEX = 1
-    };
-    int _cur_index;  // which cond is in use: -1, 0, 1
-    pthread_mutex_t _mutex [1] ;
-    pthread_cond_t  _cond  [2] ; // one for relative times and one for abs.
-
-  public:       // TODO-FIXME: make dtor private
-    ~PlatformParker() { guarantee (0, "invariant") ; }
-
-  public:
-    PlatformParker() {
-      int status;
-      status = pthread_cond_init (&_cond[REL_INDEX], os::Linux::condAttr());
-      status = pthread_cond_init (&_cond[ABS_INDEX], NULL);
-      status = pthread_mutex_init (_mutex, NULL);
-      _cur_index = -1; // mark as unused
-    }
 };
 
 #endif // OS_LINUX_VM_OS_LINUX_HPP

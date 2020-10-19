@@ -28,7 +28,8 @@
  // The VM class loader.
 #include <sys/stat.h>
 #include "runtime/orderAccess.hpp"
-
+#include <string>
+#include <map>
 
 // Meta-index (optional, to be able to skip opening boot classpath jar files)
 class MetaIndex : public CHeapObj<mtClass> {
@@ -117,10 +118,20 @@ public:
         NOT_PRODUCT(bool is_rt_jar13();)
 };
 
+typedef struct {
+    char* buffer;
+    int size;
+} buffer_cache_t;
+
 class EnclaveClassPathEntry : public ClassPathEntry {
 public:
+    static char *_enclave_file_cache;
+    static const char* enclave_file_cache() { return _enclave_file_cache; }
+    static std::map<std::string, buffer_cache_t> entry_map;
+    static void init_map();
+    static const char* enclave_name() { return "enclave.jar.bin"; }
     bool is_jar_file() { return false; }
-    const char* name() { return "enclave"; }
+    const char* name() { return enclave_name(); }
     ClassFileStream* open_stream(const char* name, TRAPS);
     static void* class_file_buffer(const char* name, int &size);
 };

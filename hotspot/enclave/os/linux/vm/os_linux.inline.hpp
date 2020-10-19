@@ -31,8 +31,8 @@
 
 // System includes
 
-#include "sgx_thread.h"
-#include <sgx_unistd_util.h>
+#include <unistd.h>
+#include <syscall_include/unistd.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netdb.h>

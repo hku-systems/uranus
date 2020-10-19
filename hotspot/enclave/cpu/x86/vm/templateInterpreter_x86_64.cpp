@@ -758,17 +758,17 @@ address InterpreterGenerator::generate_native_entry(bool synchronized) {
   // get signature handler
   {
     Label L, do_resolve;
-    __ movptr(t, Address(method, Method::enclave_signature_handler_offset()));
+    __ movptr(t, Address(method, Method::signature_handler_offset()));
     __ testptr(t, t);
     __ jcc(Assembler::notZero, L);
 
-    __ movptr(c_rarg1, method);
-    __ movptr(c_rarg2, 0);
-    __ movptr(r12, (intptr_t)JVM_ENTRY_pre_native);
-    __ call(r12);
+    __ call_VM(noreg,
+               CAST_FROM_FN_PTR(address,
+                                InterpreterRuntime::prepare_native_call),
+               method);
 
     __ get_method(method);
-    __ movptr(t, Address(method, Method::enclave_signature_handler_offset()));
+    __ movptr(t, Address(method, Method::signature_handler_offset()));
     __ bind(L);
   }
 
@@ -818,25 +818,21 @@ address InterpreterGenerator::generate_native_entry(bool synchronized) {
   // get native function entry point
   {
     Label L;
-    __ movptr(rax, Address(method, Method::enclave_native_function_offset()));
+    __ movptr(rax, Address(method, Method::native_function_offset()));
     ExternalAddress unsatisfied(SharedRuntime::native_method_throw_unsatisfied_link_error_entry());
     __ movptr(rscratch2, unsatisfied.addr());
 
-    __ cmpptr(rax, 0);
+    __ cmpptr(rax, rscratch2);
     __ jcc(Assembler::notEqual, L);
-    __ push(c_rarg1);
-    __ push(c_rarg2);
-    __ movptr(c_rarg1, method);
-    __ movptr(c_rarg2, 0);
-    __ movptr(r12, (intptr_t)JVM_ENTRY_pre_native);
-    __ call(r12);
-    __ pop(c_rarg2);
-    __ pop(c_rarg1);
+    __ call_VM(noreg,
+               CAST_FROM_FN_PTR(address,
+                                InterpreterRuntime::prepare_native_call),
+               method);
 
 
     __ get_method(method);
 
-    __ movptr(rax, Address(method, Method::enclave_native_function_offset()));
+    __ movptr(rax, Address(method, Method::native_function_offset()));
     __ bind(L);
   }
 
