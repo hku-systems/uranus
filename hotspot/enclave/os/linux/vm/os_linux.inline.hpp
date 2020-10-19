@@ -83,7 +83,7 @@ inline void os::bang_stack_shadow_pages() {
 }
 
 inline void os::dll_unload(void *lib) {
-  ::dlclose(lib);
+  D_WARN_Unimplement;
 }
 
 inline const int os::default_file_open_flags() { return 0;}
@@ -100,11 +100,11 @@ inline int os::readdir_buf_size(const char *path)
 }
 
 inline jlong os::lseek(int fd, jlong offset, int whence) {
-  return (jlong) ::lseek(fd, offset, whence);
+  D_WARN_Unimplement;
 }
 
 inline int os::fsync(int fd) {
-  return ::fsync(fd);
+  D_WARN_Unimplement;
 }
 
 inline char* os::native_path(char *path) {
@@ -112,7 +112,7 @@ inline char* os::native_path(char *path) {
 }
 
 inline int os::ftruncate(int fd, jlong length) {
-  return ::ftruncate64(fd, length);
+  D_WARN_Unimplement;
 }
 
 inline struct dirent* os::readdir(DIR* dirp, dirent *dbuf)
@@ -173,19 +173,19 @@ inline int os::socket_close(int fd) {
 }
 
 inline int os::socket(int domain, int type, int protocol) {
-  return ::socket(domain, type, protocol);
+  D_WARN_Unimplement;
 }
 
 inline int os::recv(int fd, char* buf, size_t nBytes, uint flags) {
-  RESTARTABLE_RETURN_INT(::recv(fd, buf, nBytes, flags));
+  D_WARN_Unimplement;
 }
 
 inline int os::send(int fd, char* buf, size_t nBytes, uint flags) {
-  RESTARTABLE_RETURN_INT(::send(fd, buf, nBytes, flags));
+  D_WARN_Unimplement;
 }
 
 inline int os::raw_send(int fd, char* buf, size_t nBytes, uint flags) {
-  return os::send(fd, buf, nBytes, flags);
+  D_WARN_Unimplement;
 }
 
 inline int os::timeout(int fd, long timeout) {
@@ -221,57 +221,57 @@ inline int os::timeout(int fd, long timeout) {
 }
 
 inline int os::listen(int fd, int count) {
-  return ::listen(fd, count);
+  D_WARN_Unimplement;
 }
 
 inline int os::connect(int fd, struct sockaddr* him, socklen_t len) {
-  RESTARTABLE_RETURN_INT(::connect(fd, him, len));
+  D_WARN_Unimplement;
 }
 
 inline int os::accept(int fd, struct sockaddr* him, socklen_t* len) {
   // Linux doc says this can't return EINTR, unlike accept() on Solaris.
   // But see attachListener_linux.cpp, LinuxAttachListener::dequeue().
-  return (int)::accept(fd, him, len);
+  D_WARN_Unimplement;
 }
 
 inline int os::recvfrom(int fd, char* buf, size_t nBytes, uint flags,
                         sockaddr* from, socklen_t* fromlen) {
-  RESTARTABLE_RETURN_INT((int)::recvfrom(fd, buf, nBytes, flags, from, fromlen));
+  D_WARN_Unimplement;
 }
 
 inline int os::sendto(int fd, char* buf, size_t len, uint flags,
                       struct sockaddr* to, socklen_t tolen) {
-  RESTARTABLE_RETURN_INT((int)::sendto(fd, buf, len, flags, to, tolen));
+  D_WARN_Unimplement;
 }
 
 inline int os::socket_shutdown(int fd, int howto) {
-  return ::shutdown(fd, howto);
+  D_WARN_Unimplement;
 }
 
 inline int os::bind(int fd, struct sockaddr* him, socklen_t len) {
-  return ::bind(fd, him, len);
+  D_WARN_Unimplement;
 }
 
 inline int os::get_sock_name(int fd, struct sockaddr* him, socklen_t* len) {
-  return ::getsockname(fd, him, len);
+  D_WARN_Unimplement;
 }
 
 inline int os::get_host_name(char* name, int namelen) {
-  return ::gethostname(name, namelen);
+  D_WARN_Unimplement;
 }
 
 inline struct hostent* os::get_host_by_name(char* name) {
-  return ::gethostbyname(name);
+  D_WARN_Unimplement;
 }
 
 inline int os::get_sock_opt(int fd, int level, int optname,
                             char* optval, socklen_t* optlen) {
-  return ::getsockopt(fd, level, optname, optval, optlen);
+  D_WARN_Unimplement;
 }
 
 inline int os::set_sock_opt(int fd, int level, int optname,
                             const char* optval, socklen_t optlen) {
-  return ::setsockopt(fd, level, optname, optval, optlen);
+  D_WARN_Unimplement;
 }
 
 #endif // OS_LINUX_VM_OS_LINUX_INLINE_HPP
