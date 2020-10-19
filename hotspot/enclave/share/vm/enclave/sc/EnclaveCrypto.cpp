@@ -16,7 +16,7 @@ u_char* EnclaveCrypto::sgx_encrypt(JavaThread *__the_thread__, char *plain, size
     size_t size = *ret_size;
 
     if (size <= 0) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+        THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
     }
 
     uint8_t* cipher = (uint8_t*) allocate(size + MACLEN);
@@ -38,7 +38,7 @@ u_char* EnclaveCrypto::sgx_decrypt(JavaThread *__the_thread__, char *cipher, siz
     size_t size = *ret_size;
 
     if (size <= 0) {
-        ENCLAVE_THROW_0(EnclaveException::java_lang_NegativeArraySizeException);
+        THROW_0(vmSymbols::java_lang_NegativeArraySizeException());
     }
 
     uint8_t macbuffer[MACLEN];

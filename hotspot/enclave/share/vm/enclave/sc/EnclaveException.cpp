@@ -16,7 +16,7 @@ void EnclaveException::init() {
 #undef VM_SYMBOL_ENUM
 
     for (int i = NO_EXP + 1;i < EXCEPTION_COUNT;i++) {
-        entry_list[i] = KLASS_resolve_or_fail(name_list[i]);
+
     }
 }
 

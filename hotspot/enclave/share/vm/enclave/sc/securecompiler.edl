@@ -9,41 +9,15 @@
 enclave {
 
     //from "LocalAttestationCode/LocalAttestationCode.edl" import *;
-    from "Thread/Pthread.edl" import *;
     from "SysEnvironment/sgx_time.edl" import *;
     // from "sgx_tstdc.edl" import sgx_thread_wait_untrusted_event_ocall, sgx_thread_set_untrusted_event_ocall, sgx_thread_setwait_untrusted_events_ocall, sgx_thread_set_multiple_untrusted_events_ocall;
 
     // from "EnclaveUtil/util.edl" import *;
 
-    from "SysEnvironment/sgx_pwd.edl" import *;
-    from "SysEnvironment/sgx_grp.edl" import *;
-    from "SysEnvironment/sgx_utsname.edl" import *;
-    from "SysEnvironment/sgx_getopt.edl" import *;
     from "IO/sgx_stdlib.edl" import *;
     from "IO/sgx_fcntl.edl" import *;
-    from "IO/sgx_dlfcn.edl" import *;
     from "IO/sgx_unistd.edl" import *;
     from "IO/sgx_stdio.edl" import *;
-    from "IO/sgx_syseventfd.edl" import *;
-    from "IO/sgx_syssocket.edl" import *;
-    from "IO/sgx_netdb.edl" import *;
-    from "IO/sgx_netinetin.edl" import *;
-    from "IO/sgx_sysioctl.edl" import *;
-    from "IO/sgx_sysuio.edl" import *;
-    from "IO/sgx_sysmman.edl" import *;
-    from "IO/sgx_poll.edl" import *;
-    from "IO/sgx_sysepoll.edl" import *;
-    from "IO/sgx_sysselect.edl" import *;
-    from "IO/sgx_syssendfile.edl" import *;
-    from "IO/sgx_syswait.edl" import *;
-    from "IO/sgx_sysstat.edl" import *;
-    from "IO/sgx_dirent.edl" import *;
-    from "IO/sgx_sysresource.edl" import *;
-    from "IO/sgx_arpainet.edl" import *;
-    from "IO/sgx_sysctl.edl" import *;
-    from "IO/sgx_signal.edl" import *;
-    from "Net/sgx_ifaddrs.edl" import *;
-    from "Net/sgx_netif.edl" import *;
 
     trusted {
         /* define ECALLs here. */
@@ -57,26 +31,7 @@ enclave {
     };
     untrusted {
         void* ocall_interpreter([user_check]void* r14, int size, [user_check]void* method, [user_check]void* thread, [user_check]void* sender);
-        void ocall_jvm_resolve_invoke(int byte, [user_check]void* mh, int bci, [user_check]void* recv, int idx,
-                                        [user_check]void* bcp, [user_check]void* recv_klass);
-        void* ocall_jvm_resolve_method_C(int bc, [user_check]void* constant, int idx);
-        void* ocall_jvm_resolve_invoke_C([user_check]void* recv, [user_check]void* constant, int bidx, int bc, [user_check]void* recv_klass);
-        void ocall_jvm_resolve_invoke_handle();
-        void ocall_jvm_resolve_invoke_dynamic();
-        void* ocall_jvm_ldc(bool wide, [user_check]void* p, int index);
-        void* ocall_jvm_resolve_ldc([user_check]void* p, int index, int byte);
-        int ocall_jvm_resolve_get_put(int byte, [user_check]void* mh, int idx, [user_check]void* bcp);
-        void* ocall_jvm_resolve_get_put_klass(int byte, [user_check]void* mh, int idx, [user_check]void* bcp);
-        void* ocall_klass_type_array();
-        void* ocall_klass_type();
-        void* ocall_obj_array_klass_get([user_check]void* pool, int index);
-        void* ocall_klass_resolve_or_fail([in, string]const char* name);
-        void* ocall_klass_find_or_null([in, string]const char* name);
-        void* ocall_klass_get([user_check]void* pool, int index);
         void ocall_klass_compute_oopmap([user_check]void* klass, [user_check]void* m, int bci);
-        void* ocall_array_klass([user_check]void* klass, int rank, int get_all);
-        void* ocall_multi_array_klass_get([user_check]void* pool, int index);
-        void ocall_jvm_pre_native([user_check]void* method, int resolve);
         void* ocall_jvm_malloc(int size);
         void* ocall_classfile_buffer([in, string]const char* name, [out, count=4]int *size);
     };

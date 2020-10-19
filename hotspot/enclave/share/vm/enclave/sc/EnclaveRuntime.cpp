@@ -5,10 +5,12 @@
 #include <precompiled.hpp>
 #include <classfile/symbolTable.hpp>
 #include <c0/c0_Runtime.hpp>
+#include "interpreter/linkResolver.hpp"
 #include <libmpx/mpxrt.h>
 #include "EnclaveRuntime.h"
 #include "EnclaveABI.h"
 #include "EnclaveNative.h"
+#include "memory/universe.hpp"
 
 extern void icache_init();
 extern void VM_Version_init();
@@ -201,6 +203,7 @@ void* EnclaveRuntime::compile_method(Method *method) {
     compiler->compile_method(method);
 }
 
+// TODO
 int EnclaveRuntime::signal_handler(sgx_exception_info_t *info) {
     // switch (info->exception_vector) {
     //     case SGX_EXCEPTION_VECTOR_DE:
