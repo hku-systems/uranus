@@ -50,7 +50,7 @@ void EnclaveABI::init() {
     EnclaveABI::EnclaveABI(CodeBuffer *c) : StubCodeGenerator(c) {}
 
     address EnclaveABI::generate_interpreter_entry() {
-#ifdef TARGET_ARCH_x86
+#ifdef TARGET_ARCH_aarch64
         StubCodeMark mark(this, "ENCLAVE_ABI", "interpreter_stub");
         address ret, start;
         #define __ _masm->
@@ -110,7 +110,7 @@ void EnclaveABI::init() {
         #undef __
 #endif
 
-#ifdef TARGET_ARCH_aarch64
+#ifdef TARGET_ARCH_x86
       StubCodeMark mark(this, "ENCLAVE_ABI", "interpreter_stub");
 #   define __ _masm->
             address ret = __ pc();
