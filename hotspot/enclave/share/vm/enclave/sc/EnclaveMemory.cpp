@@ -14,11 +14,11 @@
 #include "securecompiler.h"
 
 
-static EnclaveMemory* EnclaveMemory::enclaveMemory = NULL;
+EnclaveMemory* EnclaveMemory::enclaveMemory = NULL;
 
-static EnclaveMemory* EnclaveMemory::heapMemory = NULL;
+EnclaveMemory* EnclaveMemory::heapMemory = NULL;
 
-static heap_allocator EnclaveMemory::fast_heap_alloc = NULL;
+heap_allocator EnclaveMemory::fast_heap_alloc = NULL;
 
 void** EnclaveMemory::heap_top = NULL;
 void** EnclaveMemory::heap_bottom = NULL;

@@ -3,6 +3,7 @@
 //
 
 #include "EnclaveCrypto.h"
+#include "classfile/vmSymbols.hpp"
 
 sgx_aes_gcm_128bit_key_t EnclaveCrypto::aes_key[16] = { 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b', 'c', 'd', 'a', 'b',
                                                     'c', 'd' };

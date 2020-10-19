@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 98)
 
 set(BUILD_ARCH "aarch64")
 set(BUILD_64 "")
+set(BUILD_ARCH_xx "aarch64")
 
 # set(BUILD_ARCH "x86")
 # set(BUILD_64 "_64")
@@ -13,6 +14,25 @@ set(BUILD_64 "")
 # set(BUILD_ARCH "x86")
 # set(BUILD_64 "_x64")
 
+if(NOT DEFINED ENV{TEE_SDK})
+ set(ENV{TEE_SDK} /opt/intel/sgxsdk/)
+endif()
+
+if(NOT DEFINED ENV{TEE_SDK})
+ message(FATAL_ERROR "$TEE_SDK environment variable must be set.")
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+ set(CMAKE_LIBRARY_PATH "${CMAKE_LIBRARY_PATH} $ENV{TEE_SDK}/lib")
+ set(SGX_ENCLAVE_SIGNER "$ENV{TEE_SDK}/bin/x86/sgx_sign")
+ set(SGX_EDGER8R "$ENV{TEE_SDK}/bin/x86/sgx_edger8r")
+else()
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+ set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "$ENV{TEE_SDK}/lib64")
+ set(SGX_ENCLAVE_SIGNER "$ENV{TEE_SDK}/bin/${BUILD_ARCH_xx}/sgx_sign")
+ set(SGX_EDGER8R "$ENV{TEE_SDK}/bin/${BUILD_ARCH_xx}/sgx_edger8r")
+endif()
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
@@ -86,5 +106,10 @@ set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 
 target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
+
+add_custom_command(
+        COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"
+        DEPENDS ${CMAKE_SOURCE_DIR}/make/linux/makefiles/enclave/securecompiler.edl
+        OUTPUT ${CMAKE_BINARY_DIR}/securecompiler_t.h ${CMAKE_BINARY_DIR}/securecompiler_t.c)
 
 install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)

@@ -68,7 +68,7 @@ bool KlassStream::eos() {
 }
 
 
-GrowableArray<FilteredField*> *FilteredFieldsMap::_filtered_fields = NULL;
+GrowableArray<FilteredField*> *FilteredFieldsMap::_filtered_fields =
    new (ResourceObj::C_HEAP, mtInternal) GrowableArray<FilteredField*>(3,true);
 
 

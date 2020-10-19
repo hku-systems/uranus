@@ -2826,7 +2826,7 @@ int jio_fprintf(FILE* f, const char *fmt, ...) {
 
 ATTRIBUTE_PRINTF(2, 0)
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
-  return vfprintf(f, fmt, args);
+  return vfprintf(f, fmt, NULL);
 }
 
 ATTRIBUTE_PRINTF(1, 2)
