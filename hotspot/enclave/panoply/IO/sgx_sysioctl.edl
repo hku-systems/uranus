@@ -1,9 +1,0 @@
-enclave {
-
-	include "sgx/sys/types.h"
-
-    untrusted {
-		int ocall_ioctl(int fd, unsigned long request, [user_check]void* arguments); 
-    };
-
-};

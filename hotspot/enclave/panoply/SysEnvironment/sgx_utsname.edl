@@ -1,8 +1,0 @@
-enclave {
-	
-	include "struct/sgx_utsname_struct.h"
-
-    untrusted {
-        int ocall_uname([out] struct utsname *name);
-    };
-};
