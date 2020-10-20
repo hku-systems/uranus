@@ -3,8 +3,6 @@
 //
 
 #include "StubAssembler.hpp"
-#include "c0_Runtime.hpp"
-#include "C0_MacroAssembler.hpp"
 
 StubAssembler::StubAssembler(CodeBuffer* code, const char * name, Runtime0::StubID stub_id) : C0_MacroAssembler(code, NULL) {
     _name = name;

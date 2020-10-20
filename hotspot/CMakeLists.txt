@@ -103,7 +103,7 @@ set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 
 set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 
-#target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
+target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
 
 add_custom_command(
         COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"

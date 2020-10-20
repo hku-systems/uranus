@@ -14,7 +14,14 @@
 #include <interp_masm_aarch64.hpp>
 #endif
 #include "c0_Runtime.hpp"
-#include "C0_MacroAssembler.hpp"
+
+#ifdef TARGET_ARCH_x86
+#include "c0_MacroAssembler_x86.hpp"
+#endif
+
+#ifdef TARGET_ARCH_aarch64
+#include "c0_MacroAssembler_aarch64.hpp"
+#endif
 
 class StubAssembler: public C0_MacroAssembler {
 private:
