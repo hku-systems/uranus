@@ -42,6 +42,11 @@ extern Klass* resolve_field_return_klass(methodHandle caller, int bci, TRAPS);
 
 #define init_klass(klass) if (!InstanceKlass::cast(klass)->is_initialized()) { InstanceKlass::cast(klass)->initialize(JavaThread::current()); }
 
+Address at_bcp(int offset) {
+  assert(_desc->uses_bcp(), "inconsistent uses_bcp information");
+  return Address(rbcp, offset);
+}
+
 static void error_backtrace(JavaThread* thread) {
   JavaThread* THREAD = thread;
   frame f = thread->last_frame();

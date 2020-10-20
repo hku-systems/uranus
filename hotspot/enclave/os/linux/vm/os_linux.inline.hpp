@@ -189,35 +189,7 @@ inline int os::raw_send(int fd, char* buf, size_t nBytes, uint flags) {
 }
 
 inline int os::timeout(int fd, long timeout) {
-  julong prevtime,newtime;
-  struct timeval t;
-
-  gettimeofday(&t, NULL);
-  prevtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
-
-  for(;;) {
-    struct pollfd pfd;
-
-    pfd.fd = fd;
-    pfd.events = POLLIN | POLLERR;
-
-    int res = ::poll(&pfd, 1, timeout);
-
-    if (res == OS_ERR && errno == EINTR) {
-
-      // On Linux any value < 0 means "forever"
-
-      if(timeout >= 0) {
-        gettimeofday(&t, NULL);
-        newtime = ((julong)t.tv_sec * 1000)  +  t.tv_usec / 1000;
-        timeout -= newtime - prevtime;
-        if(timeout <= 0)
-          return OS_OK;
-        prevtime = newtime;
-      }
-    } else
-      return res;
-  }
+  D_WARN_Unimplement;
 }
 
 inline int os::listen(int fd, int count) {

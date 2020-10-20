@@ -308,8 +308,8 @@ class HandleMark {
   // called in the destructor of HandleMarkCleaner
   void pop_and_restore();
   // overloaded operators
-  void* operator new (std::size_t size) throw();
-  void* operator new [](std::size_t size) throw();
+  void* operator new (size_t size) throw();
+  void* operator new [](size_t size) throw();
   void operator delete(void* p);
   void operator delete[](void* p);
 };

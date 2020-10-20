@@ -4,15 +4,13 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_CXX_STANDARD 98)
 
 
-set(BUILD_ARCH "aarch64")
-set(BUILD_64 "")
-set(BUILD_ARCH_xx "aarch64")
+#set(BUILD_ARCH "aarch64")
+#set(BUILD_64 "")
+#set(BUILD_ARCH_xx "aarch64")
 
-# set(BUILD_ARCH "x86")
-# set(BUILD_64 "_64")
-
-# set(BUILD_ARCH "x86")
-# set(BUILD_64 "_x64")
+set(BUILD_ARCH "x86")
+set(BUILD_64 "_64")
+set(BUILD_ARCH_xx "x64")
 
 if(NOT DEFINED ENV{TEE_SDK})
  set(ENV{TEE_SDK} /opt/intel/sgxsdk/)
@@ -72,6 +70,12 @@ find_library(SGX_TRTS_TCXX sgx_tcxx ${TOP_DIR}/lib)
 find_library(SGX_TRTS_TSTDCXX sgx_tstdcxx ${TOP_DIR}/lib)
 find_library(SGX_TCRYPTO sgx_tcrypto ${TOP_DIR}/lib)
 
+if(${BUILD_ARCH} STREQUAL "x86")
+  set(UDIS_SRC "enclave/share/vm/udis/*.c*")
+else()
+  set(UDIS_SRC "")
+endif()
+
 file(GLOB_RECURSE src_app 
         enclave/share/vm/asm/*.c*
         enclave/share/vm/c0/*pp
@@ -84,7 +88,7 @@ file(GLOB_RECURSE src_app
         enclave/share/vm/oops/*.c*
         enclave/share/vm/prims/*.c*
         enclave/share/vm/runtime/*.c*
-        # enclave/share/vm/udis/*.c*
+        ${UDIS_SRC}
         enclave/share/vm/utilities/*.c*
         enclave/cpu/${BUILD_ARCH}/*.c*
         enclave/os_cpu/linux_${BUILD_ARCH}/*.c*

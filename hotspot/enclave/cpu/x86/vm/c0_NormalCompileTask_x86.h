@@ -5,12 +5,13 @@
 #ifndef HOTSPOT_COMPILETASK_H
 #define HOTSPOT_COMPILETASK_H
 
+
 #include <asm/macroAssembler.hpp>
-#include "interpreter/interpMasm.hpp"
-#include "c0/bytecodeStream.hpp"
+#include <interp_masm_x86.hpp>
+#include "bytecodeStream.hpp"
 #include "c0/c0_CodeStubs.hpp"
-#include "c0/c0_CompileTask.hpp"
-#include "c0/C0MapOopSet.hpp"
+#include "c0_CompileTask.hpp"
+#include "C0MapOopSet.hpp"
 #include <map>
 #include <queue>
 
@@ -61,7 +62,6 @@ public:
     static int break_bci;
     static char* break_method;
     static char* break_klass;
-    
 
     // check if all jump target is vtos
     std::map<int, TosState> jmp_target;
@@ -78,7 +78,7 @@ public:
         tos = vtos;
         ret_tos = udtos;
         jmp_target = std::map<int, TosState>();
-        will_run = false;
+        will_run = true;
         has_interface = false;
         has_bound_check = false;
     }
@@ -87,15 +87,8 @@ public:
         delete bs;
     }
 
-    void do_oop_store(InterpreterMacroAssembler* _masm,
-                      Address obj,
-                      Register val,
-                      BarrierSet::Name barrier,
-                      bool precise);
+    void NormalCompileTask::checkcast_state(TosState tos, TosState intos);
 
-    void checkcast_state(TosState tos, TosState intos);
-
-    //Comment out because it is in x86 format
     int fast_compile();
 
     int compile(int size);
@@ -115,7 +108,7 @@ public:
     void ldc2_w();
     void fast_aldc(bool wide);
 
-    void locals_index(Register reg, int offset = 1);
+//    void locals_index(Register reg, int offset = 1);
     void iload();
     void fast_iload();
     void fast_iload2();
@@ -215,7 +208,7 @@ public:
     void double_cmp(int unordered_result);
 
     void count_calls(Register method, Register temp);
-    void branch(bool is_jsr, bool is_wide, Condition cc);
+    void branch(bool is_jsr, bool is_wide, Condition c);
     void if_0cmp   (Condition cc);
     void if_icmp   (Condition cc);
     void if_nullcmp(Condition cc);
@@ -251,6 +244,11 @@ public:
 
     void return_entry(TosState state, int index_size);
 
+    Address at_bcp(int offset) {
+        assert(_desc->uses_bcp(), "inconsistent uses_bcp information");
+        return Address(r13, offset);
+    }
+
     // patch the real jmp address
     void patch_jmp(address inst_addr, address jmp_addr);
 
@@ -261,8 +259,10 @@ public:
     void anewarray();
     void arraylength();
     void multianewarray();
+
     void monitorenter();
     void monitorexit();
+
     void checkcast();
     void instanceof();
 
@@ -282,10 +282,7 @@ public:
     void invoke(int byte_no, Register m, Register index, Register recv, Register flags);
 
     void gc_point();
-
     PatchingStub* resolve_cache_and_index(int byte_no, Register c_obj, int &off, TosState &tosState, bool is_static);
-
-    void jvmti_post_field_access(Register cache, Register index, bool is_static, bool has_tos);
 
     int getfield_index() {
         return bs->get_index_u2_cpcache();
