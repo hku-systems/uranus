@@ -7,10 +7,10 @@
 
 #include <asm/macroAssembler.hpp>
 #include "interpreter/interpMasm.hpp"
-#include "bytecodeStream.hpp"
-#include "c0_CodeStubs.hpp"
-#include "CompileTask.hpp"
-#include "C0MapOopSet.hpp"
+#include "c0/bytecodeStream.hpp"
+#include "c0/c0_CodeStubs.hpp"
+#include "c0/c0_CompileTask.hpp"
+#include "c0/C0MapOopSet.hpp"
 #include <map>
 #include <queue>
 

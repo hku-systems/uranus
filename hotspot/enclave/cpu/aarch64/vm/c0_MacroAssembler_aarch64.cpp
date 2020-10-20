@@ -3,8 +3,8 @@
 //
 
 #include <precompiled.hpp>
-#include "C0_MacroAssembler.hpp"
-#include "c0_CodeStubs.hpp"
+#include "c0/c0_CodeStubs.hpp"
+#include "c0_MacroAssembler_aarch64.hpp"
 
 // Zero words; len is in bytes
 // Destroys all registers except addr

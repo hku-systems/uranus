@@ -7,7 +7,12 @@
 
 
 #include "interpreter/interpMasm.hpp"
-#include "C0_MacroAssembler.hpp"
+#ifdef TARGET_ARCH_x86
+#include "c0_MacroAssembler_x86.hpp"
+#endif
+#ifdef TARGET_ARCH_aarch64
+#include "c0_MacroAssembler_aarch64.hpp"
+#endif
 
 /*
  * Structure for patch access field / klass / method

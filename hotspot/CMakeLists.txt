@@ -38,7 +38,7 @@ set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
 set(CMAKE_C_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
-set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -Wno-write-strings -fpermissive")
+set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${CMAKE_BINARY_DIR}/)
@@ -103,7 +103,7 @@ set_target_properties(enclave PROPERTIES LINK_FLAGS ${ENCLAVE_LINK_FLAGS})
 
 set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 
-target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
+#target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
 
 add_custom_command(
         COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"

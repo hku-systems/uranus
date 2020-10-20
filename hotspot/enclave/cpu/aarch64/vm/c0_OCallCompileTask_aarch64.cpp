@@ -4,7 +4,7 @@
 
 #include <precompiled.hpp>
 #include <enclave/sc/EnclaveABI.h>
-#include "OCallCompileTask.hpp"
+#include "c0/c0_OCallCompileTask.hpp"
 
 // TODO: generate more efficient code
 void OCallCompileTask::entry() {

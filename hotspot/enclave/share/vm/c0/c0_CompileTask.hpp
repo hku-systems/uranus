@@ -8,7 +8,7 @@
 #include <asm/macroAssembler.hpp>
 #include "interpreter/interpMasm.hpp"
 #include "bytecodeStream.hpp"
-#include "c0_CodeStubs.hpp"
+#include "c0_MacroAssembler_aarch64.hpp"
 
 
 class CompileTask {

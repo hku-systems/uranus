@@ -4,8 +4,8 @@
 
 #include <precompiled.hpp>
 #include <nativeInst_aarch64.hpp>
-#include "c0_CodeStubs.hpp"
-#include "c0_Runtime.hpp"
+#include "c0/c0_CodeStubs.hpp"
+#include "c0/c0_Runtime.hpp"
 
 #define __ _masm->
 

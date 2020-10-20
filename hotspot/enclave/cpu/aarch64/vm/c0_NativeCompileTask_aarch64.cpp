@@ -3,10 +3,12 @@
 //
 
 #include <precompiled.hpp>
-#include "NativeCompileTask.hpp"
+
+#include "c0/c0_Runtime.hpp"
+#include "c0/c0_NativeCompileTask.hpp"
 #include "interpreter/interpreterRuntime.hpp"
-#include "c0_Runtime.hpp"
 #include <enclave/sc/EnclaveNative.h>
+
 
 #define __ _masm->
 

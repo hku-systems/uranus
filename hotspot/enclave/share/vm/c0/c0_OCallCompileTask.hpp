@@ -6,7 +6,7 @@
 #define HOTSPOT_OCALLCOMPILETASK_HPP
 
 
-#include "CompileTask.hpp"
+#include "c0_CompileTask.hpp"
 
 class OCallCompileTask: public CompileTask {
 public:

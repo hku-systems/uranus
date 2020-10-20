@@ -5,9 +5,7 @@
 #ifndef HOTSPOT_NATIVECOMPILETASK_HPP
 #define HOTSPOT_NATIVECOMPILETASK_HPP
 
-
-#include "NormalCompileTask.h"
-#include "CompileTask.hpp"
+#include "c0_CompileTask.hpp"
 
 class NativeCompileTask: public CompileTask {
 public:

@@ -2,15 +2,16 @@
 // Created by jianyu on 11/15/18.
 //
 
-#include "StubAssembler.hpp"
+#include "c0/StubAssembler.hpp"
 #include "precompiled.hpp"
 #include <interpreter/interpreterRuntime.hpp>
 #include <classfile/symbolTable.hpp>
-#include "c0_Runtime.hpp"
-#include "c0_CodeStubs.hpp"
-#include "Disassembler.hpp"
+#include "c0/c0_CodeStubs.hpp"
+#include "c0/c0_Runtime.hpp"
+#include "c0/MetadataAccessor.hpp"
+#include "c0_Disassembler_aarch64.hpp"
 
-#include "MetadataAccessor.hpp"
+
 #define __ sasm->
 
 enum {

@@ -4,15 +4,21 @@
 
 #include "precompiled.hpp"
 #include "JCompiler.hpp"
-
 #include <enclave/sc/EnclaveNative.h>
 
-//Change to JIT
+#include "c0_CompileTask.hpp"
+#include "c0_NormalCompileTask.hpp"
+#include "c0_NativeCompileTask.hpp"
+#include "c0_OCallCompileTask.hpp"
 
+#ifdef TARGET_ARCH_x86
+#include "c0_Disassembler_x86.hpp"
+#endif
 
-#include "NormalCompileTask.h"
-#include "NativeCompileTask.hpp"
-#include "OCallCompileTask.hpp"
+#ifdef TARGET_ARCH_aarch64
+#include "c0_Disassembler_aarch64.hpp"
+#endif
+
 JCompiler* JCompiler::compiler = NULL;
 
 void JCompiler::compile_method(Method *method) {

@@ -7,7 +7,12 @@
 
 #include <precompiled.hpp>
 #include "interpreter/interpMasm.hpp"
+#ifdef TARGET_ARCH_x86
+#include <interp_masm_x86.hpp>
+#endif
+#ifdef TARGET_ARCH_aarch64
 #include <interp_masm_aarch64.hpp>
+#endif
 #include "c0_Runtime.hpp"
 #include "C0_MacroAssembler.hpp"
 

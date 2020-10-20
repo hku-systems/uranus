@@ -3,9 +3,10 @@
 //
 
 #include <precompiled.hpp>
-#include "CompileTask.hpp"
-#include "Disassembler.hpp"
-#include "c0_Runtime.hpp"
+#include "c0/c0_CompileTask.hpp"
+#include "c0/c0_Runtime.hpp"
+
+#include "c0_Disassembler_aarch64.hpp"
 
 #define __ _masm->
 

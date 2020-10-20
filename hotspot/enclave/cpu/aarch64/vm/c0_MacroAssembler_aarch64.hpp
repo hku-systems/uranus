@@ -9,8 +9,8 @@
 #include <oops/markOop.hpp>
 #include <oops/oop.hpp>
 #include "interpreter/interpMasm.hpp"
-#include "C0MapOopEntry.hpp"
-#include "C0MapOopSet.hpp"
+#include "c0/C0MapOopEntry.hpp"
+#include "c0/C0MapOopSet.hpp"
 #include <interp_masm_aarch64.hpp>
 
 class PatchingStub;
