@@ -41,6 +41,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
 set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -Wno-write-strings -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
+include_directories(${CMAKE_BINARY_DIR}/)
 include_directories(${TOP_DIR}/include)
 include_directories(${TOP_DIR}/include/tlibc)
 include_directories(${TOP_DIR}/include/stdc++)
