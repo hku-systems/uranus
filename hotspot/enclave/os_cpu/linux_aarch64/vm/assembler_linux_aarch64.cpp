@@ -41,8 +41,7 @@ void MacroAssembler::get_thread(Register dst) {
   // Save all call-clobbered regs except dst, plus r19 and r20.
   RegSet saved_regs = RegSet::range(r0, r20) + lr - dst;
   push(saved_regs, sp);
-  mov(c_rarg0, ThreadLocalStorage::thread_index());
-  mov(r19, CAST_FROM_FN_PTR(address, pthread_getspecific));
+  mov(r19, CAST_FROM_FN_PTR(address, ThreadLocalStorage::thread));
   blr(r19);
   if (dst != c_rarg0) {
     mov(dst, c_rarg0);
