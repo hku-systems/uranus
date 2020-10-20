@@ -42,10 +42,10 @@ set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-excepti
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${CMAKE_BINARY_DIR}/)
-include_directories(${TOP_DIR}/include)
-include_directories(${TOP_DIR}/include/tlibc)
-include_directories(${TOP_DIR}/include/stdc++)
-include_directories(${TOP_DIR}/include/stlport)
+include_directories($ENV{TEE_SDK}/include)
+include_directories($ENV{TEE_SDK}/include/tlibc)
+include_directories($ENV{TEE_SDK}/include/stdc++)
+include_directories($ENV{TEE_SDK}/include/stlport)
 include_directories(${TOP_DIR}/enclave/panoply)
 include_directories(${TOP_DIR}/enclave/panoply/include)
 include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
@@ -57,9 +57,6 @@ include_directories(${TOP_DIR}/enclave/os/posix/vm/)
 include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
 include_directories(${TOP_DIR}/enclave/share/vm/prims/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/sc/native_libs/)
-# include_directories(${TOP_DIR}/enclave/panoply/include)
-#include_directories(${TOP_DIR}/include/tlibc)
-#include_directories(${TOP_DIR}/include/stlc++)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
