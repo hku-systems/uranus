@@ -61,7 +61,7 @@ VPATH += $(Src_Dirs_V:%=%:)
 Src_Dirs_I += $(GENERATED)
 # The order is important for the precompiled headers to work.
 INCLUDES += $(PRECOMPILED_HEADER_DIR:%=-I%) $(Src_Dirs_I:%=-I%)
-INCLUDES += -I$(HS_COMMON_SRC)/../include/ -I$(HS_COMMON_SRC)/../enclave/panoply/include/
+INCLUDES += -I$(HS_COMMON_SRC)/../include/ -I$(HS_COMMON_SRC)/../enclave/panoply/include/ -I./
 
 # SYMFLAG is used by {jsig,saproc}.make
 ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
@@ -232,7 +232,7 @@ Src_Files := $(foreach e,$(Src_Dirs),$(call findsrc,$(e)))
 
 Obj_Files = $(sort $(addsuffix .o,$(basename $(Src_Files))))
 
-JVM_OBJ_FILES = $(Obj_Files)
+JVM_OBJ_FILES = securecompiler_u.o $(Obj_Files)
 
 vm_version.o: $(filter-out vm_version.o,$(JVM_OBJ_FILES))
 
@@ -304,7 +304,25 @@ ifeq ($(JVM_VARIANT_ZEROSHARK), true)
   LFLAGS_VM += $(LLVM_LDFLAGS)
 endif
 
+# Begin of enclave controller (untrust) makefile
+
+TEE_SDK ?= /opt/intel/sgxsdk
+
 LIBS_VM += -L$(HS_COMMON_SRC)/../lib/ -lsgx_urts
+
+ARCH_ENCLAVE ?= $(shell uname -m)
+ifeq ($(ARCH_ENCLAVE), x86_64)
+ ARCH_ENCLAVE = x64
+endif
+
+EDGER8R ?= $(TEE_SDK)/bin/$(ARCH_ENCLAVE)/sgx_edger8r
+
+securecompiler_u.c: $(HS_COMMON_SRC)/../enclave/share/vm/enclave/securecompiler.edl
+	$(EDGER8R) --untrusted $(HS_COMMON_SRC)/../enclave/share/vm/enclave/securecompiler.edl \
+	--search-path $(HS_COMMON_SRC)/../enclave/panoply/ \
+	--search-path $(HS_COMMON_SRC)/../enclave/share/vm/ \
+	--search-path "$TEE_SDK/include"
+
 securecompiler_u.o: securecompiler_u.c
 	echo $(CFLAGS)
 	$(CC) ${INCLUDES} -fPIC -I$(HS_COMMON_SRC)/../enclave/panoply/include/ -c $< $(COMPILE_DONE)

@@ -2,8 +2,8 @@
 // Created by max on 12/29/17.
 //
 
+#include "precompiled.hpp"
 #include "CompilerEnclave.h"
-#include "PreInterpreterCallStubGenerator.h"
 #include "EnclaveManager.h"
 #include "securecompiler_u.h"
 // #include "enclave/sc/EnclaveNative.h"
@@ -27,7 +27,7 @@ bool CompilerEnclave::in_enclave_heap(intptr_t addr) {
 void CompilerEnclave::compiler_initialize() {
     char* ret_val;
     sgx_status_t ret = c1_initialize(id, (void**)&ret_val,
-                                                    NULL,
+                                                    VM_Version::get_cpuid_info(),
                                                     (void**)Universe::heap()->top_addr(),
                                                     (void**)Universe::heap()->end_addr(),
                                                     (void**)SystemDictionary::well_known_klass_addr((SystemDictionary::WKID)(0)), 0);
@@ -42,7 +42,7 @@ int CompilerEnclave::in_enclave(void *addr) {
 }
 
 CompilerEnclave::CompilerEnclave(){
-    id = EnclaveManager::new_enclave("/usr/lib/libenclave.so");
+    id = EnclaveManager::new_enclave("/usr/lib/libjvm-enclave.so");
 //    printf("enclave path: %s\n", enclave_so_path);
 }
 

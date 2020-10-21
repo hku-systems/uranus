@@ -516,6 +516,8 @@ public:
   static ByteSize xem_xcr0_offset() { return byte_offset_of(CpuidInfo, xem_xcr0_eax); }
   static ByteSize ymm_save_offset() { return byte_offset_of(CpuidInfo, ymm_save); }
 
+  static void* get_cpuid_info()  { return &_cpuid_info; }
+
   // The value used to check ymm register after signal handle
   static int ymm_test_value()    { return 0xCAFEBABE; }
 

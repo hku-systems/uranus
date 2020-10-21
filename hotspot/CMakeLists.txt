@@ -114,4 +114,11 @@ add_custom_command(
         DEPENDS ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/securecompiler.edl
         OUTPUT ${CMAKE_BINARY_DIR}/securecompiler_t.h ${CMAKE_BINARY_DIR}/securecompiler_t.c)
 
-install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)
+add_custom_command(
+        COMMAND ${SGX_ENCLAVE_SIGNER} sign -key "$ENV{TEE_SDK}/SampleCode/SampleEnclave/Enclave/Enclave_private.pem" -enclave $<TARGET_FILE:enclave> -out libjvm-enclave.so -config ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/securecompiler.config.xml
+        DEPENDS enclave ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/securecompiler.config.xml
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libjvm-enclave.so)
+
+add_custom_target(enclave_signed ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libjvm-enclave.so)
+
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libjvm-enclave.so DESTINATION /usr/lib/)
