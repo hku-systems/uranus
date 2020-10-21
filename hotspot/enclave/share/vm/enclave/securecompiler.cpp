@@ -75,6 +75,14 @@ int within_enclave(void *addr) {
     return false;
 }
 
+extern sgx_sha256_hash_t enclave_jar_hash;
+
+int get_jar_hash(char* buf) {
+  memcpy(buf, enclave_jar_hash, 32);
+
+  return 1;
+}
+
 void gc_scavenge(void *queue, int n) {
     EnclaveGC::gc_start((StarTask*)queue, n);
 }

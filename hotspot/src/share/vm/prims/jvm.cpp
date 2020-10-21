@@ -97,6 +97,8 @@
 
 #include <errno.h>
 
+#include "em/CompilerEnclave.h"
+
 #ifndef USDT2
 HS_DTRACE_PROBE_DECL1(hotspot, thread__sleep__begin, long long);
 HS_DTRACE_PROBE_DECL1(hotspot, thread__sleep__end, int);
@@ -4679,5 +4681,29 @@ JVM_ENTRY(void, JVM_GetVersionInfo(JNIEnv* env, jvm_version_info* info, size_t i
   // consider to expose this new capability in the sun.rt.jvmCapabilities jvmstat
   // counter defined in runtimeService.cpp.
   info->is_attachable = AttachListener::is_attach_supported();
+}
+JVM_END
+
+JVM_ENTRY(jcharArray, JVM_GetEnclaveJarHash(JNIEnv *env, jobject untrust))
+{
+  jchar jar_hash[32];
+
+  char jar_hash_c[32];
+
+  CompilerEnclave::shareEnclave->get_jar_hash(jar_hash_c);
+
+  for (int i = 0;i < 32;i++) {
+    unsigned char c = (unsigned char)jar_hash_c[i];
+    jar_hash[i] = c;
+  }
+
+  jcharArray jar_hash_obj = env->NewCharArray(32);
+  if (jar_hash_obj == NULL) {
+    printf("error in new");
+    return JNI_FALSE;
+  }
+
+  env->SetCharArrayRegion(jar_hash_obj, 0, 32, (jchar*)jar_hash);
+  return jar_hash_obj;
 }
 JVM_END

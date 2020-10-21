@@ -339,9 +339,6 @@ u1* LazyClassPathEntry::open_entry(const char* name, jint* filesize, bool nul_te
 }
 
 ClassFileStream* EnclaveClassPathEntry::open_stream(const char *name, Thread *__the_thread__) {
-    if (enclave_file_cache() == NULL) {
-      init_map();
-    }
 
     if (entry_map.find(std::string(name)) == entry_map.end())
       return NULL;
@@ -358,6 +355,10 @@ char* EnclaveClassPathEntry::_enclave_file_cache = NULL;
 std::map<std::string, buffer_cache_t> EnclaveClassPathEntry::entry_map;
 
 sgx_sha256_hash_t enclave_jar_hash;
+
+void init_classfile() {
+  EnclaveClassPathEntry::init_map();
+}
 
 void EnclaveClassPathEntry::init_map() {
   int buffer_size = 0;
@@ -751,7 +752,11 @@ jlong ClassLoader::class_link_time_ms() {
 }
 
 int ClassLoader::compute_Object_vtable() {
-    D_WARN_Unimplement;
+  // hardwired for JDK1.2 -- would need to duplicate class file parsing
+  // code to determine actual value from file
+  // Would be value '11' if finals were in vtable
+  int JDK_1_2_Object_vtable_size = 5;
+  return JDK_1_2_Object_vtable_size * vtableEntry::size();
 }
 
 

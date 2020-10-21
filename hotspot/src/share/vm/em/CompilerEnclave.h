@@ -30,6 +30,8 @@ public:
 
     int in_enclave(void *addr);
 
+    void get_jar_hash(char *buf);
+
     void* interpreter_entry_zero_locals(void*, void*, int* );
 
     static void init();

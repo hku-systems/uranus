@@ -74,6 +74,15 @@ SUNWprivate_1.1 {
 		JNU_ThrowStringIndexOutOfBoundsException;
 		JNU_ToString;
 
+		Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1init;
+		Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1get_1msg0;
+		Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1get_1msg1;
+		Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1proc_1msg2;
+		Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1proc_1msg4;
+		Java_edu_hku_cs_uranus_attestation_Untrust_process_1msg01;
+		Java_edu_hku_cs_uranus_attestation_Untrust_process_1msg3;
+		Java_edu_hku_cs_uranus_attestation_Untrust_process_1msg4;
+		
 		Java_java_io_FileDescriptor_initIDs;
 		Java_java_io_FileDescriptor_sync;
 		Java_java_io_FileInputStream_available0;

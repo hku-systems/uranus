@@ -249,6 +249,7 @@ SUNWprivate_1.1 {
                 JVM_Write;
                 JVM_Yield;
                 JVM_handle_linux_signal;
+                JVM_GetEnclaveJarHash;
 
                 # miscellaneous functions
                 jio_fprintf;

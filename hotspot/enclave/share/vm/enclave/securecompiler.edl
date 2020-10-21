@@ -27,6 +27,7 @@ enclave {
         public void gc_scavenge([user_check]void* tasks, int n);
         public int within_enclave([user_check]void *addr);
         public void* interpreted_entry_zero_locals([user_check]void* rbx, [user_check]void* method, [user_check]int* has_exception);
+        public int get_jar_hash([out, size=32]char* buf);
         // public void c1_compile_method([user_check]ciEnv* env,[user_check] ciMethod* target, int entry_bci);
     };
     untrusted {

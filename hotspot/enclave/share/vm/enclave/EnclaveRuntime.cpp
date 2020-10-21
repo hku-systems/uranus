@@ -52,6 +52,7 @@ void mutex_init();
 extern bool  universe_post_init();
 
 extern void javaClasses_init();
+extern void init_classfile();
 
 void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, void** klass_list, int db) {
 
@@ -99,6 +100,7 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
 
     Interpreter::initialize();
     EnclaveABI::init();
+    init_classfile();
 
     // vmSymbols::initialize(&javaThread);
     Universe::genesis(&javaThread);

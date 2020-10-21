@@ -84,3 +84,7 @@ void CompilerEnclave::init() {
     shareEnclave = new CompilerEnclave();
     shareEnclave->compiler_initialize();
 }
+
+void CompilerEnclave::get_jar_hash(char *buf) {
+
+}
