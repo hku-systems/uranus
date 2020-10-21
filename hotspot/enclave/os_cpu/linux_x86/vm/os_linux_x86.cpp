@@ -23,8 +23,8 @@
  */
 
 // no precompiled headers
-#include "enclave/sc/EnclaveMemory.h"
-#include "enclave/sc/EnclaveDebug.h"
+#include "enclave/EnclaveMemory.h"
+#include "enclave/EnclaveDebug.h"
 #include "asm/macroAssembler.hpp"
 #include "classfile/classLoader.hpp"
 #include "classfile/systemDictionary.hpp"

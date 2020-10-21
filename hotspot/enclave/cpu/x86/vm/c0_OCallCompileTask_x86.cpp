@@ -3,7 +3,7 @@
 //
 
 #include <precompiled.hpp>
-#include <enclave/sc/EnclaveABI.h>
+#include <enclave/EnclaveABI.h>
 #include "c0/c0_OCallCompileTask.hpp"
 
 // TODO: generate more efficient code

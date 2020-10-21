@@ -4,7 +4,7 @@
 
 #include "precompiled.hpp"
 #include "JCompiler.hpp"
-#include <enclave/sc/EnclaveNative.h>
+#include <enclave/EnclaveNative.h>
 
 #include "c0_CompileTask.hpp"
 #include "c0_NormalCompileTask.hpp"

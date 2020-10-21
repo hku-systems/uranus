@@ -40,7 +40,7 @@ PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
     Thread* THREAD = (Thread*)thread;
 #define IRT_END }
 
-#include "enclave/sc/EnclaveException.h"
+#include "enclave/EnclaveException.h"
 
 IRT_ENTRY(oop, InterpreterRuntime::create_exception(JavaThread* thread, char* name, char* message))
   // lookup exception klass

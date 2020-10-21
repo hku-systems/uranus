@@ -25,7 +25,7 @@
 #ifndef SHARE_VM_OOPS_OOP_INLINE_HPP
 #define SHARE_VM_OOPS_OOP_INLINE_HPP
 
-#include <enclave/sc/EnclaveGC.h>
+#include <enclave/EnclaveGC.h>
 //#include "memory/barrierSet.inline.hpp"
 #include "memory/specialized_oop_closures.hpp"
 #include "oops/arrayKlass.hpp"

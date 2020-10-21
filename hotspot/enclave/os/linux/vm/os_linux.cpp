@@ -26,8 +26,8 @@
 // no precompiled headers
 #include "utilities/exceptions.hpp"
 #include "oops/oop.hpp"
-#include "enclave/sc/EnclaveMemory.h"
-#include "enclave/sc/EnclaveDebug.h"
+#include "enclave/EnclaveMemory.h"
+#include "enclave/EnclaveDebug.h"
 #include "oops/instanceKlass.hpp"
 #include "classfile/classLoader.hpp"
 #include "classfile/systemDictionary.hpp"

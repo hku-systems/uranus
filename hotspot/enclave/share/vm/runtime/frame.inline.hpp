@@ -27,7 +27,7 @@
 
 #include "interpreter/interpreter.hpp"
 #include "oops/method.hpp"
-#include "enclave/sc/EnclaveABI.h"
+#include "enclave/EnclaveABI.h"
 #include "runtime/frame.hpp"
 #include "runtime/signature.hpp"
 #include "stubRoutines.hpp"

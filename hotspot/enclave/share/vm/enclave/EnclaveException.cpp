@@ -4,7 +4,7 @@
 
 #include "EnclaveException.h"
 #include "EnclaveOcall.h"
-#include "enclave/sc/EnclaveMemory.h"
+#include "enclave/EnclaveMemory.h"
 #include <precompiled.hpp>
 
 char* EnclaveException::name_list[] = {0};

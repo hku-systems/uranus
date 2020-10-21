@@ -27,7 +27,7 @@
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "oops/oop.inline.hpp"
-#include "enclave/sc/EnclaveException.h"
+#include "enclave/EnclaveException.h"
 #include "runtime/javaCalls.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadCritical.hpp"

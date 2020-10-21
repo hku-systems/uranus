@@ -4,7 +4,7 @@
 
 #include <precompiled.hpp>
 #include "c0/c0_NativeCompileTask.hpp"
-#include <enclave/sc/EnclaveNative.h>
+#include <enclave/EnclaveNative.h>
 
 #define __ _masm->
 

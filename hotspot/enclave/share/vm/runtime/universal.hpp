@@ -2,7 +2,7 @@
 #ifndef UNIVERSAL_HPP
 #define UNIVERSAL_HPP
 
-#include "enclave/sc/EnclaveMemory.h"
+#include "enclave/EnclaveMemory.h"
 
 class CollectedHeap {
     public:

@@ -36,8 +36,8 @@
 // The InterpreterRuntime is called by the interpreter for everything
 // that cannot/should not be dealt with in assembly and needs C support.
 
-#include "enclave/sc/EnclaveDebug.h"
-#include "enclave/sc/EnclaveException.h"
+#include "enclave/EnclaveDebug.h"
+#include "enclave/EnclaveException.h"
 
 #define CALL_NULL printf(D_ERROR("Runtime")" call remove call: %s %d: %s\n", __FILE__, __LINE__, __FUNCTION__)
 

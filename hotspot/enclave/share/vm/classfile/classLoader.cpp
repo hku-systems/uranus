@@ -53,7 +53,7 @@
 # include "os_bsd.inline.hpp"
 #endif
 
-#include "enclave/sc/EnclaveOcall.h"
+#include "enclave/EnclaveOcall.h"
 
  // Entry points in zip.dll for loading zip/jar file entries
 

@@ -22,7 +22,7 @@ enclave {
     trusted {
         /* define ECALLs here. */
         // include "compiler/abstractCompiler.hpp"
-        include "enclave/sc/securecompiler.h"
+        include "enclave/securecompiler.h"
         public void* c1_initialize([user_check]void* cpuid, [user_check]void** top, [user_check]void** bottom, [user_check]void** klass_list, int debug);
         public void gc_scavenge([user_check]void* tasks, int n);
         public int within_enclave([user_check]void *addr);

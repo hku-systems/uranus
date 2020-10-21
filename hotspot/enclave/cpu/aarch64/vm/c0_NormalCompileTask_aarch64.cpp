@@ -4,14 +4,14 @@
 
 #include <precompiled.hpp>
 #include <classfile/symbolTable.hpp>
-#include "enclave/sc/EnclaveDebug.h"
+#include "enclave/EnclaveDebug.h"
 #include "oops/markOop.hpp"
 #include <interpreter/bytecode.hpp>
 #include <code/codeBlob.hpp>
 #include <runtime/sharedRuntime.hpp>
 #include <nativeInst_aarch64.hpp>
 #include <runtime/fieldType.hpp>
-#include <enclave/sc/EnclaveNative.h>
+#include <enclave/EnclaveNative.h>
 #include "interpreter/interpreter.hpp"
 #include "c0/bytecodeStream.hpp"
 #include "c0/c0_CodeStubs.hpp"

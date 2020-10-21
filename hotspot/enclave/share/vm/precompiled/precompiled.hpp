@@ -26,14 +26,14 @@
 // or if the user passes USE_PRECOMPILED_HEADER=0 to the makefiles.
 
 #ifndef DONT_USE_PRECOMPILED_HEADER
-# include "enclave/sc/EnclaveDebug.h"
-# include "enclave/sc/EnclaveABI.h"
-# include "enclave/sc/EnclaveMemory.h"
-# include "enclave/sc/EnclaveGC.h"
-# include "enclave/sc/EnclaveOcall.h"
-# include "enclave/sc/EnclaveCrypto.h"
-# include "enclave/sc/EnclaveException.h"
-# include "enclave/sc/EnclaveRuntime.h"
+# include "enclave/EnclaveDebug.h"
+# include "enclave/EnclaveABI.h"
+# include "enclave/EnclaveMemory.h"
+# include "enclave/EnclaveGC.h"
+# include "enclave/EnclaveOcall.h"
+# include "enclave/EnclaveCrypto.h"
+# include "enclave/EnclaveException.h"
+# include "enclave/EnclaveRuntime.h"
 # include "asm/assembler.hpp"
 # include "asm/assembler.inline.hpp"
 # include "asm/codeBuffer.hpp"

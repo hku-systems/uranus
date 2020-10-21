@@ -48,7 +48,7 @@ PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
 #define FUNCTION_INTERFACE_NAME "IntelSGXFunc;"
 
 address Method::_hook_method_entry_point = NULL;
-#include "enclave/sc/EnclaveOcall.h"
+#include "enclave/EnclaveOcall.h"
 
 enum sgx_call_flag {
     normal_call_flag = 0x00,

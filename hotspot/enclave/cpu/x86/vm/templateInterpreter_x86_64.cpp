@@ -37,10 +37,10 @@
 #include "runtime/synchronizer.hpp"
 #include "utilities/macros.hpp"
 
-#include "enclave/sc/EnclaveMemory.h"
-#include "enclave/sc/EnclaveOcall.h"
-#include "enclave/sc/EnclaveException.h"
-#include "enclave/sc/EnclaveDebug.h"
+#include "enclave/EnclaveMemory.h"
+#include "enclave/EnclaveOcall.h"
+#include "enclave/EnclaveException.h"
+#include "enclave/EnclaveDebug.h"
 
 #define __ _masm->
 

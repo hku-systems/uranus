@@ -5,7 +5,7 @@
 #ifndef HOTSPOT_C0_MACROASSEMBLER_HPP
 #define HOTSPOT_C0_MACROASSEMBLER_HPP
 
-#include <enclave/sc/EnclaveDebug.h>
+#include <enclave/EnclaveDebug.h>
 #include <oops/markOop.hpp>
 #include <oops/oop.hpp>
 #include <interp_masm_x86.hpp>

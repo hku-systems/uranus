@@ -5,7 +5,7 @@
 #ifndef HOTSPOT_C0MAPOOPENTRY_HPP
 #define HOTSPOT_C0MAPOOPENTRY_HPP
 
-#include <enclave/sc/EnclaveDebug.h>
+#include <enclave/EnclaveDebug.h>
 #include <sys/types.h>
 #include <utilities/globalDefinitions.hpp>
 #include <oops/method.hpp>

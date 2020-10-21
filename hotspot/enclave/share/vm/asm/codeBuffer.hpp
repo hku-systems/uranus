@@ -28,7 +28,7 @@
 #include "runtime/handles.hpp"
 #include "code/relocInfo.hpp"
 #include "utilities/globalDefinitions.hpp"
-#include "enclave/sc/EnclaveDebug.h"
+#include "enclave/EnclaveDebug.h"
 
 class CodeStrings;
 class BufferBlob;
