@@ -54,7 +54,7 @@ include_directories(${TOP_DIR}/enclave/os/linux/vm/)
 include_directories(${TOP_DIR}/enclave/os/posix/vm/)
 include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
 include_directories(${TOP_DIR}/enclave/share/vm/prims/)
-include_directories(${TOP_DIR}/enclave/share/vm/enclave/sc/native_libs/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
@@ -110,8 +110,8 @@ set_target_properties(enclave PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(enclave -Wl,--whole-archive "${SGX_TRTS_SIM}" -Wl,--no-whole-archive -Wl,--start-group "${SGX_TRTS_TLIBC}" "${SGX_TRTS_TCXX}" -Wl,--hash-style=both "${SGX_TCRYPTO}" -Wl,--end-group)
 
 add_custom_command(
-        COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"
-        DEPENDS ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/sc/securecompiler.edl
+        COMMAND ${SGX_EDGER8R} --trusted ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/securecompiler.edl --search-path ${CMAKE_SOURCE_DIR}/enclave/panoply/ --search-path ${CMAKE_SOURCE_DIR}/enclave/share/vm/ --search-path "$ENV{TEE_SDK}/include"
+        DEPENDS ${CMAKE_SOURCE_DIR}/enclave/share/vm/enclave/securecompiler.edl
         OUTPUT ${CMAKE_BINARY_DIR}/securecompiler_t.h ${CMAKE_BINARY_DIR}/securecompiler_t.c)
 
 install (TARGETS enclave DESTINATION ${TOP_DIR}/lib)
