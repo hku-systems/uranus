@@ -1423,6 +1423,8 @@ JVM_GetResourceLookupCacheURLs(JNIEnv *env, jobject loader);
 JNIEXPORT jintArray JNICALL
 JVM_GetResourceLookupCache(JNIEnv *env, jobject loader, const char *resource_name);
 
+JNIEXPORT jcharArray JNICALL
+JVM_GetEnclaveJarHash(JNIEnv *env, jobject untrust);
 
 /* =========================================================================
  * The following defines a private JVM interface that the JDK can query

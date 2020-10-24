@@ -4700,7 +4700,7 @@ JVM_ENTRY(jcharArray, JVM_GetEnclaveJarHash(JNIEnv *env, jobject untrust))
   jcharArray jar_hash_obj = env->NewCharArray(32);
   if (jar_hash_obj == NULL) {
     printf("error in new");
-    return JNI_FALSE;
+    return NULL;
   }
 
   env->SetCharArrayRegion(jar_hash_obj, 0, 32, (jchar*)jar_hash);

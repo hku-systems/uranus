@@ -66,13 +66,19 @@ void* CompilerEnclave::call_interpreter_zero_locals(void *rsp_buf, void *ret_add
     int has_exception = 0;
 
     u_char* r = (u_char*)shareEnclave->interpreter_entry_zero_locals(rsp_buf, m, &has_exception);
-    // u_int64_t *rp_buf = (u_int64_t*)((u_char*)(ret_addr) + 8);
-    // *rp_buf = (u_int64_t)r;
+#ifdef TARGET_ARCH_x86
+    u_int64_t *rp_buf = (u_int64_t*)((u_char*)(ret_addr) + 8);
+    *rp_buf = (u_int64_t)r;
+#endif
     if (has_exception) {
       // u_char* r = (u_char*)&TemplateInterpreter::_throw_forward_entry;
       return r;
     }
-    return (u_char*)r;
+#ifdef TARGET_ARCH_x86
+    return (u_char*)ret_addr;
+#else
+    return r;
+#endif
 }
 
 void CompilerEnclave::compiler_gc(FastList<StarTask> *list) {

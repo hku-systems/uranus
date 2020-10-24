@@ -30,7 +30,7 @@ Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1get_1msg1(JNIEnv *env, jobje
 JNIEXPORT jcharArray JNICALL
 Java_edu_hku_cs_uranus_attestation_Enclave_sgx_1ra_1proc_1msg2(JNIEnv *env, jobject obj, jbyteArray msg2)
 {
-    return JVM_GetEnclaveJarHash(env, obj);;
+    return JVM_GetEnclaveJarHash(env, obj);
 }
 
 JNIEXPORT jboolean JNICALL
