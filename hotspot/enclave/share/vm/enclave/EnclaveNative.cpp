@@ -100,6 +100,8 @@ void* EnclaveNative::resolve_function(Method* m) {
       return CAST_FROM_FN_PTR(address, EnclaveNative::native_entry[i]);
     }
   }
-  m->set_native_function(CAST_FROM_FN_PTR(address, &NullJNICall), false);
+  address default_addr = CAST_FROM_FN_PTR(address, &NullJNICall);
+  m->set_native_function(default_addr, false);
   printf(D_ERROR("Native")" cannot find native func %s\n", name);
+  return default_addr;
 }

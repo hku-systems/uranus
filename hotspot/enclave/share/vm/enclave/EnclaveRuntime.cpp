@@ -203,6 +203,7 @@ void* EnclaveRuntime::call_interpreter(void *rbx_buf, Method *m) {
 
 void* EnclaveRuntime::compile_method(Method *method) {
     compiler->compile_method(method);
+    
 }
 
 // TODO

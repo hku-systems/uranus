@@ -22,6 +22,8 @@
 #ifndef _BITS_STAT_H
 #define _BITS_STAT_H	1
 
+#include "struct/sgx_time_struct.h"
+
 /* Versions of the `struct stat' data structure.  */
 #ifndef __x86_64__
 # define _STAT_VER_LINUX_OLD	1

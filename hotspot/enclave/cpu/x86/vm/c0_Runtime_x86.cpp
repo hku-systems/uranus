@@ -499,7 +499,7 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             case Bytecodes::_getstatic:
             { Klass* klass = resolve_field_return_klass(caller_method, bci, CHECK);
                 init_klass = KlassHandle(THREAD, klass);
-                mirror = Handle(THREAD, (oop)klass);
+                mirror = Handle(THREAD, (oop)klass->java_mirror());
             }
                 break;
             case Bytecodes::_new:
@@ -562,7 +562,37 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         } else {
             mth = callinfo.selected_method()();
         }
-        EnclaveRuntime::compile_method(mth);
+
+        if (bytecode == Bytecodes::_invokeinterface) {
+            interface_klass = mth->method_holder();
+            if (((InstanceKlass*)interface_klass)->is_initialized()) {
+                interface_klass->initialize(JavaThread::current());
+            }
+            if (mth->has_itable_index()) {
+                interface_itable_idx = mth->itable_index();
+            } else {
+                printf("no itable, fail\n");
+            }
+            oop recv_recv = (oop)recv;
+            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_itable(interface_klass, interface_itable_idx, JavaThread::current());
+            EnclaveRuntime::compile_method(method);
+        } else if (bytecode == Bytecodes::_invokevirtual) {
+          virtual_vtable_idx = mth->vtable_index();
+          printf("vindex %d\n", virtual_vtable_idx);
+          if (virtual_vtable_idx > 0) {
+            oop recv_recv = (oop)recv;
+            Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_vtable(virtual_vtable_idx);
+            EnclaveRuntime::compile_method(method);
+          } else {
+            // final
+            EnclaveRuntime::compile_method(mth);
+          }
+        } else {
+          // static or special
+          EnclaveRuntime::compile_method(mth);
+        }
+
+
     } else if (stub_id == compile_method_patching_id) {
         Method* compiled_method = thread->compiled_method();
         EnclaveRuntime::compile_method(compiled_method);

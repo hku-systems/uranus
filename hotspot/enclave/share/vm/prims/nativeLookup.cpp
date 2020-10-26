@@ -148,6 +148,9 @@ static address lookup_special_native(char* jni_name) {
   return NULL;
 }
 
+extern "C" jobject JNICALL
+NullJNICall();
+
 address NativeLookup::lookup_style(methodHandle method, char* pure_name, const char* long_name, int args_size, bool os_style, bool& in_base_library, TRAPS) {
   address entry;
   // Compute complete JNI name for style
@@ -175,25 +178,27 @@ address NativeLookup::lookup_style(methodHandle method, char* pure_name, const c
     }
   }
 
-  // Otherwise call static method findNative in ClassLoader
-  KlassHandle   klass (THREAD, SystemDictionary::ClassLoader_klass());
-  Handle name_arg = java_lang_String::create_from_str(jni_name, CHECK_NULL);
-
-  JavaValue result(T_LONG);
-  JavaCalls::call_static(&result,
-                         klass,
-                         vmSymbols::findNative_name(),
-                         vmSymbols::classloader_string_long_signature(),
-                         // Arguments
-                         loader,
-                         name_arg,
-                         CHECK_NULL);
-  entry = (address) (intptr_t) result.get_jlong();
-
-  if (entry == NULL) {
-    // findNative didn't find it, if there are any agent libraries look in them
-    // jianyu: agent should not be supported within encalve
-  }
+  printf(D_ERROR("Native")" cannot find %s\n", method->name()->as_C_string());
+//  // Otherwise call static method findNative in ClassLoader
+//  KlassHandle   klass (THREAD, SystemDictionary::ClassLoader_klass());
+//  Handle name_arg = java_lang_String::create_from_str(jni_name, CHECK_NULL);
+//
+//  JavaValue result(T_LONG);
+//  JavaCalls::call_static(&result,
+//                         klass,
+//                         vmSymbols::findNative_name(),
+//                         vmSymbols::classloader_string_long_signature(),
+//                         // Arguments
+//                         loader,
+//                         name_arg,
+//                         CHECK_NULL);
+//  entry = (address) (intptr_t) result.get_jlong();
+//
+//  if (entry == NULL) {
+//    // findNative didn't find it, if there are any agent libraries look in them
+//    // jianyu: agent should not be supported within encalve
+//  }
+  entry = CAST_FROM_FN_PTR(address, &NullJNICall);;
   return entry;
 }
 

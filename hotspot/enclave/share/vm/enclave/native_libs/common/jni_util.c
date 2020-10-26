@@ -27,7 +27,7 @@
 #include <string.h>
 
 #include "jvm.h"
-#include "jni_util.h"
+#include "io_util.h"
 
 /* Due to a bug in the win32 C runtime library strings
  * such as "z:" need to be appended with a "." so we
@@ -35,8 +35,6 @@
  * this expansion. See 4235353 for details.
  */
 #define MALLOC_MIN4(len) ((char *)malloc((len) + 1 < 4 ? 4 : (len) + 1))
-
-int getLastErrorString(char *buf, int size) { return 0; }
 
 /**
  * Throw a Java exception by name. Similar to SignalError.
@@ -907,8 +905,7 @@ JNIEXPORT int
 Canonicalize(JNIEnv *env, char *orig, char *out, int len)
 {
     /* canonicalize an already natived path */
-    // TODO
-    return 0;
+    return canonicalize(orig, out, len);
 }
 
 JNIEXPORT jclass JNICALL

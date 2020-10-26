@@ -28,11 +28,6 @@
 #include "jni.h"
 #include "jni_util.h"
 #include "dlfcn.h"
-#define RTLD_LAZY	0x00001	/* Lazy function call binding.  */
-#define RTLD_NOW	0x00002	/* Immediate function call binding.  */
-#define	RTLD_BINDING_MASK   0x3	/* Mask of binding time value.  */
-#define RTLD_NOLOAD	0x00004	/* Do not load the object.  */
-#define RTLD_DEEPBIND	0x00008	/* Use deep binding.  */
 
 jstring nativeNewStringPlatform(JNIEnv *env, const char *str) {
     return NULL;
@@ -54,7 +49,12 @@ void* getProcessHandle() {
     if (procHandle != NULL) {
         return procHandle;
     }
-    return NULL;
+#ifdef __APPLE__
+    procHandle = (void*)dlopen(NULL, RTLD_FIRST);
+#else
+    procHandle = (void*)NULL;
+#endif
+    return procHandle;
 }
 
 void buildJniFunctionName(const char *sym, const char *cname,
@@ -69,5 +69,6 @@ void buildJniFunctionName(const char *sym, const char *cname,
 int
 getErrorString(int err, char *buf, size_t len)
 {
-    return 0;
+    if (err == 0 || len < 1) return 0;
+    return strerror_r(err, buf, len);
 }

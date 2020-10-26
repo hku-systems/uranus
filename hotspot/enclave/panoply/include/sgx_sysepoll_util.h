@@ -2,7 +2,6 @@
 #define SGX_SYSEPOLL_UTIL_H
 
 #include <struct/sgx_sysepoll_struct.h>
-#include <proxy/sgx_sysepoll_t.h>
 
 int epoll_create(int __size);
 

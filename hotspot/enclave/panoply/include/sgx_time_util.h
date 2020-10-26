@@ -3,7 +3,6 @@
 
 #include <sgx_stdio_util.h>
 #include "struct/sgx_time_struct.h"
-#include "proxy/sgx_time_t.h"
 
 extern long int timezone;
 

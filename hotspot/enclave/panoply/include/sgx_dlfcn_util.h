@@ -6,7 +6,6 @@
 #define HOTSPOT_SGX_DLFCN_UTIL_H
 
 #include "struct/sgx_dlfcn_struct.h"
-#include "proxy/sgx_dlfcn_t.h"
 
 void *dlopen (const char *__file, int __mode);
 

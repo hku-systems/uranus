@@ -2,7 +2,6 @@
 #define SGX_SIGNAL_UTIL_H
 
 #include <struct/sgx_signal_struct.h>
-#include <proxy/sgx_signal_t.h>
 
 int sigemptyset(sigset_t *set);
 

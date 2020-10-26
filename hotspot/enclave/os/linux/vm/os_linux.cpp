@@ -45,6 +45,8 @@
 #include "utilities/growableArray.hpp"
 #include "runtime/threadLocalStorage.hpp"
 
+#include "sgx_trts.h"
+
 // used by os::exception_name()
 extern bool signal_name(int signo, char* buf, size_t len) {
     D_WARN_Unimplement;
@@ -274,7 +276,10 @@ bool os::find(address addr, outputStream* st) { syscall_invoke_count(__func__); 
 
 void* os::get_default_process_handle() { syscall_invoke_count(__func__); }
 
-void* os::dll_lookup(void* handle, const char* name) { syscall_invoke_count(__func__); }
+void* os::dll_lookup(void* handle, const char* name) {
+  printf("look for %s\n", name);
+  return sgx_get_func(name);
+}
 
 bool os::dll_build_name(char* buffer, size_t buflen,
                         const char* pname, const char* fname) { syscall_invoke_count(__func__); }
@@ -313,7 +318,7 @@ bool os::pd_commit_memory(char* addr, size_t size, bool exec) { syscall_invoke_c
 
 void
 os::os_exception_wrapper(java_call_t f, JavaValue* value, methodHandle* method,
-                         JavaCallArguments* args, Thread* thread) { syscall_invoke_count(__func__); }
+                         JavaCallArguments* args, Thread* thread) { f(value, method, args, thread); }
 
 bool os::pd_commit_memory(char* addr, size_t size, size_t alignment_hint,
                           bool exec) { syscall_invoke_count(__func__); }
@@ -408,7 +413,7 @@ bool os::address_is_in_vm(address addr) { syscall_invoke_count(__func__); }
 
 ExtendedPC os::get_thread_pc(Thread* thread) { syscall_invoke_count(__func__); }
 
-void os::print_jni_name_prefix_on(outputStream* st, int args_size) { syscall_invoke_count(__func__); }
+void os::print_jni_name_prefix_on(outputStream* st, int args_size) {}
 bool os::is_headless_jre() { syscall_invoke_count(__func__); }
 
 bool os::have_special_privileges() { syscall_invoke_count(__func__); }

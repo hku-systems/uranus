@@ -1,8 +1,8 @@
 #ifndef SGX_SYSSTAT_UTIL_H
 #define SGX_SYSSTAT_UTIL_H
 
-#include <fcntl.h>
-#include "proxy/sgx_sysstat_t.h"
+#include "sgx/sys/types.h"
+#include "sgx/sys/stat.h"
 
 int stat(const char *path, struct stat *buf);
 

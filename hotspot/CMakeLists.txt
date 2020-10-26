@@ -34,9 +34,9 @@ endif()
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-O0 -gstabs+ -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
+set(CMAKE_C_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
-set(CMAKE_CXX_FLAGS "-O0 -gstabs+ -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -fpermissive")
+set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${CMAKE_BINARY_DIR}/)
@@ -55,11 +55,19 @@ include_directories(${TOP_DIR}/enclave/os/posix/vm/)
 include_directories(${TOP_DIR}/enclave/os_cpu/linux_${BUILD_ARCH}/vm/)
 include_directories(${TOP_DIR}/enclave/share/vm/prims/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/solaris/common/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/solaris/java/io)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/solaris/java/util)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/export/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/common/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/io/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/util/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/lang/fdlibm/include/)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
         -DHOTSPOT_BUILD_TARGET="product" -DHOTSPOT_BUILD_USER="jianyu" -DHOTSPOT_LIB_ARCH="amd64"
         -DHOTSPOT_VM_DISTRO="OpenJDK"  -DTARGET_OS_FAMILY_linux -DTARGET_ARCH_${BUILD_ARCH} -DTARGET_ARCH_MODEL_${BUILD_ARCH}${BUILD_64}
-        -DTARGET_OS_ARCH_linux_${BUILD_ARCH} -DTARGET_OS_ARCH_MODEL_linux_${BUILD_ARCH}${BUILD_64} -DJDK_MAJOR_VERSION="1.7" -DJDK_MINOR_VERSION=".1" -DRELEASE="major"
+        -DTARGET_OS_ARCH_linux_${BUILD_ARCH} -DTARGET_OS_ARCH_MODEL_linux_${BUILD_ARCH}${BUILD_64} -DJDK_MAJOR_VERSION="1.7" -DJDK_MINOR_VERSION=".1" -DJDK_MICRO_VERSION="1" -DJDK_BUILD_NUMBER="0" -DRELEASE="major"
         -DTARGET_COMPILER_gcc -D_REENTRANT -DVM_LITTLE_ENDIAN -D_LP64=1
         -DJRE_RELEASE_VERSION="1.8.0-internal-jianyu_2018_04_23_00_03-b00"
         -DENCLAVE_UNIX)

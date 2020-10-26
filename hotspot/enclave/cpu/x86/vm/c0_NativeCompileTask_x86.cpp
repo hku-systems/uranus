@@ -5,6 +5,7 @@
 #include <precompiled.hpp>
 #include "c0/c0_NativeCompileTask.hpp"
 #include <enclave/EnclaveNative.h>
+#include <prims/nativeLookup.hpp>
 
 #define __ _masm->
 
@@ -316,7 +317,9 @@ void NativeCompileTask::entry() {
                Address(rbp, frame::interpreter_frame_oop_temp_offset * wordSize));
     }
 
-    address native_entry = (address)EnclaveNative::resolve_function(method);
+    methodHandle m(method);
+    bool in_base;
+    address native_entry = NativeLookup::lookup(m, in_base, JavaThread::current());
     if (native_entry == NULL) {
         // handle unsatisfied error
     }

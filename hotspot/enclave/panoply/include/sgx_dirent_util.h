@@ -4,7 +4,6 @@
 #include <dirent.h>
 #include "struct/sgx_dirent_struct.h"
 #include "sgx/sys/types.h"
-#include "proxy/sgx_dirent_t.h"
 
 typedef struct __dirstream DIR;
 

@@ -1160,12 +1160,15 @@ Method* InstanceKlass::class_initializer() {
 }
 
 void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TRAPS) {
+  printf("doing init %lx\n");
+  printf("doing init %s\n", this_oop->name()->as_C_string());
   if (ReplayCompiles &&
       (ReplaySuppressInitializers == 1 ||
        ReplaySuppressInitializers >= 2 && this_oop->class_loader() != NULL)) {
     // Hide the existence of the initializer for the purpose of replaying the compile
     return;
   }
+  printf("doing exec %lx\n", this_oop->class_initializer());
 
   methodHandle h_method(THREAD, this_oop->class_initializer());
   assert(!this_oop->is_initialized(), "we cannot initialize twice");
@@ -1174,11 +1177,13 @@ void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TR
     this_oop->name()->print_value();
     tty->print_cr("%s (" INTPTR_FORMAT ")", h_method() == NULL ? "(no method)" : "", (address)this_oop());
   }
+  printf("call start\n");
   if (h_method() != NULL) {
     JavaCallArguments args; // No arguments
     JavaValue result(T_VOID);
     JavaCalls::call(&result, h_method, &args, CHECK); // Static call (no args)
   }
+  printf("call fin\n");
 }
 
 

@@ -1,7 +1,7 @@
 #ifndef SGX_SYSUIO_UTIL_H
 #define SGX_SYSUIO_UTIL_H
 
-#include "proxy/sgx_sysuio_t.h"
+#include "struct/sgx_sysuio_struct.h"
 #include <sgx_unistd_util.h>
 #include <string.h>
 

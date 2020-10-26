@@ -1413,19 +1413,16 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
         if (field_holder_klass == NULL) {
             if (will_run) {
                 field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
-                __ movptr(c_obj, (intptr_t)field_holder_klass);
-                __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
             } else {
                 // patch
                 PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
                 __ movptr(c_obj, NULL_WORD);
                 patchingStub->install();
-                __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
                 append_stub(patchingStub);
             }
         } else {
-            __ movptr(c_obj, (intptr_t)field_holder_klass);
-            __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+            __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
         }
     }
 
@@ -2364,8 +2361,7 @@ int NormalCompileTask::fast_compile() {
                     LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), JavaThread::current());
                     field_holder_klass = result.field_holder();
                 }
-                __ movptr(c_obj, (intptr_t)field_holder_klass);
-                __ movptr(c_obj, Address(c_obj, Klass::java_mirror_offset()));
+                __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
                 recv_r = c_obj;
                 val_r = tos_reg[0];
             } else {

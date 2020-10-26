@@ -1,6 +1,6 @@
 
 #include <sgx_stdio_util.h>
-
+#include "proxy/sgx_stdio_t.h"
 
 int printf(const char *fmt, ...)
 {

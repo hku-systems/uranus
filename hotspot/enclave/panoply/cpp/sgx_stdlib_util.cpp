@@ -1,5 +1,6 @@
 
 #include <sgx_stdlib_util.h>
+#include "proxy/sgx_stdlib_t.h"
 
 static inline char *strdup (const char *s) {
 	if (s == NULL) return NULL;

@@ -3,7 +3,7 @@
 
 #include <cstring>
 #include "struct/sgx_unistd_struct.h"
-#include "proxy/sgx_unistd_t.h"
+#include "sgx/sys/types.h"
 
 #ifdef __cplusplus
 extern "C" {

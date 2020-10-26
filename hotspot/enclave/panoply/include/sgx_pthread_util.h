@@ -4,7 +4,8 @@
 #include <sgx_thread.h>
 #include <pthread.h>
 #include "struct/sgx_pthread_struct.h"
-#include "proxy/Pthread_t.h"
+#include "sgx_eid.h"
+
 #include "sgx_stdio_util.h"
 
 extern sgx_enclave_id_t enclave_self_id;

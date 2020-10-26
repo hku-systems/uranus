@@ -1,7 +1,8 @@
 #ifndef SGX_NETDB_UTIL_H
 #define SGX_NETDB_UTIL_H 1
 
-#include <proxy/sgx_netdb_t.h>
+#include "sgx/sys/types.h"
+#include "struct/sgx_netdb_struct.h"
 // #define __OPTIMIZE__ 1
 // #include <TorEnclave_t.h>
 #include <sgx_stdio_util.h>

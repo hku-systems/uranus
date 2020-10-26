@@ -3,6 +3,7 @@
 //
 
 #include "sgx_fcntl_util.h"
+#include "proxy/sgx_fcntl_t.h"
 
 int open(const char *pathname, int flags, ...)
 {

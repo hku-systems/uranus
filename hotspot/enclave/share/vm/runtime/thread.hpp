@@ -25,10 +25,12 @@
 #ifndef SHARE_VM_RUNTIME_THREAD_HPP
 #define SHARE_VM_RUNTIME_THREAD_HPP
 
+
 #include "memory"
 #include "memory/allocation.hpp"
 #include "oops/oop.hpp"
 #include "prims/jni.h"
+#include "prims/jvm_misc.hpp"
 #include "runtime/frame.hpp"
 #include "runtime/javaFrameAnchor.hpp"
 #include "runtime/os.hpp"
@@ -198,6 +200,7 @@ class JavaThread: public Thread {
   // Constructor
   JavaThread() {
       _has_unhandle_exception = false;
+      _jni_environment.functions = jni_functions();
   } // for main thread and JNI attached threads
 
   // Testers

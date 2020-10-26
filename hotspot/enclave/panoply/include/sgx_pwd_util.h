@@ -2,7 +2,6 @@
 #define SGX_PWD_UTIL_H
 
 #include <struct/sgx_pwd_struct.h>
-#include <proxy/sgx_pwd_t.h>
 
 struct passwd *getpwuid(uid_t uid);
 

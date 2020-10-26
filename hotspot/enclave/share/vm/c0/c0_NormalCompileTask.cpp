@@ -16,9 +16,9 @@
 // 2. If we expect non-tos, pop to rax
 // 3. If we have (vtos, vtos), the tos is decided in the generator
 
-int NormalCompileTask::break_bci = 0;
-char* NormalCompileTask::break_method = "growTable";
-char* NormalCompileTask::break_klass = "org/apache/spark/util/collection/AppendOnlyMap";
+int NormalCompileTask::break_bci = 5;
+char* NormalCompileTask::break_method = "<init>";
+char* NormalCompileTask::break_klass = "java/lang/ThreadGroup";
 
 void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     TosState cast_tos;
@@ -166,7 +166,7 @@ int NormalCompileTask::compile(int size) {
             strcmp(method->name()->as_C_string(), break_method) == 0 &&
             strcmp(method->klass_name()->as_C_string(), break_klass) == 0 &&
             break_bci == bs->bci()) {
-            //__ os_breakpoint();
+            __ os_breakpoint();
             //Temporarily comment because it is for debug in macroAssembler
         }
 

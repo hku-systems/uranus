@@ -2,7 +2,8 @@
 #define SGX_SYSSOCKET_UTIL_H
 
 #include "struct/sgx_syssocket_struct.h"
-#include "proxy/sgx_syssocket_t.h"
+#include "sgx/sys/types.h"
+#include "struct/sgx_syssocket_struct.h"
 #include <sgx_stdio_util.h>
 #include <string.h>
 #include "sgx_trts.h"

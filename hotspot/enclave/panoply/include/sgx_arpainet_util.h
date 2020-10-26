@@ -2,7 +2,6 @@
 #define SGX_ARPAINET_UTIL_H
 
 #include <struct/sgx_arpainet_struct.h>
-#include <proxy/sgx_arpainet_t.h>
 
 in_addr_t inet_addr (const char *cp);
 in_addr_t inet_lnaof (struct in_addr in);

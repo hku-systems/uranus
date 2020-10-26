@@ -1,7 +1,8 @@
 #ifndef SGX_SYSMMAN_UTIL_H
 #define SGX_SYSMMAN_UTIL_H
 
-#include "proxy/sgx_sysmman_t.h"
+#include "sgx/sys/types.h"
+#include "struct/sgx_sysmman_struct.h"
 
 void *mmap (void *__addr, size_t __len, int __prot, int __flags, int __fd, __off_t __offset);
 

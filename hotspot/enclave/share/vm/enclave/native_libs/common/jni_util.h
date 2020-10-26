@@ -33,8 +33,6 @@
 extern "C" {
 #endif
 
-#define fprintf(fd, ...)
-
 /*
  * This file contains utility functions that can be implemented in pure JNI.
  *

@@ -24,7 +24,7 @@
  */
 
 #include "jni.h"
-#include "fdlibm/fdlibm.h"
+#include "fdlibm.h"
 
 #include "java_lang_StrictMath.h"
 

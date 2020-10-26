@@ -25,8 +25,10 @@ void JavaThread::oops_do(OopClosure* f, CLDClosure* cld_f, CodeBlobClosure* cf) 
 }
 
 static void initialize_class(Symbol* class_name, TRAPS) {
+  printf("thread class %s\n", class_name->as_C_string());
   Klass* klass = SystemDictionary::resolve_or_fail(class_name, true, CHECK);
   InstanceKlass::cast(klass)->initialize(CHECK);
+  printf("thread class %s fin\n", class_name->as_C_string());
 }
 
 // Creates the initial ThreadGroup
@@ -34,6 +36,7 @@ static Handle create_initial_thread_group(TRAPS) {
   Klass* k = SystemDictionary::resolve_or_fail(vmSymbols::java_lang_ThreadGroup(), true, CHECK_NH);
   instanceKlassHandle klass (THREAD, k);
 
+  printf("init\n");
   Handle system_instance = klass->allocate_instance_handle(CHECK_NH);
   {
     JavaValue result(T_VOID);
@@ -46,6 +49,7 @@ static Handle create_initial_thread_group(TRAPS) {
   }
   Universe::set_system_thread_group(system_instance());
 
+  printf("init\n");
   Handle main_instance = klass->allocate_instance_handle(CHECK_NH);
   {
     JavaValue result(T_VOID);
@@ -94,7 +98,15 @@ static void call_initializeSystemClass(TRAPS) {
                          vmSymbols::void_method_signature(), CHECK);
 }
 
+bool is_thread_init = false;
+
 void JavaThread::initialize() {
+  if (is_thread_init) {
+    return;
+  }
+
+  is_thread_init = true;
+
   JavaThread *THREAD = this;
   initialize_class(vmSymbols::java_lang_String(), CHECK);
 
@@ -114,7 +126,7 @@ void JavaThread::initialize() {
   initialize_class(vmSymbols::java_lang_Class(), CHECK);
 
   // The VM preresolves methods to these classes. Make sure that they get initialized
-  initialize_class(vmSymbols::java_lang_reflect_Method(), CHECK);
+//  initialize_class(vmSymbols::java_lang_reflect_Method(), CHECK);
 //  initialize_class(vmSymbols::java_lang_ref_Finalizer(),  CHECK);
   call_initializeSystemClass(CHECK);
 

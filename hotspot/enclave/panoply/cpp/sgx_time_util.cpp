@@ -1,6 +1,6 @@
 
 #include <sgx_time_util.h>
-
+#include <proxy/sgx_time_t.h>
 long int timezone;
 
 char *ctime (const time_t *__timer) {

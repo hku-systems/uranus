@@ -2,9 +2,7 @@
 #define SGX_STDLIB_UTIL_H
 
 #include <tlibc/stdlib.h>
-#include <proxy/sgx_stdlib_t.h>
 #include <sgx_trts.h>
-#include <stdlib.h>
 #include <sgx_stdio_util.h>
 #include <string.h>
 

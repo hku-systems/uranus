@@ -4,7 +4,9 @@
 //#include <libio.h>
 #include <tlibc/stdio.h>
 #include "struct/sgx_stdio_struct.h"
-#include "proxy/sgx_stdio_t.h"
+#include "stdarg.h"
+#include "sgx/sys/types.h"
+#include "struct/sgx_stdio_struct.h"
 #include <stdlib.h>
 #include <string.h>
 

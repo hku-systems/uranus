@@ -1,7 +1,7 @@
 #ifndef SGX_SYSWAIT_UTIL_H
 #define SGX_SYSWAIT_UTIL_H
 
-#include <proxy/sgx_syswait_t.h>
+#include "struct/sgx_syswait_struct.h"
 
 __pid_t waitpid(__pid_t __pid, int *__stat_loc, int __options);
 
