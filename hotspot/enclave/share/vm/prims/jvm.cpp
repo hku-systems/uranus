@@ -832,6 +832,11 @@ JVM_LEAF(char*, JVM_NativePath(char* path))
   return os::native_path(path);
 JVM_END
 
+JVM_LEAF(void, JVM_CopySwapMemory(JNIEnv *env, jobject srcObj, jlong srcOffset,
+        jobject dstObj, jlong dstOffset, jlong size,
+        jlong elemSize)) {
+    D_WARN_Unimplement;
+  } JVM_END
 
 // Misc. class handling ///////////////////////////////////////////////////////////
 JVM_ENTRY(jclass, JVM_GetCallerClass(JNIEnv* env, int depth))
@@ -1460,6 +1465,7 @@ public:
 JVM_ENTRY(jobject, JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls))
   JVMWrapper("JVM_GetStackAccessControlContext");
   D_WARN_Unimplement;
+  return NULL;
 JVM_END
 
 

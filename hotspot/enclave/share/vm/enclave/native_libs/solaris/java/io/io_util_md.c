@@ -145,7 +145,8 @@ fileClose(JNIEnv *env, jobject this, jfieldID fid)
             SET_FD(this, fd, fid); // restore fd
             JNU_ThrowIOExceptionWithLastError(env, "open /dev/null failed");
         } else {
-            dup2(devnull, fd);
+          // TODO
+//            dup2(devnull, fd);
             close(devnull);
         }
     } else if (close(fd) == -1) {

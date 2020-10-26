@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef SHARE_VM_RUNTIME_SYNCHRONIZER_
-#define SHARE_VM_RUNTIME_SYNCHRONIZER_
+#ifndef SHARE_VM_RUNTIME_SYNCHRONIZER_HPP
+#define SHARE_VM_RUNTIME_SYNCHRONIZER_HPP
 
 #include "oops/markOop.hpp"
 #include "runtime/handles.hpp"

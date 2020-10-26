@@ -9,6 +9,9 @@
 
 #include <fpu_control.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 char *strdup (const char *s);
 
@@ -37,5 +40,8 @@ int mkstemp(char *string);
 
 char *mkdtemp(char *temp);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif 

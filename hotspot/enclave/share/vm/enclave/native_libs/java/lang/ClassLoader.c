@@ -37,8 +37,8 @@
 #define FILENAME_MAX 4096
 
 /* defined in libverify.so/verify.dll (src file common/check_format.c) */
-jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) { return JNI_TRUE; }
-jboolean VerifyFixClassname(char *utf_name) { return JNI_FALSE; }
+//jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) { return JNI_TRUE; }
+//jboolean VerifyFixClassname(char *utf_name) { return JNI_FALSE; }
 
 static JNINativeMethod methods[] = {
     {"retrieveDirectives",  "()Ljava/lang/AssertionStatusDirectives;", (void *)&JVM_AssertionStatusDirectives}

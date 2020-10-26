@@ -32,7 +32,6 @@
 // System includes
 
 #include <unistd.h>
-#include <syscall_include/unistd.h>
 #include <sys/socket.h>
 #include <sys/poll.h>
 #include <netdb.h>

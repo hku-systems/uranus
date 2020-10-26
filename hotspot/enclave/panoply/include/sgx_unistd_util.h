@@ -1,7 +1,6 @@
 #ifndef SGX_UNISTD_UTIL_H
 #define SGX_UNISTD_UTIL_H
 
-#include <cstring>
 #include "struct/sgx_unistd_struct.h"
 #include "sgx/sys/types.h"
 
@@ -17,7 +16,7 @@ int gethostname(char *name, size_t len);
 
 int sethostname(const char *name, size_t len);
 
-int ftruncate64 (int __fd, __off64_t __length);
+int ftruncate (int __fd, __off64_t __length);
  
 long lseek(int fd, long offset, int whence);
 

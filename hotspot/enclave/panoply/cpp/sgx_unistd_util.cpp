@@ -25,18 +25,18 @@
 //	return retval;
 //}
 //
-//int ftruncate64 (int __fd, __off64_t __length) {
-//	int retval;
-//	ocall_ftruncate64(&retval, __fd, __length);
-//	return retval;
-//}
+int ftruncate (int __fd, __off64_t __length) {
+	int retval;
+	ocall_ftruncate64(&retval, __fd, __length);
+	return retval;
+}
 //
-//long lseek(int fd, long offset, int whence)
-//{
-//	long retval;
-//	ocall_lseek(&retval, fd, offset, whence);
-//	return retval;
-//}
+long lseek(int fd, long offset, int whence)
+{
+	long retval;
+	ocall_lseek(&retval, fd, offset, whence);
+	return retval;
+}
 //
 //long lseek64(int fd, long offset, int whence) {
 //	long retval;
@@ -44,12 +44,12 @@
 //	return retval;
 //}
 //
-//int fsync(int fd)
-//{
-//	int retval;
-//	ocall_fsync(&retval, fd);
-//	return retval;
-//}
+int fsync(int fd)
+{
+	int retval;
+	ocall_fsync(&retval, fd);
+	return retval;
+}
 //
 long read(int fd, void *buf, size_t count)
 {
@@ -101,9 +101,13 @@ char *strcat (char *__restrict __dest, const char *__restrict __src) {
 	memcpy(__dest + start, __src, strlen(__src) + 1);
 }
 
+void _exit(int status) {
+  char* NULL_PTR = NULL;
+  *NULL_PTR;
+}
 
+void exit(int status) {
+  char* NULL_PTR = NULL;
+  *NULL_PTR;
+}
 
-/* Standard file descriptors.  */
-#define	STDIN_FILENO	0	/* Standard input.  */
-#define	STDOUT_FILENO	1	/* Standard output.  */
-#define	STDERR_FILENO	2	/* Standard error output.  */

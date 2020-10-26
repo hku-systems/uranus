@@ -3,12 +3,8 @@
 
 //#include <libio.h>
 #include <tlibc/stdio.h>
-#include "struct/sgx_stdio_struct.h"
-#include "stdarg.h"
 #include "sgx/sys/types.h"
 #include "struct/sgx_stdio_struct.h"
-#include <stdlib.h>
-#include <string.h>
 
 #define _IO_off_t __off_t
 #ifdef _IO_MTSAFE_IO
@@ -88,9 +84,12 @@ typedef struct _IO_FILE FILE;
 
 #define WRAPBUFSIZ 15000
 
-
-
 int printf(const char *fmt, ...);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 int fprintf(FILE* fp, const char* fmt, ...);
 
@@ -162,6 +161,10 @@ int sscanf (const char *__restrict __s,
             const char *__restrict __format, ...);
 
 int remove (const char *__filename);
+
+#ifdef __cplusplus
+}
+#endif
 
 #ifdef USE_INNER_SSCANF
 

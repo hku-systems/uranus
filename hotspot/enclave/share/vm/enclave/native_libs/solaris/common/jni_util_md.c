@@ -69,6 +69,5 @@ void buildJniFunctionName(const char *sym, const char *cname,
 int
 getErrorString(int err, char *buf, size_t len)
 {
-    if (err == 0 || len < 1) return 0;
-    return strerror_r(err, buf, len);
+    return 0;
 }

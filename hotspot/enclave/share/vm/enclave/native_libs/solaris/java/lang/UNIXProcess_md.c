@@ -105,30 +105,7 @@
 static void
 setSIGCHLDHandler(JNIEnv *env)
 {
-    /* There is a subtle difference between having the signal handler
-     * for SIGCHLD be SIG_DFL and SIG_IGN.  We cannot obtain process
-     * termination information for child processes if the signal
-     * handler is SIG_IGN.  It must be SIG_DFL.
-     *
-     * We used to set the SIGCHLD handler only on Linux, but it's
-     * safest to set it unconditionally.
-     *
-     * Consider what happens if java's parent process sets the SIGCHLD
-     * handler to SIG_IGN.  Normally signal handlers are inherited by
-     * children, but SIGCHLD is a controversial case.  Solaris appears
-     * to always reset it to SIG_DFL, but this behavior may be
-     * non-standard-compliant, and we shouldn't rely on it.
-     *
-     * References:
-     * http://www.opengroup.org/onlinepubs/7908799/xsh/exec.html
-     * http://www.pasc.org/interps/unofficial/db/p1003.1/pasc-1003.1-132.html
-     */
-    struct sigaction sa;
-    sa.sa_handler = SIG_DFL;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_NOCLDSTOP | SA_RESTART;
-    if (sigaction(SIGCHLD, &sa, NULL) < 0)
-        JNU_ThrowInternalError(env, "Can't set SIGCHLD handler");
+    // TODO
 }
 
 static void*
@@ -150,21 +127,14 @@ xmalloc(JNIEnv *env, size_t size)
 static const char*
 defaultPath(void)
 {
-#ifdef __solaris__
-    /* These really are the Solaris defaults! */
-    return (geteuid() == 0 || getuid() == 0) ?
-        "/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:/opt/SUNWspro/bin:/usr/sbin" :
-        "/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:/opt/SUNWspro/bin:";
-#else
     return ":/bin:/usr/bin";    /* glibc */
-#endif
 }
 
 static const char*
 effectivePath(void)
 {
-    const char *s = getenv("PATH");
-    return (s != NULL) ? s : defaultPath();
+    // TODO
+    return defaultPath();
 }
 
 static int
@@ -234,43 +204,7 @@ Java_java_lang_UNIXProcess_waitForProcessExit(JNIEnv* env,
                                               jobject junk,
                                               jint pid)
 {
-    /* We used to use waitid() on Solaris, waitpid() on Linux, but
-     * waitpid() is more standard, so use it on all POSIX platforms. */
-    int status;
-    /* Wait for the child process to exit.  This returns immediately if
-       the child has already exited. */
-    while (waitpid(pid, &status, 0) < 0) {
-        switch (errno) {
-        case ECHILD: return 0;
-        case EINTR: break;
-        default: return -1;
-        }
-    }
-
-    if (WIFEXITED(status)) {
-        /*
-         * The child exited normally; get its exit code.
-         */
-        return WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-        /* The child exited because of a signal.
-         * The best value to return is 0x80 + signal number,
-         * because that is what all Unix shells do, and because
-         * it allows callers to distinguish between process exit and
-         * process death by signal.
-         * Unfortunately, the historical behavior on Solaris is to return
-         * the signal number, and we preserve this for compatibility. */
-#ifdef __solaris__
-        return WTERMSIG(status);
-#else
-        return 0x80 + WTERMSIG(status);
-#endif
-    } else {
-        /*
-         * Unknown exit code; pass it through.
-         */
-        return status;
-    }
+    return 0;
 }
 
 static const char *
@@ -398,63 +332,19 @@ __attribute_noinline__
 #ifdef START_CHILD_USE_CLONE
 static pid_t
 cloneChild(ChildStuff *c) {
-#ifdef __linux__
-#define START_CHILD_CLONE_STACK_SIZE (64 * 1024)
-    /*
-     * See clone(2).
-     * Instead of worrying about which direction the stack grows, just
-     * allocate twice as much and start the stack in the middle.
-     */
-    if ((c->clone_stack = malloc(2 * START_CHILD_CLONE_STACK_SIZE)) == NULL)
-        /* errno will be set to ENOMEM */
-        return -1;
-    return clone(childProcess,
-                 c->clone_stack + START_CHILD_CLONE_STACK_SIZE,
-                 CLONE_VFORK | CLONE_VM | SIGCHLD, c);
-#else
-/* not available on Solaris / Mac */
     assert(0);
     return -1;
-#endif
 }
 #endif
 
 static pid_t
 vforkChild(ChildStuff *c) {
-    volatile pid_t resultPid;
-
-    /*
-     * We separate the call to vfork into a separate function to make
-     * very sure to keep stack of child from corrupting stack of parent,
-     * as suggested by the scary gcc warning:
-     *  warning: variable 'foo' might be clobbered by 'longjmp' or 'vfork'
-     */
-    resultPid = vfork();
-
-    if (resultPid == 0) {
-        childProcess(c);
-    }
-    assert(resultPid != 0);  /* childProcess never returns */
-    return resultPid;
+    return -1;
 }
 
 static pid_t
 forkChild(ChildStuff *c) {
-    pid_t resultPid;
-
-    /*
-     * From Solaris fork(2): In Solaris 10, a call to fork() is
-     * identical to a call to fork1(); only the calling thread is
-     * replicated in the child process. This is the POSIX-specified
-     * behavior for fork().
-     */
-    resultPid = fork();
-
-    if (resultPid == 0) {
-        childProcess(c);
-    }
-    assert(resultPid != 0);  /* childProcess never returns */
-    return resultPid;
+    return -1;
 }
 
 #if defined(__solaris__) || defined(_ALLBSD_SOURCE) || defined(_AIX)
@@ -548,18 +438,7 @@ spawnChild(JNIEnv *env, jobject process, ChildStuff *c, const char *helperpath) 
  */
 static pid_t
 startChild(JNIEnv *env, jobject process, ChildStuff *c, const char *helperpath) {
-    switch (c->mode) {
-      case MODE_VFORK:
-        return vforkChild(c);
-      case MODE_FORK:
-        return forkChild(c);
-#if defined(__solaris__) || defined(_ALLBSD_SOURCE) || defined(_AIX)
-      case MODE_POSIX_SPAWN:
-        return spawnChild(env, process, c, helperpath);
-#endif
-      default:
-        return -1;
-    }
+    return -1;
 }
 
 JNIEXPORT jint JNICALL
@@ -574,144 +453,7 @@ Java_java_lang_UNIXProcess_forkAndExec(JNIEnv *env,
                                        jintArray std_fds,
                                        jboolean redirectErrorStream)
 {
-    int errnum;
-    int resultPid = -1;
-    int in[2], out[2], err[2], fail[2], childenv[2];
-    jint *fds = NULL;
-    const char *phelperpath = NULL;
-    const char *pprog = NULL;
-    const char *pargBlock = NULL;
-    const char *penvBlock = NULL;
-    ChildStuff *c;
-
-    in[0] = in[1] = out[0] = out[1] = err[0] = err[1] = fail[0] = fail[1] = -1;
-    childenv[0] = childenv[1] = -1;
-
-    if ((c = NEW(ChildStuff, 1)) == NULL) return -1;
-    c->argv = NULL;
-    c->envv = NULL;
-    c->pdir = NULL;
-    c->clone_stack = NULL;
-
-    /* Convert prog + argBlock into a char ** argv.
-     * Add one word room for expansion of argv for use by
-     * execve_as_traditional_shell_script.
-     * This word is also used when using spawn mode
-     */
-    assert(prog != NULL && argBlock != NULL);
-    if ((phelperpath = getBytes(env, helperpath))   == NULL) goto Catch;
-    if ((pprog       = getBytes(env, prog))         == NULL) goto Catch;
-    if ((pargBlock   = getBytes(env, argBlock))     == NULL) goto Catch;
-    if ((c->argv     = NEW(const char *, argc + 3)) == NULL) goto Catch;
-    c->argv[0] = pprog;
-    c->argc = argc + 2;
-    initVectorFromBlock(c->argv+1, pargBlock, argc);
-
-    if (envBlock != NULL) {
-        /* Convert envBlock into a char ** envv */
-        if ((penvBlock = getBytes(env, envBlock))   == NULL) goto Catch;
-        if ((c->envv = NEW(const char *, envc + 1)) == NULL) goto Catch;
-        initVectorFromBlock(c->envv, penvBlock, envc);
-    }
-
-    if (dir != NULL) {
-        if ((c->pdir = getBytes(env, dir)) == NULL) goto Catch;
-    }
-
-    assert(std_fds != NULL);
-    fds = (*env)->GetIntArrayElements(env, std_fds, NULL);
-    if (fds == NULL) goto Catch;
-
-    if ((fds[0] == -1 && pipe(in)  < 0) ||
-        (fds[1] == -1 && pipe(out) < 0) ||
-        (fds[2] == -1 && pipe(err) < 0) ||
-        (pipe(childenv) < 0) ||
-        (pipe(fail) < 0)) {
-        throwIOException(env, errno, "Bad file descriptor");
-        goto Catch;
-    }
-    c->fds[0] = fds[0];
-    c->fds[1] = fds[1];
-    c->fds[2] = fds[2];
-
-    copyPipe(in,   c->in);
-    copyPipe(out,  c->out);
-    copyPipe(err,  c->err);
-    copyPipe(fail, c->fail);
-    copyPipe(childenv, c->childenv);
-
-    c->redirectErrorStream = redirectErrorStream;
-    c->mode = mode;
-
-    resultPid = startChild(env, process, c, phelperpath);
-    assert(resultPid != 0);
-
-    if (resultPid < 0) {
-        switch (c->mode) {
-          case MODE_VFORK:
-            throwIOException(env, errno, "vfork failed");
-            break;
-          case MODE_FORK:
-            throwIOException(env, errno, "fork failed");
-            break;
-          case MODE_POSIX_SPAWN:
-            throwIOException(env, errno, "spawn failed");
-            break;
-        }
-        goto Catch;
-    }
-    close(fail[1]); fail[1] = -1; /* See: WhyCantJohnnyExec  (childproc.c)  */
-
-    switch (readFully(fail[0], &errnum, sizeof(errnum))) {
-    case 0: break; /* Exec succeeded */
-    case sizeof(errnum):
-        waitpid(resultPid, NULL, 0);
-        throwIOException(env, errnum, "Exec failed");
-        goto Catch;
-    default:
-        throwIOException(env, errno, "Read failed");
-        goto Catch;
-    }
-
-    fds[0] = (in [1] != -1) ? in [1] : -1;
-    fds[1] = (out[0] != -1) ? out[0] : -1;
-    fds[2] = (err[0] != -1) ? err[0] : -1;
-
- Finally:
-    free(c->clone_stack);
-
-    /* Always clean up the child's side of the pipes */
-    closeSafely(in [0]);
-    closeSafely(out[1]);
-    closeSafely(err[1]);
-
-    /* Always clean up fail and childEnv descriptors */
-    closeSafely(fail[0]);
-    closeSafely(fail[1]);
-    closeSafely(childenv[0]);
-    closeSafely(childenv[1]);
-
-    releaseBytes(env, helperpath, phelperpath);
-    releaseBytes(env, prog,       pprog);
-    releaseBytes(env, argBlock,   pargBlock);
-    releaseBytes(env, envBlock,   penvBlock);
-    releaseBytes(env, dir,        c->pdir);
-
-    free(c->argv);
-    free(c->envv);
-    free(c);
-
-    if (fds != NULL)
-        (*env)->ReleaseIntArrayElements(env, std_fds, fds, 0);
-
-    return resultPid;
-
- Catch:
-    /* Clean up the parent's side of the pipes in case of failure only */
-    closeSafely(in [1]); in[1] = -1;
-    closeSafely(out[0]); out[0] = -1;
-    closeSafely(err[0]); err[0] = -1;
-    goto Finally;
+    return -1;
 }
 
 JNIEXPORT void JNICALL
@@ -720,6 +462,5 @@ Java_java_lang_UNIXProcess_destroyProcess(JNIEnv *env,
                                           jint pid,
                                           jboolean force)
 {
-    int sig = (force == JNI_TRUE) ? SIGKILL : SIGTERM;
-    kill(pid, sig);
+    return;
 }

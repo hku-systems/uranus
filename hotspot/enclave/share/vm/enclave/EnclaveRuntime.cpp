@@ -108,7 +108,7 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     universe_post_init();
 
     is_init = true;
-    EnclaveNative::init();
+
     EnclaveException::init();
 
     StubRoutines::initialize1();

@@ -25,7 +25,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <strings.h>
+//#include <strings.h>
 #include <time.h>
 #include <limits.h>
 #include <errno.h>
@@ -113,106 +113,7 @@ getPathName(const char *dir, const char *name) {
 static char *
 findZoneinfoFile(char *buf, size_t size, const char *dir)
 {
-    DIR *dirp = NULL;
-    struct stat statbuf;
-    struct dirent64 *dp = NULL;
-    struct dirent64 *entry = NULL;
-    char *pathname = NULL;
-    int fd = -1;
-    char *dbuf = NULL;
-    char *tz = NULL;
-
-    dirp = opendir(dir);
-    if (dirp == NULL) {
-        return NULL;
-    }
-
-    entry = (struct dirent64 *) malloc((size_t) pathconf(dir, _PC_NAME_MAX));
-    if (entry == NULL) {
-        (void) closedir(dirp);
-        return NULL;
-    }
-
-    while (readdir64_r(dirp, entry, &dp) == 0 && dp != NULL) {
-        /*
-         * Skip '.' and '..' (and possibly other .* files)
-         */
-        if (dp->d_name[0] == '.') {
-            continue;
-        }
-
-        /*
-         * Skip "ROC", "posixrules", and "localtime".
-         */
-        if ((strcmp(dp->d_name, "ROC") == 0)
-            || (strcmp(dp->d_name, "posixrules") == 0)
-#if defined(__solaris__)
-            /*
-             * Skip the "src" and "tab" directories on Solaris.
-             */
-            || (strcmp(dp->d_name, "src") == 0)
-            || (strcmp(dp->d_name, "tab") == 0)
-#endif
-            || (strcmp(dp->d_name, "localtime") == 0)) {
-            continue;
-        }
-
-        pathname = getPathName(dir, dp->d_name);
-        if (pathname == NULL) {
-            break;
-        }
-        if (stat(pathname, &statbuf) == -1) {
-            break;
-        }
-
-        if (S_ISDIR(statbuf.st_mode)) {
-            tz = findZoneinfoFile(buf, size, pathname);
-            if (tz != NULL) {
-                break;
-            }
-        } else if (S_ISREG(statbuf.st_mode) && (size_t)statbuf.st_size == size) {
-            dbuf = (char *) malloc(size);
-            if (dbuf == NULL) {
-                break;
-            }
-            if ((fd = open(pathname, O_RDONLY)) == -1) {
-                break;
-            }
-            if (read(fd, dbuf, size) != (ssize_t) size) {
-                break;
-            }
-            if (memcmp(buf, dbuf, size) == 0) {
-                tz = getZoneName(pathname);
-                if (tz != NULL) {
-                    tz = strdup(tz);
-                }
-                break;
-            }
-            free((void *) dbuf);
-            dbuf = NULL;
-            (void) close(fd);
-            fd = -1;
-        }
-        free((void *) pathname);
-        pathname = NULL;
-    }
-
-    if (entry != NULL) {
-        free((void *) entry);
-    }
-    if (dirp != NULL) {
-        (void) closedir(dirp);
-    }
-    if (pathname != NULL) {
-        free((void *) pathname);
-    }
-    if (fd != -1) {
-        (void) close(fd);
-    }
-    if (dbuf != NULL) {
-        free((void *) dbuf);
-    }
-    return tz;
+    return NULL;
 }
 
 #if defined(__linux__) || defined(MACOSX)
@@ -224,100 +125,7 @@ findZoneinfoFile(char *buf, size_t size, const char *dir)
 static char *
 getPlatformTimeZoneID()
 {
-    struct stat statbuf;
-    char *tz = NULL;
-    FILE *fp;
-    int fd;
-    char *buf;
-    size_t size;
-
-#if defined(__linux__)
-    /*
-     * Try reading the /etc/timezone file for Debian distros. There's
-     * no spec of the file format available. This parsing assumes that
-     * there's one line of an Olson tzid followed by a '\n', no
-     * leading or trailing spaces, no comments.
-     */
-    if ((fp = fopen(ETC_TIMEZONE_FILE, "r")) != NULL) {
-        char line[256];
-
-        if (fgets(line, sizeof(line), fp) != NULL) {
-            char *p = strchr(line, '\n');
-            if (p != NULL) {
-                *p = '\0';
-            }
-            if (strlen(line) > 0) {
-                tz = strdup(line);
-            }
-        }
-        (void) fclose(fp);
-        if (tz != NULL) {
-            return tz;
-        }
-    }
-#endif /* defined(__linux__) */
-
-    /*
-     * Next, try /etc/localtime to find the zone ID.
-     */
-    if (lstat(DEFAULT_ZONEINFO_FILE, &statbuf) == -1) {
-        return NULL;
-    }
-
-    /*
-     * If it's a symlink, get the link name and its zone ID part. (The
-     * older versions of timeconfig created a symlink as described in
-     * the Red Hat man page. It was changed in 1999 to create a copy
-     * of a zoneinfo file. It's no longer possible to get the zone ID
-     * from /etc/localtime.)
-     */
-    if (S_ISLNK(statbuf.st_mode)) {
-        char linkbuf[PATH_MAX+1];
-        int len;
-
-        if ((len = readlink(DEFAULT_ZONEINFO_FILE, linkbuf, sizeof(linkbuf)-1)) == -1) {
-            jio_fprintf(stderr, (const char *) "can't get a symlink of %s\n",
-                        DEFAULT_ZONEINFO_FILE);
-            return NULL;
-        }
-        linkbuf[len] = '\0';
-        tz = getZoneName(linkbuf);
-        if (tz != NULL) {
-            tz = strdup(tz);
-            return tz;
-        }
-    }
-
-    /*
-     * If it's a regular file, we need to find out the same zoneinfo file
-     * that has been copied as /etc/localtime.
-     * If initial symbolic link resolution failed, we should treat target
-     * file as a regular file.
-     */
-    if ((fd = open(DEFAULT_ZONEINFO_FILE, O_RDONLY)) == -1) {
-        return NULL;
-    }
-    if (fstat(fd, &statbuf) == -1) {
-        (void) close(fd);
-        return NULL;
-    }
-    size = (size_t) statbuf.st_size;
-    buf = (char *) malloc(size);
-    if (buf == NULL) {
-        (void) close(fd);
-        return NULL;
-    }
-
-    if (read(fd, buf, size) != (ssize_t) size) {
-        (void) close(fd);
-        free((void *) buf);
-        return NULL;
-    }
-    (void) close(fd);
-
-    tz = findZoneinfoFile(buf, size, ZONEINFO_DIR);
-    free((void *) buf);
-    return tz;
+    return NULL;
 }
 
 #elif defined(__solaris__)
@@ -755,60 +563,8 @@ tzerr:
 char *
 findJavaTZ_md(const char *java_home_dir)
 {
-    char *tz;
-    char *javatz = NULL;
-    char *freetz = NULL;
-
-    tz = getenv("TZ");
-
-    if (tz == NULL || *tz == '\0') {
-        tz = getPlatformTimeZoneID();
-        freetz = tz;
-    }
-
-    if (tz != NULL) {
-        /* Ignore preceding ':' */
-        if (*tz == ':') {
-            tz++;
-        }
-#if defined(__linux__)
-        /* Ignore "posix/" prefix on Linux. */
-        if (strncmp(tz, "posix/", 6) == 0) {
-            tz += 6;
-        }
-#endif
-
-#if defined(_AIX)
-        /* On AIX do the platform to Java mapping. */
-        javatz = mapPlatformToJavaTimezone(java_home_dir, tz);
-        if (freetz != NULL) {
-            free((void *) freetz);
-        }
-#else
-#if defined(__solaris__)
-        /* Solaris might use localtime, so handle it here. */
-        if (strcmp(tz, "localtime") == 0) {
-            javatz = getSolarisDefaultZoneID();
-            if (freetz != NULL) {
-                free((void *) freetz);
-            }
-        } else
-#endif
-        if (freetz == NULL) {
-            /* strdup if we are still working on getenv result. */
-            javatz = strdup(tz);
-        } else if (freetz != tz) {
-            /* strdup and free the old buffer, if we moved the pointer. */
-            javatz = strdup(tz);
-            free((void *) freetz);
-        } else {
-            /* we are good if we already work on a freshly allocated buffer. */
-            javatz = tz;
-        }
-#endif
-    }
-
-    return javatz;
+    // TODO
+    return NULL;
 }
 
 /**
@@ -859,7 +615,7 @@ getGMTOffsetID()
 
     offset = localtm.tm_isdst ? altzone : timezone;
 #else
-    offset = timezone;
+    offset = 0;
 #endif
 
     if (offset == 0) {

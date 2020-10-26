@@ -50,12 +50,11 @@ void ThreadShadow::clear_pending_exception() {
 // Implementation of Exceptions
 
 bool Exceptions::special_exception(Thread* thread, const char* file, int line, Handle h_exception) {
-  JavaThread* javaThread = (JavaThread*)thread;
-  RegisterMap reg_map(javaThread, false);
-  frame rf = javaThread->last_frame();
-  frame f = rf.sender_for_interpreter_frame(&reg_map);
-  printf("last %s %d\n", f.interpreter_frame_method()->name()->as_C_string(), f.interpreter_frame_bci());
-  vm_exit_during_initialization("Exception", "error");
+  if (!Universe::is_fully_initialized()) {
+    vm_exit_during_initialization(h_exception);
+    ShouldNotReachHere();
+  }
+  return false;
 }
 
 bool Exceptions::special_exception(Thread* thread, const char* file, int line, Symbol* h_name, const char* message) {
@@ -98,6 +97,11 @@ void Exceptions::_throw(Thread* thread, const char* file, int line, Handle h_exc
 
   // set the pending exception
   thread->set_pending_exception(h_exception(), file, line);
+  if (message) {
+    printf(D_ERROR("Exception") " throw at %s %d %s\n", file, line, message);
+  } else {
+    printf(D_ERROR("Exception") " throw at %s %d\n", file, line);
+  }
 }
 
 

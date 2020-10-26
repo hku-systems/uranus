@@ -7,6 +7,10 @@
 
 #include "struct/sgx_dlfcn_struct.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void *dlopen (const char *__file, int __mode);
 
 int dlclose (void *handle);
@@ -19,5 +23,9 @@ int dladdr1 (const void *__address, Dl_info *__info,
                                        void **__extra_info, int __flags);
 
 int dlinfo (void * __handle, int __request, void * __arg);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //HOTSPOT_SGX_DLFCN_UTIL_H

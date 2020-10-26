@@ -277,8 +277,9 @@ bool os::find(address addr, outputStream* st) { syscall_invoke_count(__func__); 
 void* os::get_default_process_handle() { syscall_invoke_count(__func__); }
 
 void* os::dll_lookup(void* handle, const char* name) {
-  printf("look for %s\n", name);
-  return sgx_get_func(name);
+  address addr = sgx_get_func(name);
+  printf("look for %s %lx\n", name, addr);
+  return addr;
 }
 
 bool os::dll_build_name(char* buffer, size_t buflen,

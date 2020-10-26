@@ -1,7 +1,7 @@
 #ifndef SGX_NETIF_UTIL_H
 #define SGX_NETIF_UTIL_H
 
-#include <struct/sgx_netif_struct.h>
+#include "struct/sgx_netif_struct.h"
 
 unsigned int if_nametoindex(const char *ifname);
 

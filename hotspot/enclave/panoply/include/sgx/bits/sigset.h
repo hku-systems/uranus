@@ -1,5 +1,5 @@
 /* __sig_atomic_t, __sigset_t, and related definitions.  Linux version.
-   Copyright (C) 1991-2014 Free Software Foundation, Inc.
+   Copyright (C) 1991-2016 Free Software Foundation, Inc.
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or
@@ -99,9 +99,9 @@ typedef struct
 /* These functions needn't check for a bogus signal number -- error
    checking is done in the non __ versions.  */
 
-// extern int __sigismember (const __sigset_t *, int);
-// extern int __sigaddset (__sigset_t *, int);
-// extern int __sigdelset (__sigset_t *, int);
+extern int __sigismember (const __sigset_t *, int);
+extern int __sigaddset (__sigset_t *, int);
+extern int __sigdelset (__sigset_t *, int);
 
 # ifdef __USE_EXTERN_INLINES
 #  define __SIGSETFN(NAME, BODY, CONST)					      \
@@ -113,9 +113,9 @@ typedef struct
     return BODY;							      \
   }
 
-// __SIGSETFN (__sigismember, (__set->__val[__word] & __mask) ? 1 : 0, const)
-// __SIGSETFN (__sigaddset, ((__set->__val[__word] |= __mask), 0), )
-// __SIGSETFN (__sigdelset, ((__set->__val[__word] &= ~__mask), 0), )
+__SIGSETFN (__sigismember, (__set->__val[__word] & __mask) ? 1 : 0, const)
+__SIGSETFN (__sigaddset, ((__set->__val[__word] |= __mask), 0), )
+__SIGSETFN (__sigdelset, ((__set->__val[__word] &= ~__mask), 0), )
 
 #  undef __SIGSETFN
 # endif

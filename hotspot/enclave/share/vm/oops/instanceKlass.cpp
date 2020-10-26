@@ -1074,7 +1074,7 @@ objArrayOop InstanceKlass::allocate_objArray(int n, int length, TRAPS) {
 }
 
 instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
-/*  if (TraceFinalizerRegistration) {
+  if (TraceFinalizerRegistration) {
     tty->print("Registered ");
     i->print_value_on(tty);
     tty->print_cr(" (" INTPTR_FORMAT ") as finalizable", (address)i);
@@ -1085,7 +1085,7 @@ instanceOop InstanceKlass::register_finalizer(instanceOop i, TRAPS) {
   JavaCallArguments args(h_i);
   methodHandle mh (THREAD, Universe::finalizer_register_method());
   JavaCalls::call(&result, mh, &args, CHECK_NULL);
-  return h_i();*/
+  return h_i();
 }
 
 instanceOop InstanceKlass::allocate_instance(TRAPS) {
@@ -1259,7 +1259,7 @@ Klass* InstanceKlass::find_field(Symbol* name, Symbol* sig, fieldDescriptor* fd)
 
 
 Klass* InstanceKlass::find_field(Symbol* name, Symbol* sig, bool is_static, fieldDescriptor* fd) const {
-/*  // search order according to newest JVM spec (5.4.3.2, p.167).
+  // search order according to newest JVM spec (5.4.3.2, p.167).
   // 1) search for field in current klass
   if (find_local_field(name, sig, fd)) {
     if (fd->is_static() == is_static) return const_cast<InstanceKlass*>(this);
@@ -1274,18 +1274,18 @@ Klass* InstanceKlass::find_field(Symbol* name, Symbol* sig, bool is_static, fiel
     if (supr != NULL) return InstanceKlass::cast(supr)->find_field(name, sig, is_static, fd);
   }
   // 4) otherwise field lookup fails
-  return NULL;*/
+  return NULL;
 }
 
 
 bool InstanceKlass::find_local_field_from_offset(int offset, bool is_static, fieldDescriptor* fd) const {
-/*  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
+  for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
     if (fs.offset() == offset) {
       fd->reinitialize(const_cast<InstanceKlass*>(this), fs.index());
       if (fd->is_static() == is_static) return true;
     }
   }
-  return false;*/
+  return false;
 }
 
 
@@ -1630,7 +1630,7 @@ Method* InstanceKlass::lookup_method_in_all_interfaces(Symbol* name,
 
 /* jni_id_for_impl for jfieldIds only */
 JNIid* InstanceKlass::jni_id_for_impl(instanceKlassHandle this_oop, int offset) {
-/*  MutexLocker ml(JfieldIdCreation_lock);
+//  MutexLocker ml(JfieldIdCreation_lock);
   // Retry lookup after we got the lock
   JNIid* probe = this_oop->jni_ids() == NULL ? NULL : this_oop->jni_ids()->find(offset);
   if (probe == NULL) {
@@ -1638,7 +1638,7 @@ JNIid* InstanceKlass::jni_id_for_impl(instanceKlassHandle this_oop, int offset) 
     probe = new JNIid(this_oop(), offset, this_oop->jni_ids());
     this_oop->set_jni_ids(probe);
   }
-  return probe;*/
+  return probe;
 }
 
 
@@ -1686,6 +1686,7 @@ void InstanceKlass::set_enclosing_method_indices(u2 class_index,
 // and/or other cache consistency problems.
 //
 jmethodID InstanceKlass::get_jmethod_id(instanceKlassHandle ik_h, methodHandle method_h) {
+  D_WARN_Unimplement;
 /*  size_t idnum = (size_t)method_h->method_idnum();
   jmethodID* jmeths = ik_h->methods_jmethod_ids_acquire();
   size_t length = 0;
@@ -1886,28 +1887,7 @@ int nmethodBucket::decrement() {
 // deoptimization.  Returns the number of nmethods found.
 //
 int InstanceKlass::mark_dependent_nmethods(DepChange& changes) {
-/*  assert_locked_or_safepoint(CodeCache_lock);
-  int found = 0;
-  nmethodBucket* b = _dependencies;
-  while (b != NULL) {
-    nmethod* nm = b->get_nmethod();
-    // since dependencies aren't removed until an nmethod becomes a zombie,
-    // the dependency list may contain nmethods which aren't alive.
-    if (b->count() > 0 && nm->is_alive() && !nm->is_marked_for_deoptimization() && nm->check_dependency_on(changes)) {
-      if (TraceDependencies) {
-        ResourceMark rm;
-        tty->print_cr("Marked for deoptimization");
-        tty->print_cr("  context = %s", this->external_name());
-        changes.print();
-        nm->print();
-        nm->print_dependencies();
-      }
-      nm->mark_for_deoptimization();
-      found++;
-    }
-    b = b->next();
-  }
-  return found;*/
+  D_WARN_Unimplement;
 }
 
 void InstanceKlass::clean_dependent_nmethods() {

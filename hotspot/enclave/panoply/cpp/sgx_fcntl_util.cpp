@@ -3,6 +3,8 @@
 //
 
 #include "sgx_fcntl_util.h"
+#include "sgx_dlfcn_util.h"
+#include "sgx_sysstat_util.h"
 #include "proxy/sgx_fcntl_t.h"
 
 int open(const char *pathname, int flags, ...)
@@ -18,4 +20,12 @@ int open(const char *pathname, int flags, ...)
 	int retval;
 	ocall_open2(&retval, pathname, flags, mode);
 	return retval;
+}
+
+void *dlsym (void *handle, const char* name) {
+  return NULL;
+}
+
+int fstat(int fd, struct stat *buf) {
+
 }

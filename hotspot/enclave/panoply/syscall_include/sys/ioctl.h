@@ -6,4 +6,5 @@
 #define HOTSPOT_IOCTL_H
 
 #include "../../include/sgx_sysioctl_util.h"
+
 #endif //HOTSPOT_IOCTL_H

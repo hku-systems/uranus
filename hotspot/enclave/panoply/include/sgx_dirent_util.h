@@ -1,7 +1,7 @@
 #ifndef SGX_DIRENT_UTIL_H
 #define SGX_DIRENT_UTIL_H
 
-#include <dirent.h>
+#include "dirent.h"
 #include "struct/sgx_dirent_struct.h"
 #include "sgx/sys/types.h"
 

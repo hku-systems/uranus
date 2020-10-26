@@ -3,6 +3,9 @@
 
 #include "sgx/sys/types.h"
 #include "sgx/sys/stat.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int stat(const char *path, struct stat *buf);
 
@@ -28,7 +31,9 @@ int mkfifoat(int fd, const char *path, mode_t mode);
 
 int stat64 (const char *__restrict __file,
 				   struct stat64 *__restrict __buf);
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

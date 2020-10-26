@@ -2,7 +2,7 @@
 #define SGX_STDIO_T_H__
 
 #include <stdint.h>
-#include <wchar.h>
+//#include <wchar.h>
 #include <stddef.h>
 #include "sgx_edger8r.h" /* for sgx_ocall etc. */
 

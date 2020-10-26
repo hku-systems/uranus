@@ -73,16 +73,16 @@ FD handleOpen(const char *path, int oflag, int mode);
 #define IO_Available handleAvailable
 #define IO_SetLength handleSetLength
 
-#ifdef _ALLBSD_SOURCE
+//#ifdef _ALLBSD_SOURCE
 #define open64 open
 #define fstat64 fstat
 #define stat64 stat
 #define lseek64 lseek
 #define ftruncate64 ftruncate
 #define IO_Lseek lseek
-#else
-#define IO_Lseek lseek64
-#endif
+//#else
+//#define IO_Lseek lseek64
+//#endif
 
 /*
  * On Solaris, the handle field is unused
