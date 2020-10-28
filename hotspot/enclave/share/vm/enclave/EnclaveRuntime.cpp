@@ -53,7 +53,7 @@ extern bool  universe_post_init();
 
 extern void javaClasses_init();
 extern void init_classfile();
-
+extern void jni_handles_init();
 void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, void** klass_list, int db) {
 
     debug_bit = db;
@@ -120,6 +120,7 @@ void* EnclaveRuntime::init(void* cpuid, void** heap_top, void** heap_bottom, voi
     Runtime0::initialize();
 
     javaClasses_init();
+    jni_handles_init();
 
     // init mpx and set bound
     ENABLE_MPX();
@@ -203,7 +204,6 @@ void* EnclaveRuntime::call_interpreter(void *rbx_buf, Method *m) {
 
 void* EnclaveRuntime::compile_method(Method *method) {
     compiler->compile_method(method);
-    
 }
 
 // TODO

@@ -84,12 +84,15 @@ typedef struct _IO_FILE FILE;
 
 #define WRAPBUFSIZ 15000
 
+
+
 int printf(const char *fmt, ...);
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+int print(const char *fmt, ...);
 
 int fprintf(FILE* fp, const char* fmt, ...);
 

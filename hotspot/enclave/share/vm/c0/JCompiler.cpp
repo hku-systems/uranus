@@ -41,9 +41,9 @@ void JCompiler::compile_method(Method *method) {
 //            delete task;
 //            return;
 //        }
-        size = task->compile(0);
-        delete task;
-        task = new NormalCompileTask(method);
+//        size = task->compile(0);
+//        delete task;
+//        task = new NormalCompileTask(method);
 
     } else {
         task = new NativeCompileTask(method);
@@ -54,7 +54,7 @@ void JCompiler::compile_method(Method *method) {
         return;
     }
 
-    task->compile(size);
+    task->compile(0);
     task->set_compile_entry();
     // if (task->method_entry != EnclaveABI::do_ocall)
     //    task->print_disassembly();

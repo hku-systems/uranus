@@ -808,15 +808,10 @@ void java_lang_Class::set_array_klass(oop java_class, Klass* klass) {
   java_class->metadata_field_put(_array_klass_offset, klass);
 }
 
-bool is_print_primitive = false;
 bool java_lang_Class::is_primitive(oop java_class) {
   // should assert:
   //assert(java_lang_Class::is_instance(java_class), "must be a Class object");
   bool is_primitive = (java_class->metadata_field(_klass_offset) == NULL);
-  if (!is_print_primitive) {
-//    printf("the offset is %d %d\n", _klass_offset, _array_klass_offset);
-    is_print_primitive = true;
-  }
 #ifdef ASSERT
   if (is_primitive) {
     Klass* k = ((Klass*)java_class->metadata_field(_array_klass_offset));

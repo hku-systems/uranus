@@ -178,7 +178,6 @@ address NativeLookup::lookup_style(methodHandle method, char* pure_name, const c
     }
   }
 
-  printf(D_ERROR("Native")" cannot find %s\n", method->name()->as_C_string());
 //  // Otherwise call static method findNative in ClassLoader
 //  KlassHandle   klass (THREAD, SystemDictionary::ClassLoader_klass());
 //  Handle name_arg = java_lang_String::create_from_str(jni_name, CHECK_NULL);
@@ -198,7 +197,6 @@ address NativeLookup::lookup_style(methodHandle method, char* pure_name, const c
 //    // findNative didn't find it, if there are any agent libraries look in them
 //    // jianyu: agent should not be supported within encalve
 //  }
-  entry = CAST_FROM_FN_PTR(address, &NullJNICall);;
   return entry;
 }
 
@@ -262,6 +260,11 @@ address NativeLookup::lookup_entry(methodHandle method, bool& in_base_library, T
 
   // 4) Try JNI long style without os prefix/suffix
   entry = lookup_style(method, pure_name, long_name, args_size, false, in_base_library, CHECK_NULL);
+
+  if (entry != NULL) return entry;
+
+  printf(D_ERROR("Native")" cannot find %s\n", method->name()->as_C_string());
+  entry = CAST_FROM_FN_PTR(address, &NullJNICall);;
 
   return entry; // NULL indicates not found
 }

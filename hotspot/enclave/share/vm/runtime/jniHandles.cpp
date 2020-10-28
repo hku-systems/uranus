@@ -43,17 +43,39 @@ jobject JNIHandles::make_local(oop obj) {
 // optimized versions
 
 jobject JNIHandles::make_local(Thread* thread, oop obj) {
-    return (jobject)obj;
+  if (obj == NULL) {
+    return NULL;                // ignore null handles
+  } else {
+    assert(Universe::heap()->is_in_reserved(obj), "sanity check");
+    return thread->active_handles()->allocate_handle(obj);
+  }
 }
 
 
 jobject JNIHandles::make_local(JNIEnv* env, oop obj) {
-  return (jobject)obj;
+  if (obj == NULL) {
+    return NULL;                // ignore null handles
+  } else {
+    JavaThread* thread = JavaThread::thread_from_jni_environment(env);
+    assert(Universe::heap()->is_in_reserved(obj), "sanity check");
+    return thread->active_handles()->allocate_handle(obj);
+  }
 }
 
 
 jobject JNIHandles::make_global(Handle obj) {
-  D_WARN_Unimplement;
+  assert(!Universe::heap()->is_gc_active(), "can't extend the root set during GC");
+  jobject res = NULL;
+  if (!obj.is_null()) {
+    // ignore null handles
+    MutexLocker ml(JNIGlobalHandle_lock);
+    assert(Universe::heap()->is_in_reserved(obj()), "sanity check");
+    res = _global_handles->allocate_handle(obj());
+  } else {
+    CHECK_UNHANDLED_OOPS_ONLY(Thread::current()->clear_unhandled_oops());
+  }
+
+  return res;
 }
 
 
@@ -205,12 +227,95 @@ void JNIHandleBlock::zap() {
 }
 
 JNIHandleBlock* JNIHandleBlock::allocate_block(Thread* thread)  {
- D_WARN_Unimplement;
+  assert(thread == NULL || thread == Thread::current(), "sanity check");
+  JNIHandleBlock* block;
+  // Check the thread-local free list for a block so we don't
+  // have to acquire a mutex.
+  if (thread != NULL && thread->free_handle_block() != NULL) {
+    block = thread->free_handle_block();
+    thread->set_free_handle_block(block->_next);
+  }
+  else {
+    // locking with safepoint checking introduces a potential deadlock:
+    // - we would hold JNIHandleBlockFreeList_lock and then Threads_lock
+    // - another would hold Threads_lock (jni_AttachCurrentThread) and then
+    //   JNIHandleBlockFreeList_lock (JNIHandleBlock::allocate_block)
+    MutexLockerEx ml(JNIHandleBlockFreeList_lock,
+                     Mutex::_no_safepoint_check_flag);
+    if (_block_free_list == NULL) {
+      // Allocate new block
+      block = new JNIHandleBlock();
+      _blocks_allocated++;
+      if (TraceJNIHandleAllocation) {
+        tty->print_cr("JNIHandleBlock " INTPTR_FORMAT " allocated (%d total blocks)",
+                      block, _blocks_allocated);
+      }
+      if (ZapJNIHandleArea) block->zap();
+#ifndef PRODUCT
+      // Link new block to list of all allocated blocks
+      block->_block_list_link = _block_list;
+      _block_list = block;
+#endif
+    } else {
+      // Get block from free list
+      block = _block_free_list;
+      _block_free_list = _block_free_list->_next;
+    }
+  }
+  block->_top  = 0;
+  block->_next = NULL;
+  block->_pop_frame_link = NULL;
+  block->_planned_capacity = block_size_in_oops;
+  // _last, _free_list & _allocate_before_rebuild initialized in allocate_handle
+  debug_only(block->_last = NULL);
+  debug_only(block->_free_list = NULL);
+  debug_only(block->_allocate_before_rebuild = -1);
+  return block;
 }
 
 
 void JNIHandleBlock::release_block(JNIHandleBlock* block, Thread* thread) {
-  D_WARN_Unimplement;
+  assert(thread == NULL || thread == Thread::current(), "sanity check");
+  JNIHandleBlock* pop_frame_link = block->pop_frame_link();
+  // Put returned block at the beginning of the thread-local free list.
+  // Note that if thread == NULL, we use it as an implicit argument that
+  // we _don't_ want the block to be kept on the free_handle_block.
+  // See for instance JavaThread::exit().
+  if (thread != NULL ) {
+    if (ZapJNIHandleArea) block->zap();
+    JNIHandleBlock* freelist = thread->free_handle_block();
+    block->_pop_frame_link = NULL;
+    thread->set_free_handle_block(block);
+
+    // Add original freelist to end of chain
+    if ( freelist != NULL ) {
+      while ( block->_next != NULL ) block = block->_next;
+      block->_next = freelist;
+    }
+    block = NULL;
+  }
+  if (block != NULL) {
+    // Return blocks to free list
+    // locking with safepoint checking introduces a potential deadlock:
+    // - we would hold JNIHandleBlockFreeList_lock and then Threads_lock
+    // - another would hold Threads_lock (jni_AttachCurrentThread) and then
+    //   JNIHandleBlockFreeList_lock (JNIHandleBlock::allocate_block)
+    MutexLockerEx ml(JNIHandleBlockFreeList_lock,
+                     Mutex::_no_safepoint_check_flag);
+    while (block != NULL) {
+      if (ZapJNIHandleArea) block->zap();
+      JNIHandleBlock* next = block->_next;
+      block->_next = _block_free_list;
+      _block_free_list = block;
+      block = next;
+    }
+  }
+  if (pop_frame_link != NULL) {
+    // As a sanity check we release blocks pointed to by the pop_frame_link.
+    // This should never happen (only if PopLocalFrame is not called the
+    // correct number of times).
+    release_block(pop_frame_link, thread);
+  }
 }
 
 

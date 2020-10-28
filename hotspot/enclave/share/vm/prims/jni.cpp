@@ -1498,6 +1498,8 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
 
   // Throw a NoSuchMethodError exception if we have an instance of a
   // primitive java.lang.Class
+  printf("%lx \n", JNIHandles::resolve_non_null(clazz));
+  printf("%s \n", JNIHandles::resolve_non_null(clazz)->klass()->name()->as_C_string());
   if (java_lang_Class::is_primitive(JNIHandles::resolve_non_null(clazz))) {
     THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), name_str);
   }

@@ -377,7 +377,9 @@ int os::available(int fd, jlong *bytes) { syscall_invoke_count(__func__); }
 
 int os::loadavg(double loadavg[], int nelem) { syscall_invoke_count(__func__); }
 
-void os::print_jni_name_suffix_on(outputStream* st, int args_size) { syscall_invoke_count(__func__); }
+void os::print_jni_name_suffix_on(outputStream* st, int args_size) {
+  // no suffix is required
+}
 
 bool os::dll_address_to_library_name(address addr, char* buf,
                                      int buflen, int* offset)  { syscall_invoke_count(__func__); }

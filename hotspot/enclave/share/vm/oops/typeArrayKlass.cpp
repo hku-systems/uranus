@@ -98,12 +98,11 @@ typeArrayOop TypeArrayKlass::allocate_common(int length, bool do_zero, TRAPS) {
       size_t size = typeArrayOopDesc::object_size(layout_helper(), length);
       KlassHandle h_k(THREAD, this);
       typeArrayOop t;
-      // CollectedHeap* ch = Universe::heap();
+       CollectedHeap* ch = Universe::heap();
       if (do_zero) {
-        t = (typeArrayOop) EnclaveMemory::enclaveMemory->klass_type_array(THREAD, h_k(), length);
-        // t = (typeArrayOop)CollectedHeap::array_allocate(h_k, (int)size, length, CHECK_NULL);
+         t = (typeArrayOop)CollectedHeap::array_allocate(h_k, (int)size, length, CHECK_NULL);
       } else {
-        // t = (typeArrayOop)CollectedHeap::array_allocate_nozero(h_k, (int)size, length, CHECK_NULL);
+         t = (typeArrayOop)CollectedHeap::array_allocate_nozero(h_k, (int)size, length, CHECK_NULL);
       }
       return t;
     } else {

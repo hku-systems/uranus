@@ -218,7 +218,7 @@ void NormalCompileTask::ldc(bool wide) {
         oop resolve_constant = NULL;
         Klass* resolve_klass = NULL;
         if (Bytecodes::uses_cp_cache(bs->raw_code())) {
-            resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
+            resolve_constant = method->constants()->resolve_cached_constant_at(cache_idx, JavaThread::current());
         }
         if (resolve_constant == NULL) {
             if (will_run) {
@@ -242,26 +242,13 @@ void NormalCompileTask::ldc(bool wide) {
     } else if (tag.is_string()) {
         // call ldc
         oop resolve_constant = NULL;
-        oop enclave_constant = NULL;
-        if (Bytecodes::uses_cp_cache(bs->raw_code())) {
-            resolve_constant = method->constants()->resolve_cached_constant_at(-cache_idx, JavaThread::current());
+        // TODO: move it to somewhere else
+        if (!((InstanceKlass*)SystemDictionary::String_klass())->is_initialized()) {
+          SystemDictionary::String_klass()->initialize(JavaThread::current());
         }
-        if (resolve_constant == NULL) {
-            if (will_run) {
-                Bytecode_loadconstant bytecodeLoadconstant(methodHandle(method), bs->bci());
-                resolve_constant = bytecodeLoadconstant.resolve_constant(JavaThread::current());
-                enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-                __ movptr(rax, (intptr_t)enclave_constant);
-            } else {
-                PatchingStub *patchingStub = new PatchingStub(_masm, PatchingStub::load_mirror_id, bs->bci());
-                __ movptr(rax, NULL_WORD);
-                patchingStub->install();
-                append_stub(patchingStub);
-            }
-        } else {
-            enclave_constant = StringTable::intern(resolve_constant, JavaThread::current());
-            __ movptr(rax, (intptr_t)enclave_constant);
-        }
+        Bytecode_loadconstant cc(methodHandle(method), bs->bci());
+        resolve_constant = cc.resolve_constant(JavaThread::current());
+        __ movptr(rax, (intptr_t)resolve_constant);
         tos = atos;
     } else {
         if (tag.is_float()) {
@@ -1407,12 +1394,15 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
     ConstantPoolCacheEntry *field_entry = method->constants()->cache()->entry_at(getfield_index());
     tosState = MetadataAccessor::basicType2tosState(
             MetadataAccessor::get_field_type_by_index(method->constants(), getfield_index()));
-    Klass* field_holder_klass;
+    Klass* field_holder_klass = NULL;
     if (is_static) {
         field_holder_klass = MetadataAccessor::get_field_holder_klass_if_loaded(method->constants(), getfield_index());
         if (field_holder_klass == NULL) {
             if (will_run) {
                 field_holder_klass = resolve_field_return_klass(methodHandle(method), bs->bci(), JavaThread::current());
+                if (!((InstanceKlass*)field_holder_klass)->is_initialized()) {
+                  klass_holder->initialize(JavaThread::current());
+                }
                 __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
             } else {
                 // patch
@@ -1422,6 +1412,9 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
                 append_stub(patchingStub);
             }
         } else {
+            if (!((InstanceKlass*)field_holder_klass)->is_initialized()) {
+              klass_holder->initialize(JavaThread::current());
+            }
             __ movptr(c_obj, (intptr_t)field_holder_klass->java_mirror());
         }
     }
@@ -1434,7 +1427,9 @@ PatchingStub* NormalCompileTask::resolve_cache_and_index(int byte_no, Register c
             constantPoolHandle constants(JavaThread::current(), method->constants());
             LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), JavaThread::current());
             off = result.offset();
-
+            if (field_holder_klass && strcmp(field_holder_klass->name()->as_C_string(), "sun/misc/VM") == 0) {
+              printf(D_ERROR("resolve")"here 1 %d %lx %lx\n", bs->bci(), (intptr_t)field_holder_klass->java_mirror(), off);
+            }
             return NULL;
         } else {
             // __ movptr(c_obj, (intptr_t)field_entry->f1_as_klass()->java_mirror());
@@ -2081,7 +2076,7 @@ void NormalCompileTask::athrow() {
     // crash the system when a exception is throw
     __ pop(atos);
     __ movptr(rax, (intptr_t)NULL);
-    __ jmp(rax);
+    __ movptr(rax, Address(rax, 0));
     tos = udtos;
 }
 

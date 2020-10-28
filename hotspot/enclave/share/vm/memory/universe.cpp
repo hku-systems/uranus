@@ -29,6 +29,7 @@
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "gc_interface/collectedHeap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/universe.hpp"
@@ -684,7 +685,7 @@ char* Universe::preferred_heap_base(size_t heap_size, size_t alignment, NARROW_O
 }
 
 jint Universe::initialize_heap() {
-  D_WARN_Unimplement;
+  _collectedHeap = new CollectedHeap();
 }
 
 void Universe::print_compressed_oops_mode() {

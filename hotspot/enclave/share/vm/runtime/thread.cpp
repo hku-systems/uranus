@@ -143,6 +143,9 @@ void JavaThread::initialize() {
 
 Thread::Thread() {
     _resource = new (mtThread)ResourceArea();
+    set_free_handle_block(NULL);
+    set_active_handles(NULL);
+    set_active_handles(JNIHandleBlock::allocate_block(this));
     set_last_handle_mark(NULL);
     _handle_area = new (mtThread) HandleArea(NULL);
     new HandleMark(this);
@@ -157,4 +160,6 @@ Thread::~Thread() {
     delete resource_area();
     delete last_handle_mark();
     delete _handle_area;
+    if (free_handle_block())
+      JNIHandleBlock::release_block(free_handle_block(), this);
 }

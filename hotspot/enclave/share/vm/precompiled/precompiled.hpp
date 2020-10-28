@@ -48,6 +48,7 @@
 # include "classfile/vmSymbols.hpp"
 # include "code/codeBlob.hpp"
 # include "code/stubs.hpp"
+# include "gc_interface/collectedHeap.hpp"
 # include "interpreter/abstractInterpreter.hpp"
 # include "interpreter/bytecode.hpp"
 # include "interpreter/bytecodes.hpp"

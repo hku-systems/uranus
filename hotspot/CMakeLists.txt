@@ -34,19 +34,19 @@ endif()
 
 set(TOP_DIR ${CMAKE_SOURCE_DIR})
 
-set(CMAKE_C_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
+set(CMAKE_C_FLAGS "-O0 -gstabs+ -DENCLAVE ${DEBUG_FLAG} -nostdinc -fpie -fstack-protector")
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_CXX_FLAGS} -nostdinc++")
-set(CMAKE_CXX_FLAGS "-O0 -g -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -fpermissive")
+set(CMAKE_CXX_FLAGS "-O0 -gstabs+ -DENCLAVE ${DEBUG_FLAG} -fPIC -fno-rtti -fno-exceptions -fcheck-new -fvisibility=hidden -pipe -fno-strict-aliasing  -fno-omit-frame-pointer -fpermissive")
 set(ENCLAVE_LINK_FLAGS "-Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined -Wl,-pie,-eenclave_entry -Wl,--export-dynamic -Wl,--defsym,__ImageBase=0")
 
 include_directories(${CMAKE_BINARY_DIR}/)
+include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
 include_directories($ENV{TEE_SDK}/include)
 include_directories($ENV{TEE_SDK}/include/tlibc)
 include_directories($ENV{TEE_SDK}/include/stdc++)
 include_directories($ENV{TEE_SDK}/include/stlport)
 include_directories(${TOP_DIR}/enclave/panoply)
 include_directories(${TOP_DIR}/enclave/panoply/include)
-include_directories(${TOP_DIR}/enclave/panoply/syscall_include)
 include_directories(${TOP_DIR}/enclave/share/vm/precompiled/)
 include_directories(${TOP_DIR}/enclave/share/vm/)
 include_directories(${TOP_DIR}/enclave/cpu/${BUILD_ARCH}/vm/)
@@ -62,6 +62,7 @@ include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/export/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/common/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/io/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/util/)
+include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/lang/)
 include_directories(${TOP_DIR}/enclave/share/vm/enclave/native_libs/java/lang/fdlibm/include/)
 
 add_definitions(-DLINUX -D_GNU_SOURCE -DAMD64 -DPRODUCT -DHOTSPOT_RELEASE_VERSION="25.71-b00"
@@ -96,6 +97,7 @@ file(GLOB_RECURSE src_app
         enclave/share/vm/oops/*.c*
         enclave/share/vm/prims/*.c*
         enclave/share/vm/runtime/*.c*
+	enclave/share/vm/gc_interface/*.c*
         ${UDIS_SRC}
         enclave/share/vm/utilities/*.c*
         enclave/cpu/${BUILD_ARCH}/*.c*

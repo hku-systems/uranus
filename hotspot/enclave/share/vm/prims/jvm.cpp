@@ -331,6 +331,7 @@ static void set_property(Handle props, const char* key, const char* value, TRAPS
 JVM_ENTRY(jobject, JVM_InitProperties(JNIEnv *env, jobject properties))
   JVMWrapper("JVM_InitProperties");
   D_WARN_Unimplement;
+  return properties;
 JVM_END
 
 

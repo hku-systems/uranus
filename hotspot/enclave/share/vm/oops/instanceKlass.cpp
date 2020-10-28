@@ -1096,8 +1096,7 @@ instanceOop InstanceKlass::allocate_instance(TRAPS) {
 
   instanceOop i;
 
-  // i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
-  i = (instanceOop)EnclaveMemory::enclaveMemory->vm_new_obj(JavaThread::current(), h_k());
+  i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
   if (has_finalizer_flag && !RegisterFinalizersAtInit) {
     i = register_finalizer(i, CHECK_NULL);
   }
@@ -1160,15 +1159,12 @@ Method* InstanceKlass::class_initializer() {
 }
 
 void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TRAPS) {
-  printf("doing init %lx\n");
-  printf("doing init %s\n", this_oop->name()->as_C_string());
   if (ReplayCompiles &&
       (ReplaySuppressInitializers == 1 ||
        ReplaySuppressInitializers >= 2 && this_oop->class_loader() != NULL)) {
     // Hide the existence of the initializer for the purpose of replaying the compile
     return;
   }
-  printf("doing exec %lx\n", this_oop->class_initializer());
 
   methodHandle h_method(THREAD, this_oop->class_initializer());
   assert(!this_oop->is_initialized(), "we cannot initialize twice");
@@ -1177,13 +1173,13 @@ void InstanceKlass::call_class_initializer_impl(instanceKlassHandle this_oop, TR
     this_oop->name()->print_value();
     tty->print_cr("%s (" INTPTR_FORMAT ")", h_method() == NULL ? "(no method)" : "", (address)this_oop());
   }
-  printf("call start\n");
+//  printf("call start\n");
   if (h_method() != NULL) {
     JavaCallArguments args; // No arguments
     JavaValue result(T_VOID);
     JavaCalls::call(&result, h_method, &args, CHECK); // Static call (no args)
   }
-  printf("call fin\n");
+//  printf("call fin\n");
 }
 
 
@@ -1686,8 +1682,7 @@ void InstanceKlass::set_enclosing_method_indices(u2 class_index,
 // and/or other cache consistency problems.
 //
 jmethodID InstanceKlass::get_jmethod_id(instanceKlassHandle ik_h, methodHandle method_h) {
-  D_WARN_Unimplement;
-/*  size_t idnum = (size_t)method_h->method_idnum();
+  size_t idnum = (size_t)method_h->method_idnum();
   jmethodID* jmeths = ik_h->methods_jmethod_ids_acquire();
   size_t length = 0;
   jmethodID id = NULL;
@@ -1717,14 +1712,14 @@ jmethodID InstanceKlass::get_jmethod_id(instanceKlassHandle ik_h, methodHandle m
       get_jmethod_id_length_value(jmeths, idnum, &length, &id);
     } else {
       // cache can grow so we have to be more careful
-      if (Threads::number_of_threads() == 0 ||
-          SafepointSynchronize::is_at_safepoint()) {
-        // we're single threaded or at a safepoint - no locking needed
-        get_jmethod_id_length_value(jmeths, idnum, &length, &id);
-      } else {
+//      if (Threads::number_of_threads() == 0 ||
+//          SafepointSynchronize::is_at_safepoint()) {
+//        // we're single threaded or at a safepoint - no locking needed
+//        get_jmethod_id_length_value(jmeths, idnum, &length, &id);
+//      } else {
         MutexLocker ml(JmethodIdCreation_lock);
         get_jmethod_id_length_value(jmeths, idnum, &length, &id);
-      }
+//      }
     }
   }
   // implied else:
@@ -1766,16 +1761,16 @@ jmethodID InstanceKlass::get_jmethod_id(instanceKlassHandle ik_h, methodHandle m
       new_id = Method::make_jmethod_id(ik_h->class_loader_data(), method_h());
     }
 
-    if (Threads::number_of_threads() == 0 ||
-        SafepointSynchronize::is_at_safepoint()) {
-      // we're single threaded or at a safepoint - no locking needed
-      id = get_jmethod_id_fetch_or_update(ik_h, idnum, new_id, new_jmeths,
-                                          &to_dealloc_id, &to_dealloc_jmeths);
-    } else {
+//    if (Threads::number_of_threads() == 0 ||
+//        SafepointSynchronize::is_at_safepoint()) {
+//      // we're single threaded or at a safepoint - no locking needed
+//      id = get_jmethod_id_fetch_or_update(ik_h, idnum, new_id, new_jmeths,
+//                                          &to_dealloc_id, &to_dealloc_jmeths);
+//    } else {
       MutexLocker ml(JmethodIdCreation_lock);
       id = get_jmethod_id_fetch_or_update(ik_h, idnum, new_id, new_jmeths,
                                           &to_dealloc_id, &to_dealloc_jmeths);
-    }
+//    }
 
     // The lock has been dropped so we can free resources.
     // Free up either the old cache or the new cache if we allocated one.
@@ -1787,7 +1782,7 @@ jmethodID InstanceKlass::get_jmethod_id(instanceKlassHandle ik_h, methodHandle m
       Method::destroy_jmethod_id(ik_h->class_loader_data(), to_dealloc_id);
     }
   }
-  return id;*/
+  return id;
 }
 
 

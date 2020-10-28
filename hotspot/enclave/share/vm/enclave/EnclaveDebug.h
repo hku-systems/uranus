@@ -66,8 +66,8 @@ void print_exception_frame(void* thread, void* exp_oop);
 #ifdef DB_WARN
 //#define D_WARN_Unstable printf(D_WARN("Unstable")" using unstable function call: %s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__)
 #define D_WARN_Unstable
-#define D_WARN_Unimplement printf(D_WARN("Un-implemented")" using un-implemented function call: %s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__)
-// #define D_WARN_Unimplement
+//#define D_WARN_Unimplement printf(D_WARN("Un-implemented")" using un-implemented function call: %s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__)
+ #define D_WARN_Unimplement
 #define D_FIX
 //#define D_FIX printf(D_WARN("TODO")" Fix: %s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__)
 // #define Unimplemented(x) printf(D_WARN("Un-implemented")" using un-implemented function call: %s:%s:%d\n", __FUNCTION__, __FILE__, __LINE__)

@@ -58,6 +58,7 @@ public:
 
     void generate_result_handler() {
         address entry = __ pc();
+        Label get_result;
         switch (_ret) {
             case T_BOOLEAN: __ c2bool(rax);            break;
             case T_CHAR   : __ movzwl(rax, rax);       break;
@@ -70,8 +71,11 @@ public:
             case T_DOUBLE : /* nothing to do */        break;
             case T_OBJECT :
             case T_ARRAY:
-                // retrieve result from frame
-                // __ movptr(rax, Address(rbp, frame::interpreter_frame_oop_temp_offset*wordSize));
+                // retrieve result from handle
+                __ testptr(rax, rax);
+                __ jcc(Assembler::zero, get_result);
+                __ movptr(rax, Address(rax, 0));
+                __ bind(get_result);
                 // and verify it
                 __ verify_oop(rax);
                 break;

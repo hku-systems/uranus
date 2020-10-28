@@ -723,7 +723,7 @@ oop StringTable::intern(Handle string_or_null, jchar* name,
 
   Handle string;
   // try to reuse the string if possible
-  if (!string_or_null.is_null() && sgx_is_within_enclave(string(), 1)) {
+  if (!string_or_null.is_null()) {
     string = string_or_null;
   } else {
     string = java_lang_String::create_from_unicode(name, len, CHECK_NULL);

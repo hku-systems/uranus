@@ -844,6 +844,7 @@ bool Method::should_not_be_cached() const {
  */
 bool Method::is_ignored_by_security_stack_walk() const {
   D_WARN_Unimplement;
+  return false;
 }
 
 
@@ -1287,7 +1288,7 @@ void BreakpointInfo::clear(Method* method) {
 class JNIMethodBlock : public CHeapObj<mtClass> {
   enum { number_of_methods = 8 };
 
-  Method*         _methods[0];
+  Method*         _methods[number_of_methods];
   int             _top;
   JNIMethodBlock* _next;
  public:
@@ -1381,7 +1382,27 @@ Method* const JNIMethodBlock::_free_method = (Method*)55;
 
 // Add a method id to the jmethod_ids
 jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
-  D_WARN_Unimplement;
+  ClassLoaderData* cld = loader_data;
+
+//  if (!SafepointSynchronize::is_at_safepoint()) {
+    // Have to add jmethod_ids() to class loader data thread-safely.
+    // Also have to add the method to the list safely, which the cld lock
+    // protects as well.
+    MutexLockerEx ml(cld->metaspace_lock(),  Mutex::_no_safepoint_check_flag);
+    if (cld->jmethod_ids() == NULL) {
+      printf("create new\n");
+      cld->set_jmethod_ids(new JNIMethodBlock());
+    }
+    // jmethodID is a pointer to Method*
+    return (jmethodID)cld->jmethod_ids()->add_method(m);
+//  } else {
+//    // At safepoint, we are single threaded and can set this.
+//    if (cld->jmethod_ids() == NULL) {
+//      cld->set_jmethod_ids(new JNIMethodBlock());
+//    }
+//    // jmethodID is a pointer to Method*
+//    return (jmethodID)cld->jmethod_ids()->add_method(m);
+//  }
 }
 
 // Mark a jmethodID as free.  This is called when there is a data race in

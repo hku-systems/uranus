@@ -193,7 +193,6 @@ Java_java_lang_System_initProperties(JNIEnv *env, jclass cla, jobject props)
 
     sprops = GetJavaProperties(env);
     CHECK_NULL_RETURN(sprops, NULL);
-
     putID = (*env)->GetMethodID(env,
                                 (*env)->GetObjectClass(env, props),
                                 "put",

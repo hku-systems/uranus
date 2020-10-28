@@ -16,9 +16,9 @@
 // 2. If we expect non-tos, pop to rax
 // 3. If we have (vtos, vtos), the tos is decided in the generator
 
-int NormalCompileTask::break_bci = 5;
-char* NormalCompileTask::break_method = "<init>";
-char* NormalCompileTask::break_klass = "java/lang/ThreadGroup";
+int NormalCompileTask::break_bci = 1;
+char* NormalCompileTask::break_method = "saveAndRemoveProperties";
+char* NormalCompileTask::break_klass = "sun/misc/VM";
 
 void NormalCompileTask::checkcast_state(TosState tos, TosState intos) {
     TosState cast_tos;
@@ -127,10 +127,10 @@ void NormalCompileTask::do_oop_store(InterpreterMacroAssembler* _masm,
 
     }
 }
-
+extern unsigned char* f_addr;
 int NormalCompileTask::compile(int size) {
     if (size == 0)
-        size = 10240;
+        size = 10240 * 6;
     BufferBlob* stub_blob = BufferBlob::create("EnclaveABI:", size + 20);
     if (stub_blob == NULL) {
         ShouldNotReachHere();

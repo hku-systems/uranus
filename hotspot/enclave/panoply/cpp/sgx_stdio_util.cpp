@@ -2,6 +2,19 @@
 #include "sgx_stdio_util.h"
 #include "proxy/sgx_stdio_t.h"
 
+int print(const char *fmt, ...)
+{
+  char buf[WRAPBUFSIZ] = {'\0'};
+  int result;
+  va_list ap;
+          va_start(ap, fmt);
+  vsnprintf(buf, WRAPBUFSIZ, fmt, ap);
+          va_end(ap);
+  ocall_print_string(&result, buf);
+  // printf("Return to wrapper \n ");
+  return result;
+}
+
 int printf(const char *fmt, ...)
 {
 	char buf[WRAPBUFSIZ] = {'\0'};
@@ -28,7 +41,7 @@ static inline int sgx_wrapper_fprintf(int FILESTREAM, const char* fmt, ...)
 }
 
 int fprintf(FILE* fp, const char* fmt, ...) {
-    return sgx_wrapper_fprintf(0, fmt);
+    return sgx_wrapper_fprintf((SGX_WRAPPER_FILE)fp, fmt);
 }
 
 int rename (const char *__old, const char *__new) {
@@ -278,7 +291,7 @@ static inline int sgx_wrapper_vfprintf(SGX_WRAPPER_FILE FILESTREAM, const char* 
 }
 
 int vfprintf(FILE *fp, const char* format, void *val) {
-    return sgx_wrapper_vfprintf(0, format, val);
+    return sgx_wrapper_vfprintf((SGX_WRAPPER_FILE)fp, format, val);
 }
 
 int vprintf(const char* format, void* val)

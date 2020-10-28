@@ -481,6 +481,9 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
         constantPoolHandle constants(THREAD, caller_method->constants());
         LinkResolver::resolve_field_access(result, constants, field_access.index(), Bytecodes::java_code(code), CHECK);
         patch_field_offset = result.offset();
+      if (caller_method() && strcmp(caller_method->method_holder()->name()->as_C_string(), "sun/misc/VM") == 0) {
+        printf(D_ERROR("resolve")"here 3 %d %lx %lx\n", bci, (intptr_t)caller_method->method_holder()->java_mirror(), patch_field_offset);
+      }
 
         // If we're patching a field which is volatile then at compile it
         // must not have been know to be volatile, so the generated code
@@ -578,7 +581,6 @@ void Runtime0::patch_code(JavaThread *thread, Runtime0::StubID stub_id) {
             EnclaveRuntime::compile_method(method);
         } else if (bytecode == Bytecodes::_invokevirtual) {
           virtual_vtable_idx = mth->vtable_index();
-          printf("vindex %d\n", virtual_vtable_idx);
           if (virtual_vtable_idx > 0) {
             oop recv_recv = (oop)recv;
             Method* method = InstanceKlass::cast(recv_recv->klass())->method_at_vtable(virtual_vtable_idx);

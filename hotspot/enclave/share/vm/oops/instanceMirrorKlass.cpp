@@ -259,8 +259,7 @@ instanceOop InstanceMirrorKlass::allocate_instance(KlassHandle k, TRAPS) {
   // Query before forming handle.
   int size = instance_size(k);
   KlassHandle h_k(THREAD, this);
-  // instanceOop i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
-  instanceOop i = (instanceOop)EnclaveMemory::enclaveMemory->vm_new_obj(JavaThread::current(), h_k());
+  instanceOop i = (instanceOop)CollectedHeap::obj_allocate(h_k, size, CHECK_NULL);
 
   // Since mirrors can be variable sized because of the static fields, store
   // the size in the mirror itself.

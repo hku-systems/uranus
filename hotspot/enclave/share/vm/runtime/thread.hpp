@@ -38,6 +38,7 @@
 #include "utilities/macros.hpp"
 #include "utilities/top.hpp"
 #include "threadLocalStorage.hpp"
+#include "jniHandles.hpp"
 
 class ciEnv;
 
@@ -105,6 +106,8 @@ class Thread: public ThreadShadow {
   ResourceArea *_resource;
   HandleArea *_handle_area;
   HandleMark* _last_handle_mark;
+  JNIHandleBlock* _free_handle_block;
+  JNIHandleBlock* _active_handles;
 
   size_t _stack_size;
  public:
@@ -130,6 +133,12 @@ class Thread: public ThreadShadow {
   HandleArea*    handle_area()   { return _handle_area; }
   void           set_last_handle_mark(HandleMark *hm) { _last_handle_mark = hm; }
   HandleMark*    last_handle_mark() { return _last_handle_mark; }
+
+  JNIHandleBlock* free_handle_block() const      { return _free_handle_block; }
+  void set_free_handle_block(JNIHandleBlock* block) { _free_handle_block = block; }
+  JNIHandleBlock* active_handles() const         { return _active_handles; }
+  void set_active_handles(JNIHandleBlock* block) { _active_handles = block; }
+
   void    set_stack_base(address base) { _stack_base = base; }
   size_t  stack_size() const           { return _stack_size; }
   void    set_stack_size(size_t size)  { _stack_size = size; }
